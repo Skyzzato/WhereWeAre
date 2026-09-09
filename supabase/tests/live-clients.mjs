@@ -30,4 +30,3 @@ try{
  for(const u of users) await rpc(u,'set_sharing',{active:false,session:null});
  pass('test sharing stopped');
 }finally{for(const ws of sockets)ws.close();}
-

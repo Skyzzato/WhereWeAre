@@ -143,3 +143,9 @@ node supabase/tests/live-clients.mjs
 ```
 
 Il test crea un collegamento reciproco, pubblica coordinate sintetiche, verifica gli eventi Realtime, revoca e Stop, poi ferma la condivisione. Usa le credenziali client di `local.properties`; non richiede service role. Elimina successivamente i soli account di prova dal dashboard. Il dettaglio dei risultati e dei limiti del collaudo è in `VERIFICATION.md`.
+
+### Registrazione email: configurazione esterna ancora necessaria
+
+Al controllo del dashboard, **Custom SMTP è disabilitato e Confirm Email è attivo**. Il mittente predefinito Supabase invia soltanto agli indirizzi dei membri dell'organizzazione: per registrare utenti esterni mantenendo la verifica email bisogna configurare un SMTP in Authentication → Emails → SMTP Settings. Le credenziali SMTP appartengono esclusivamente al dashboard, mai all'app. In alternativa, per un collaudo senza verifica delle caselle, il proprietario può scegliere di disabilitare Confirm Email. Nessuna delle due impostazioni viene cambiata implicitamente dalla migration.
+
+Fonte: [Supabase — Custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp).

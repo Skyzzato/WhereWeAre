@@ -46,3 +46,7 @@ Verificati anche non enumerabilità, richieste inverse e retry, negazione a terz
 ## Collaudo ancora da eseguire su dispositivi
 
 Non sono stati collegati due telefoni Android. Restano da verificare materialmente rendering MapLibre, permessi e acquisizione GPS, cadenza approssimativa di un minuto e comportamento del foreground service sotto le restrizioni energetiche dei dispositivi. Il test live verifica il backend e la consegna Realtime con due client distinti, non simula il sistema operativo Android. Seguire la procedura a due dispositivi nel README.
+
+### Blocco individuato sulle registrazioni esterne
+
+Dashboard Authentication → Emails → SMTP Settings: Custom SMTP disabilitato; endpoint Auth settings: `mailer_autoconfirm=false`. Il provider predefinito consente destinatari appartenenti al team del progetto. Prima di dichiarare completata la registrazione per qualsiasi utente, occorre configurare SMTP nel dashboard oppure scegliere esplicitamente il collaudo con conferma email disabilitata. È stata richiesta al proprietario questa scelta; non sono state chieste credenziali amministrative.
