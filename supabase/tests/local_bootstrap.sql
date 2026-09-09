@@ -1,0 +1,11 @@
+-- Only for a disposable vanilla PostgreSQL test database, NEVER a Supabase project.
+create role anon nologin;
+create role authenticated nologin;
+create schema auth;
+create schema extensions;
+create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}');
+create function auth.uid() returns uuid language sql stable as $$
+ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
+$$;
+grant usage on schema auth to anon,authenticated;
+grant execute on function auth.uid() to anon,authenticated;

@@ -1,0 +1,40 @@
+[versions]
+agp = "9.4.0"
+kotlin = "2.4.20"
+hilt = "2.60.1"
+ksp = "2.3.11"
+supabase = "3.8.0"
+ktor = "3.5.2"
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
+[libraries]
+compose-bom = { module = "androidx.compose:compose-bom", version = "2026.09.00" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+material3 = { module = "androidx.compose.material3:material3" }
+activity-compose = { module = "androidx.activity:activity-compose", version = "1.13.0" }
+lifecycle-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version = "2.11.0" }
+lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version = "2.11.0" }
+navigation = { module = "androidx.navigation:navigation-compose", version = "2.10.1" }
+hilt-navigation = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version = "1.4.0" }
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
+hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
+datastore = { module = "androidx.datastore:datastore-preferences", version = "1.2.1" }
+work = { module = "androidx.work:work-runtime-ktx", version = "2.11.2" }
+location = { module = "com.google.android.gms:play-services-location", version = "21.4.0" }
+coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version = "1.11.0" }
+coroutines-tasks = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version = "1.11.0" }
+supabase-bom = { module = "io.github.jan-tennert.supabase:bom", version.ref = "supabase" }
+supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt" }
+supabase-postgrest = { module = "io.github.jan-tennert.supabase:postgrest-kt" }
+supabase-realtime = { module = "io.github.jan-tennert.supabase:realtime-kt" }
+ktor-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+maplibre = { module = "org.maplibre.compose:maplibre-compose", version = "0.16.0" }
+maplibre-runtime = { module = "org.maplibre.compose:maplibre-compose-runtime-opengl-android", version = "0.16.0" }
+junit = { module = "junit:junit", version = "4.13.2" }
