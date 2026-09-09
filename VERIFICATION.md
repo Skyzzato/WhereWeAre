@@ -33,8 +33,7 @@ Verifiche con due sessioni Auth reali e chiamate HTTPS PostgREST / WebSocket Rea
 - Accesso anonimo alle tabelle respinto con HTTP 401.
 - Job `whereweare-expiry` presente, attivo, pianificato ogni 15 minuti.
 
-Gli account sintetici sono stati creati e confermati esclusivamente come fixture di collaudo e rimossi al termine, con cascata sui relativi dati applicativi. La conferma email globale è rimasta attiva. Il tentativo di signup con un indirizzo riservato `example.com` è stato correttamente rifiutato da Auth con `email_address_invalid`: **consegna email e registrazione completa con una casella reale non sono state collaudate**.
-
+Primo collaudo con fixture confermate nel dashboard; successivamente, su richiesta del proprietario, **Confirm Email disabilitato**. Verificato `mailer_autoconfirm=true`, create due nuove utenze tramite `/auth/v1/signup` (HTTP 200), poi eseguito integralmente `supabase/tests/live-clients.mjs` con quelle credenziali: tutti i controlli PASS. I profili e i codici sono stati generati dal trigger durante la registrazione reale. Gli account temporanei sono stati rimossi dopo il test. Non è stato inviato alcun messaggio email nella modalità finale di collaudo.
 La variante ripetibile del test client è `supabase/tests/live-clients.mjs`: richiede due account nuovi di prova già confermati e credenziali nelle variabili ambiente descritte nel README. Non incorpora password o token.
 
 ## SQL locale
@@ -47,6 +46,6 @@ Verificati anche non enumerabilità, richieste inverse e retry, negazione a terz
 
 Non sono stati collegati due telefoni Android. Restano da verificare materialmente rendering MapLibre, permessi e acquisizione GPS, cadenza approssimativa di un minuto e comportamento del foreground service sotto le restrizioni energetiche dei dispositivi. Il test live verifica il backend e la consegna Realtime con due client distinti, non simula il sistema operativo Android. Seguire la procedura a due dispositivi nel README.
 
-### Blocco individuato sulle registrazioni esterne
+### Configurazione Auth finale
 
-Dashboard Authentication → Emails → SMTP Settings: Custom SMTP disabilitato; endpoint Auth settings: `mailer_autoconfirm=false`. Il provider predefinito consente destinatari appartenenti al team del progetto. Prima di dichiarare completata la registrazione per qualsiasi utente, occorre configurare SMTP nel dashboard oppure scegliere esplicitamente il collaudo con conferma email disabilitata. È stata richiesta al proprietario questa scelta; non sono state chieste credenziali amministrative.
+Signup email/password abilitato, Confirm Email disabilitato su scelta esplicita del proprietario, Custom SMTP disabilitato. Il blocco SMTP non impedisce più la registrazione in questa modalità di collaudo. La verifica delle caselle e la consegna email restano fuori dal collaudo; per riattivarle occorre configurare SMTP nel dashboard.
