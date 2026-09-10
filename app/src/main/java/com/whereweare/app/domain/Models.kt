@@ -4,7 +4,18 @@ import java.time.Duration
 import java.time.Instant
 import java.util.Locale
 
-data class UserProfile(val id: String, val displayName: String, val inviteCode: String)
+data class UserProfile(val id: String, val displayName: String, val inviteCode: String, val avatarPath: String?=null, val visibilitySeconds: Int=86400)
+data class ContactProfile(val id: String,val name: String,val avatarPath: String?,val visibilitySeconds: Int,val commonGroup: Boolean)
+data class Group(val id: String,val name: String,val emoji: String,val code: String,val creator: String,val createdAt: Instant)
+data class GroupMember(val groupId: String,val userId: String)
+enum class LocationPermission { NONE, APPROXIMATE, PRECISE }
+fun locationPermission(coarse: Boolean,fine: Boolean) = when { fine -> LocationPermission.PRECISE; coarse -> LocationPermission.APPROXIMATE; else -> LocationPermission.NONE }
+val updateIntervals = listOf(5,30,60,300,1800,3600)
+val accuracyThresholds = listOf(25,50,100,250,500,1000)
+val visibilityTimeouts = listOf(600,1800,3600,7200,14400,43200,86400)
+fun lowAccuracy(accuracy: Double,threshold: Int) = accuracy>threshold
+fun withinVisibility(at: Instant,now: Instant,seconds: Int) = !at.isBefore(now.minusSeconds(seconds.toLong()))
+fun validGroupName(name: String) = name.trim().codePointCount(0,name.trim().length) in 1..24
 data class ShareRequest(val id: String, val sender: String, val receiver: String, val status: String)
 data class LocationShare(val owner: String, val viewer: String, val enabled: Boolean)
 data class SharingStatus(val userId: String, val sharing: Boolean)
@@ -35,4 +46,5 @@ fun validPassword(password: String) = password.length in 8..128
 data class Snapshot(val profile: UserProfile? = null, val names: Map<String,String> = emptyMap(),
     val requests: List<ShareRequest> = emptyList(), val shares: List<LocationShare> = emptyList(),
     val statuses: List<SharingStatus> = emptyList(), val locations: List<UserLocation> = emptyList(),
-    val loading: Boolean = true, val offline: Boolean = false)
+    val loading: Boolean = true, val offline: Boolean = false,
+    val contacts: Map<String,ContactProfile> = emptyMap(),val groups: List<Group> = emptyList(),val members: List<GroupMember> = emptyList())

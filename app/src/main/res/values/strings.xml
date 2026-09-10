@@ -31,9 +31,9 @@
     <string name="on">ON</string>
     <string name="off">OFF</string>
     <string name="waiting">In attesa di connessione o posizione</string>
-    <string name="stop_pending">GPS fermato. Stop remoto in attesa di connessione: la posizione potrebbe essere ancora visibile, al massimo fino alla scadenza delle 2 ore. Attendi la conferma prima del logout o di un nuovo avvio.</string>
-    <string name="process_stopped">Il servizio non è attivo su questo dispositivo. L’ultima posizione condivisa può restare visibile fino a 2 ore. Puoi interromperne ora la visibilità.</string>
-    <string name="location_permission">Permesso di localizzazione necessario. Consenti almeno la posizione approssimativa.</string>
+    <string name="stop_pending">GPS fermato. Stop remoto in attesa di connessione: la posizione potrebbe essere ancora visibile fino al timeout configurato. Attendi la conferma prima del logout o di un nuovo avvio.</string>
+    <string name="process_stopped">Il servizio non è attivo su questo dispositivo. L’ultima posizione può restare visibile fino al timeout configurato. Puoi interromperne ora la visibilità.</string>
+    <string name="location_permission">Permesso di localizzazione necessario. Autorizza Posizione precisa nelle impostazioni Android.</string>
     <string name="location_disabled">Localizzazione di sistema disattivata. Attivala nelle impostazioni.</string>
     <string name="open_location_settings">Impostazioni localizzazione</string>
     <string name="open_app_settings">Permessi applicazione</string>
@@ -51,7 +51,7 @@
     <string name="updated_at">Ultimo aggiornamento: %1$s</string>
     <string name="connected_people">Persone collegate</string>
     <string name="empty_people">Ancora nessuna persona collegata. Aggiungi qualcuno con il suo codice personale.</string>
-    <string name="can_see_me">Può vedere la tua posizione</string>
+    <string name="can_see_me">Consenti di vedermi</string>
     <string name="can_see_them">Tu puoi vedere la sua posizione: %1$s</string>
     <string name="yes">Sì</string>
     <string name="no">No</string>
@@ -80,9 +80,9 @@
     <string name="balanced">Bilanciata</string>
     <string name="high_accuracy">Alta precisione</string>
     <string name="privacy">Privacy</string>
-    <string name="privacy_text">La condivisione parte solo quando la avvii. Ogni persona decide chi può vedere la propria posizione. Salviamo solo l’ultima posizione, senza cronologia: scade dopo 2 ore. Stop e revoche bloccano le nuove letture appena il server li conferma. I dati già ricevuti da un altro dispositivo non possono essere ritirati. La cartografia comunica con il provider configurato.</string>
+    <string name="privacy_text">La condivisione parte solo quando la avvii. Salviamo solo l’ultima posizione, senza cronologia. Rimane accessibile al proprietario; agli altri si applica il timeout configurato. Stop e revoche bloccano le nuove letture appena il server li conferma. I dati già ricevuti non possono essere ritirati.</string>
     <string name="about">Informazioni</string>
-    <string name="about_text">WhereWeAre 1.0 · Motore MapLibre, dati OpenStreetMap. Gli intervalli GPS dipendono da Android, ricezione e batteria.</string>
+    <string name="about_text">Motore MapLibre, dati OpenStreetMap. Gli intervalli GPS dipendono da Android, ricezione e batteria.</string>
     <string name="osm">© OpenStreetMap contributors · OpenFreeMap / provider dello stile</string>
     <string name="logout">Logout</string>
 </resources>

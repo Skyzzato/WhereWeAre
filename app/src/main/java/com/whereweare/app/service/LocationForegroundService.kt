@@ -26,7 +26,7 @@ import javax.inject.Inject
         val stop=PendingIntent.getService(this,1,Intent(this,LocationForegroundService::class.java).setAction("STOP"),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val open=PendingIntent.getActivity(this,0,Intent(this,MainActivity::class.java),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification=NotificationCompat.Builder(this,"sharing").setSmallIcon(R.drawable.ic_location)
-            .setContentTitle(getString(R.string.sharing_active)).setContentText(getString(R.string.minute_update))
+            .setContentTitle(getString(R.string.sharing_active)).setContentText("Aggiornamento secondo la frequenza configurata")
             .setContentIntent(open).setOngoing(true).addAction(0,getString(R.string.stop),stop).build()
         try {
             ServiceCompat.startForeground(this,10,notification,if(Build.VERSION.SDK_INT>=29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0)

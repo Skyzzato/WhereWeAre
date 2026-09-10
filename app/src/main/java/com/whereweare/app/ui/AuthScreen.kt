@@ -23,9 +23,11 @@ import com.whereweare.app.R
     var confirm by remember { mutableStateOf("") }
     val operation by vm.operation.collectAsStateWithLifecycle()
     val confirmation by vm.confirmation.collectAsStateWithLifecycle()
+    val deleted by vm.accountDeleted.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(28.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(40.dp))
         Text(stringResource(R.string.app_name),style=MaterialTheme.typography.headlineLarge,color=MaterialTheme.colorScheme.primary)
+        if(deleted) Text("Account cancellato correttamente")
         Text(stringResource(R.string.welcome),style=MaterialTheme.typography.headlineMedium)
         Text(stringResource(R.string.welcome_detail),style=MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(12.dp))

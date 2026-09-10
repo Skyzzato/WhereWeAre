@@ -134,6 +134,34 @@ I test SQL controllano profili, non enumerabilità, ricerca esatta, richieste in
 
 ## Stato del collegamento reale
 
+## v0.2: applicazione della migration
+
+`supabase/migrations/002_v0_2.sql` è incrementale e deve essere eseguita **una sola volta**, dopo `001_initial_schema.sql`, sul progetto Supabase già collegato. Non contiene chiavi e non è stata applicata automaticamente: in questo ambiente non sono disponibili una sessione Supabase CLI o credenziali amministrative del progetto remoto.
+
+Nel SQL Editor del progetto, oppure con una connessione amministrativa nel workflow Supabase usuale, applica il file e poi pubblica la funzione di cancellazione account:
+
+```powershell
+supabase functions deploy delete-account
+```
+
+La funzione usa `SUPABASE_SERVICE_ROLE_KEY` esclusivamente nell'ambiente Edge gestito da Supabase; la chiave non entra nell'APK. Conserva `verify_jwt=true` (default) per la funzione.
+
+### Comportamento v0.2
+
+- Il client distingue assenza di permesso, sola posizione approssimativa e posizione precisa. La modalità Alta precisione richiede realmente `ACCESS_FINE_LOCATION`; il valore mostrato è `Location.accuracy`.
+- OFF non crea callback FLP. ON richiede subito un fix fresco; gli intervalli 5 s, 30 s, 1 min, 5 min, 30 min e 1 h sono persistenti. Per 5 minuti o più usa richieste singole con timeout e rilascia il GPS tra un ciclo e l'altro.
+- `latest_locations` conserva una sola posizione personale. La RLS limita letture altrui con il timeout scelto dal proprietario, stato ON e sessione di pubblicazione corrente; il proprietario la legge sempre. Collegamenti diretti e gruppi sono canali indipendenti.
+- Gli avatar sono WebP 512×512 in bucket Storage privato `avatars`; le policy autorizzano proprietario e contatti ammessi. Il client evita URL pubblici e mantiene una cache RAM a capacità limitata.
+- Il bootstrap anonimo è soltanto una RPC read-only che restituisce `versionCode`, manutenzione e messaggio. L'ultima risposta valida viene cacheata; al primo avvio senza rete l'app resta bloccata.
+
+Il test SQL locale usa PGlite e non accede al progetto remoto:
+
+```powershell
+node supabase/tests/run-local.mjs
+```
+
+Verifica comunque su due telefoni permessi Android, posizione precisa, GPS spento, la transizione Mappa → Persone → Mappa → Gruppi → Impostazioni → Mappa, fotocamera/galleria e il servizio in background prima della distribuzione.
+
 Il 9 settembre 2026 lo schema è stato applicato al progetto Supabase `vqvouzpsgbuaddcyitzg`; Realtime e job Cron sono stati verificati. Il workspace e l'APK locale contengono la configurazione client fornita in `local.properties`, non versionato. **Non rieseguire la migration iniziale su questo progetto già configurato.** Le istruzioni iniziali restano valide per un nuovo progetto vuoto.
 
 Per ripetere il collaudo HTTP/WebSocket con Node.js 24, prepara due account nuovi, confermati, destinati esclusivamente ai test. Imposta `WWA_TEST_EMAIL_A`, `WWA_TEST_PASSWORD_A`, `WWA_TEST_EMAIL_B`, `WWA_TEST_PASSWORD_B` nell'ambiente della shell, quindi dalla radice esegui:

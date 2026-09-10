@@ -12,11 +12,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton class AuthRepository @Inject constructor(private val client: SupabaseClient) {
+    val accountDeleted=MutableStateFlow(false)
     val session = client.auth.sessionStatus
     val userId get() = client.auth.currentUserOrNull()?.id
     val email get() = client.auth.currentUserOrNull()?.email.orEmpty()
     fun checkConfiguration() { check(BuildConfig.SUPABASE_URL.startsWith("https://") && BuildConfig.SUPABASE_ANON_KEY.isNotBlank()) { "configuration" } }
     suspend fun login(email: String, password: String) {
+        accountDeleted.value=false
         checkConfiguration()
         client.auth.signInWith(Email) { this.email=email.trim(); this.password=password }
     }
@@ -29,4 +31,5 @@ import javax.inject.Singleton
         return client.auth.currentSessionOrNull() == null
     }
     suspend fun logout() = client.auth.signOut()
+    suspend fun clearLocalSession() { client.auth.clearSession(); accountDeleted.value=true }
 }

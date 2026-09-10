@@ -14,6 +14,8 @@ hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 [libraries]
+material-icons = { module = "androidx.compose.material:material-icons-extended", version = "1.7.8" }
+exif = { module = "androidx.exifinterface:exifinterface", version = "1.4.2" }
 compose-bom = { module = "androidx.compose:compose-bom", version = "2026.09.00" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-preview = { module = "androidx.compose.ui:ui-tooling-preview" }

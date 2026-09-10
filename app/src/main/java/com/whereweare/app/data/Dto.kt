@@ -4,9 +4,16 @@ import com.whereweare.app.domain.*
 import kotlinx.serialization.Serializable
 import java.time.Instant
 
-@Serializable data class ProfileDto(val id: String, val display_name: String, val invite_code: String) {
-    fun domain() = UserProfile(id, display_name, invite_code)
+@Serializable data class ProfileDto(val id: String, val display_name: String, val invite_code: String,val avatar_path: String?=null,val visibility_seconds: Int=86400) {
+    fun domain() = UserProfile(id, display_name, invite_code,avatar_path,visibility_seconds)
 }
+@Serializable data class ContactDto(val user_id: String,val display_name: String,val avatar_path: String?=null,val visibility_seconds: Int=86400,val common_group: Boolean=false) {
+    fun domain()=ContactProfile(user_id,display_name,avatar_path,visibility_seconds,common_group)
+}
+@Serializable data class GroupDto(val id: String,val name: String,val emoji: String,val invite_code: String,val creator_id: String,val created_at: String) {
+    fun domain()=Group(id,name,emoji,invite_code,creator_id,Instant.parse(created_at))
+}
+@Serializable data class MemberDto(val group_id: String,val user_id: String) { fun domain()=GroupMember(group_id,user_id) }
 @Serializable data class NameDto(val user_id: String, val display_name: String)
 @Serializable data class LookupDto(val user_id: String, val display_name: String, val invite_code: String) {
     fun domain() = UserProfile(user_id, display_name, invite_code)

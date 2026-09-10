@@ -24,6 +24,7 @@ import com.whereweare.app.domain.*
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.*
 import org.maplibre.compose.map.*
+import org.maplibre.compose.map.AndroidRenderMode
 import org.maplibre.compose.overlay.*
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.spatialk.geojson.Position
@@ -37,6 +38,9 @@ import java.time.format.DateTimeFormatter
     val tracking by vm.controller.state.collectAsStateWithLifecycle()
     val pending by vm.pendingStop.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
+    val threshold by vm.threshold.collectAsStateWithLifecycle()
+    val permissionState by vm.permission.collectAsStateWithLifecycle()
+    val style by vm.mapStyle.collectAsStateWithLifecycle()
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var startAfterPermission by remember { mutableStateOf(false) }
@@ -52,9 +56,9 @@ import java.time.format.DateTimeFormatter
         permission.launch(permissions.toTypedArray())
     }
     LifecycleResumeEffect(Unit) { vm.permissionsChanged(); vm.refresh(); onPauseOrDispose { } }
-    val camera=rememberMapState(baseStyle=BaseStyle.Uri(BuildConfig.MAP_STYLE_URL),
-        initialCameraPosition=CameraPosition(target=Position(longitude=12.5,latitude=42.0),zoom=5.0))
-    var centered by rememberSaveable { mutableStateOf(false) }
+    val camera=rememberMapState(baseStyle=BaseStyle.Uri(if(style=="topo" && BuildConfig.TOPO_STYLE_URL.isNotBlank()) BuildConfig.TOPO_STYLE_URL else BuildConfig.MAP_STYLE_URL),
+        initialCameraPosition=local?.let { CameraPosition(target=Position(it.longitude,it.latitude),zoom=14.0) } ?: CameraPosition(zoom=1.0))
+    var centered by remember { mutableStateOf(false) }
     var selectedId by remember { mutableStateOf<String?>(null) }
     var mapError by remember { mutableStateOf(false) }
     LaunchedEffect(camera) {
@@ -73,31 +77,36 @@ import java.time.format.DateTimeFormatter
         if(state.snapshot.offline) Notice(R.string.offline)
         if(state.snapshot.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         Busy(operation)
+        if(permissionState==LocationPermission.APPROXIMATE) Surface(color=MaterialTheme.colorScheme.errorContainer) {
+            Text("Posizione precisa non autorizzata: Android concede soltanto la posizione approssimativa.",Modifier.fillMaxWidth().padding(12.dp))
+        }
+        local?.takeIf { lowAccuracy(it.accuracy,threshold) }?.let { fix -> Surface(color=MaterialTheme.colorScheme.errorContainer) {
+            Text("Precisione GPS bassa · ±${fix.accuracy.toLong()} m",Modifier.fillMaxWidth().padding(12.dp))
+        } }
         if(mapError) Notice(R.string.map_error)
         Box(Modifier.weight(1f).fillMaxWidth()) {
             MaplibreMap(
                 modifier=Modifier.fillMaxSize(),state=camera,
+                uiOptions=MapUiOptions { renderMode=AndroidRenderMode.Texture },
                 overlay={
                     include(MapOverlay.Default)
                     local?.let { fix ->
-                        Surface(color=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary,
-                            shape=MaterialTheme.shapes.large,modifier=Modifier.placedAt(Position(fix.longitude,fix.latitude))) {
-                            Text(stringResource(R.string.you),Modifier.padding(10.dp))
+                        Surface(onClick={ selectedId=if(selectedId==fix.userId) null else fix.userId },
+                            shape=androidx.compose.foundation.shape.CircleShape,modifier=Modifier.placedAt(Position(fix.longitude,fix.latitude))) {
+                            Avatar(fix.userId,state.snapshot.profile?.displayName ?: "Tu",state.snapshot.profile?.avatarPath,false,vm.avatars,if(selectedId==fix.userId) 54.dp else 32.dp)
                         }
                     }
                     state.visible.forEach { person ->
-                        Surface(onClick={ selectedId=person.location.userId },shape=MaterialTheme.shapes.large,
+                        Surface(onClick={ selectedId=if(selectedId==person.location.userId) null else person.location.userId },shape=androidx.compose.foundation.shape.CircleShape,
                             color=MaterialTheme.colorScheme.tertiaryContainer,
                             modifier=Modifier.placedAt(Position(person.location.longitude,person.location.latitude))) {
-                            Column(Modifier.padding(10.dp)) {
-                                Text(person.name,style=MaterialTheme.typography.labelLarge)
-                                Text(freshnessText(person.freshness,person.location.recordedAt,state.now),style=MaterialTheme.typography.labelSmall)
-                            }
+                            val p=state.snapshot.contacts[person.location.userId]
+                            Avatar(person.location.userId,person.name,p?.avatarPath,p?.commonGroup==true,vm.avatars,if(selectedId==person.location.userId) 54.dp else 32.dp)
                         }
                     }
                 })
             Column(Modifier.align(Alignment.TopStart).padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                FilledTonalButton(onClick={ if(local!=null) { scope.launch { camera.animateCameraPosition(CameraPosition(target=Position(local!!.longitude,local!!.latitude),zoom=15.0)) } } else requestPermission(false) }) {
+                FilledTonalButton(enabled=local!=null,onClick={ if(local!=null) { scope.launch { camera.animateCameraPosition(CameraPosition(target=Position(local!!.longitude,local!!.latitude),zoom=15.0)) } } }) {
                     Text(stringResource(R.string.center_me))
                 }
                 FilledTonalButton(onClick={
@@ -112,30 +121,30 @@ import java.time.format.DateTimeFormatter
             if(state.visible.isEmpty()) Surface(modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=48.dp),shape=MaterialTheme.shapes.medium) {
                 Text(stringResource(R.string.empty_map),Modifier.padding(8.dp),style=MaterialTheme.typography.labelMedium)
             }
+            val selected=(state.visible+listOfNotNull(local?.let { VisiblePerson("Tu",it,freshness(it.recordedAt,state.now)) })).firstOrNull { it.location.userId==selectedId }
+            selected?.let { person -> ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp)) { Column(Modifier.padding(12.dp)) {
+                Row(verticalAlignment=Alignment.CenterVertically) { Text(person.name,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium); TextButton(onClick={selectedId=null}) { Text("Chiudi") } }
+                Text(freshnessText(person.freshness,person.location.recordedAt,state.now))
+                Text("Precisione ±${person.location.accuracy.toLong()} m")
+                Text(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(person.location.recordedAt))
+            } } }
         }
         Surface(tonalElevation=3.dp) {
             Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 val serverSharing=state.snapshot.statuses.any { it.userId==state.snapshot.profile?.id && it.sharing }
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.sharing),style=MaterialTheme.typography.titleMedium)
-                    Text(stringResource(if(tracking.active) R.string.on else R.string.off),color=MaterialTheme.colorScheme.primary)
+                    Text(stringResource(if(tracking.active) R.string.on else R.string.off),color=if(tracking.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                 }
-                if(tracking.active) Text(stringResource(if(tracking.waiting) R.string.waiting else R.string.minute_update),style=MaterialTheme.typography.bodySmall)
+                if(tracking.active) Text(if(tracking.waiting) "Ricerca posizione… / attesa connessione" else "Posizione condivisa · ±${tracking.fix?.accuracy?.toLong()} m",style=MaterialTheme.typography.bodySmall)
                 if(pending!=null) Notice(R.string.stop_pending)
                 if(serverSharing && !tracking.active && pending==null) Notice(R.string.process_stopped)
                 Button(onClick={ if(tracking.active || serverSharing) vm.stop() else requestPermission(true) },enabled=pending==null,modifier=Modifier.fillMaxWidth()) {
                     Text(stringResource(if(tracking.active || serverSharing) R.string.stop else R.string.start))
                 }
                 if(!vm.location.enabled()) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }) { Text(stringResource(R.string.open_location_settings)) }
-                if(!vm.location.hasPermission()) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri())) }) { Text(stringResource(R.string.open_app_settings)) }
+                if(permissionState!=LocationPermission.PRECISE) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri())) }) { Text("Autorizza posizione precisa") }
             }
         }
-    }
-    state.visible.firstOrNull { it.location.userId==selectedId }?.let { person ->
-        AlertDialog(onDismissRequest={ selectedId=null },title={ Text(person.name) },text={ Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text(freshnessText(person.freshness,person.location.recordedAt,state.now))
-            Text(stringResource(R.string.accuracy,person.location.accuracy.toLong()))
-            Text(stringResource(R.string.updated_at,DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(person.location.recordedAt)))
-        } },confirmButton={ TextButton(onClick={ selectedId=null }) { Text(stringResource(R.string.close)) } })
     }
 }

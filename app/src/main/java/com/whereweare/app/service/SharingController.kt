@@ -15,13 +15,13 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
     private val auth: AuthRepository,
     private val preferences: PreferencesRepository,
-    private val location: LocationRepository
+    private val location: LocationRepository,private val bootstrap: BootstrapRepository
 ) {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private val mutex=Mutex()
@@ -39,6 +39,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
     }
 
     fun start() {
+        check(bootstrap.state.value.gate==BootstrapGate.READY) { "bootstrap_blocked" }
         check(location.hasPermission()) { "location_permission" }
         check(location.enabled()) { "location_disabled" }
         ContextCompat.startForegroundService(context,Intent(context,LocationForegroundService::class.java))
@@ -55,8 +56,11 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                 }
                 val session=UUID.randomUUID().toString()
                 val latest=MutableStateFlow<UserLocation?>(null)
+                val signals=kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
                 val updates=launch {
-                    preferences.highAccuracy.flatMapLatest { location.fixes(it) }.collect { latest.value=it }
+                    combine(preferences.highAccuracy,preferences.interval) { high,seconds -> high to seconds }
+                        .flatMapLatest { (high,seconds) -> location.fixes(high,seconds) }
+                        .collect { latest.value=it; signals.trySend(Unit) }
                 }
                 try {
                     var started=false
@@ -64,14 +68,15 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                     var sent: UserLocation?=null
                     while(isActive) {
                         try {
+                            if(bootstrap.state.value.gate!=BootstrapGate.READY) break
                             if(!started) {
                                 if(revision==null) revision=repository.sharingRevision()
                                 repository.sharing(true,session,revision); started=true
                             }
                             latest.value?.takeIf { it!=sent }?.let {
                                 if(java.time.Duration.between(it.recordedAt,java.time.Instant.now()).toHours()<2) {
-                                    repository.publish(session,it); sent=it
-                                    mutableState.value=TrackingState(active=true,lastSent=java.time.Instant.now())
+                                    repository.publish(session,it); sent=it; repository.saveOwn(it)
+                                    mutableState.value=TrackingState(active=true,lastSent=it.recordedAt,fix=it)
                                 }
                             }
                         } catch(e: CancellationException) { throw e
@@ -79,7 +84,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                             if("sharing_stopped" in e.message.orEmpty()) break
                             mutableState.value=state.value.copy(waiting=true)
                         }
-                        delay(3_000)
+                        withTimeoutOrNull(3_000) { signals.receive() }
                     }
                 } finally { updates.cancel() }
             } catch(e: CancellationException) { throw e
