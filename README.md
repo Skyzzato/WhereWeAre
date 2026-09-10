@@ -136,9 +136,9 @@ I test SQL controllano profili, non enumerabilità, ricerca esatta, richieste in
 
 ## v0.2: applicazione della migration
 
-`supabase/migrations/002_v0_2.sql` è incrementale e deve essere eseguita **una sola volta**, dopo `001_initial_schema.sql`, sul progetto Supabase già collegato. Non contiene chiavi e non è stata applicata automaticamente: in questo ambiente non sono disponibili una sessione Supabase CLI o credenziali amministrative del progetto remoto.
+`supabase/migrations/002_v0_2.sql` è incrementale e deve essere eseguita **una sola volta**, dopo `001_initial_schema.sql`. È stata applicata l'11 settembre 2026 al progetto `vqvouzpsgbuaddcyitzg` tramite il dashboard autenticato; anche la funzione `delete-account` è stata pubblicata. **Non rieseguire le migration su questo progetto.** I controlli e i limiti del collaudo remoto v0.2 sono in `VERIFICATION.md`.
 
-Nel SQL Editor del progetto, oppure con una connessione amministrativa nel workflow Supabase usuale, applica il file e poi pubblica la funzione di cancellazione account:
+Per un altro progetto già inizializzato con la v0.1, applica il file nel SQL Editor, oppure con una connessione amministrativa nel workflow Supabase usuale, e poi pubblica la funzione di cancellazione account:
 
 ```powershell
 supabase functions deploy delete-account

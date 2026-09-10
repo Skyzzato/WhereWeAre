@@ -1,4 +1,25 @@
-# Verifica eseguita — 9 settembre 2026
+# Verifiche WhereWeAre
+
+## Deploy remoto v0.2 — 11 settembre 2026 (Europe/Rome)
+
+Progetto `vqvouzpsgbuaddcyitzg`, aggiornato tramite dashboard Supabase autenticato.
+
+- Preflight: migration v0.2 assente, 3 profili presenti.
+- Applicate in transazione le istruzioni di `002_v0_2.sql`: esito SQL `Success. No rows returned`.
+- Dopo la migration: 3 profili e 3 righe `account_events`; sessioni delle posizioni migrate correttamente.
+- RLS attiva sulle tre nuove tabelle; INSERT diretto su `groups` negato ad `anon` e `authenticated` (scritture tramite RPC).
+- Bucket `avatars` privato, quattro policy avatar e trigger `avatars_guard` presenti.
+- `account_events` presente nella publication `supabase_realtime`.
+- Job `whereweare-expiry` assente, come previsto dalla conservazione dell'ultima posizione v0.2.
+- `app_bootstrap()` eseguita anche con `SET LOCAL ROLE anon`, in transazione annullata: versione `0.2`, codice 2, minimo 2, manutenzione disattivata.
+- Edge Function `delete-account` pubblicata dal sorgente del repository, verifica JWT attiva. POST senza Authorization e con token volutamente invalido respinti con HTTP 401.
+- Nessuna credenziale amministrativa copiata nel repository o nel client; nessun account esistente eliminato durante questi controlli.
+
+Limiti: i controlli HTTP della funzione verificano il rifiuto al gateway, non l'esecuzione completa della cancellazione. Restano da collaudare su account esclusivamente di prova cancellazione autenticata, upload avatar e gruppi end-to-end; restano inoltre le prove su due telefoni Android. I risultati v0.1 sotto sono storici, non una nuova esecuzione sulla v0.2.
+
+Riferimento autenticazione: [Supabase — Securing Edge Functions](https://supabase.com/docs/guides/functions/auth).
+
+## Verifica v0.1 — 9 settembre 2026
 
 ## Android
 
