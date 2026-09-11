@@ -136,6 +136,8 @@ I test SQL controllano profili, non enumerabilità, ricerca esatta, richieste in
 
 ## v0.2: applicazione della migration
 
+APK installabile di collaudo: [release v0.2](https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.2). È una build debug firmata, con configurazione client reale; non è una release di produzione certificata su dispositivi.
+
 `supabase/migrations/002_v0_2.sql` è incrementale e deve essere eseguita **una sola volta**, dopo `001_initial_schema.sql`. È stata applicata l'11 settembre 2026 al progetto `vqvouzpsgbuaddcyitzg` tramite il dashboard autenticato; anche la funzione `delete-account` è stata pubblicata. **Non rieseguire le migration su questo progetto.** I controlli e i limiti del collaudo remoto v0.2 sono in `VERIFICATION.md`.
 
 Per un altro progetto già inizializzato con la v0.1, applica il file nel SQL Editor, oppure con una connessione amministrativa nel workflow Supabase usuale, e poi pubblica la funzione di cancellazione account:
@@ -145,6 +147,17 @@ supabase functions deploy delete-account
 ```
 
 La funzione usa `SUPABASE_SERVICE_ROLE_KEY` esclusivamente nell'ambiente Edge gestito da Supabase; la chiave non entra nell'APK. Conserva `verify_jwt=true` (default) per la funzione.
+
+Applica anche `supabase/migrations/003_storage_upload_guard.sql` dopo la 002 sui nuovi ambienti. La 003 è già applicata al progetto collegato: corregge il trigger avatar per la connessione interna Storage, mantenendo il blocco degli upload durante la cancellazione.
+
+Collaudo remoto ripetibile, con **creazione e cancellazione di tre account temporanei** e coordinate sintetiche (richiede Confirm Email disabilitato e configurazione pubblica in `local.properties`):
+
+```powershell
+$env:WWA_ALLOW_DISPOSABLE_SIGNUP='yes'
+node supabase/tests/live-v02.mjs
+```
+
+Lo script non legge password esistenti e non elimina account preesistenti. In caso di cleanup fallito stampa soltanto l'ID dell'account di prova da rimuovere.
 
 ### Comportamento v0.2
 

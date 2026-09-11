@@ -28,6 +28,8 @@ import javax.inject.Singleton
             connection.setRequestProperty("apikey",BuildConfig.SUPABASE_ANON_KEY)
             connection.setRequestProperty("Authorization","Bearer "+requireNotNull(client.auth.currentAccessTokenOrNull()))
             connection.setRequestProperty("Content-Type",type)
+            connection.useCaches=false
+            connection.setRequestProperty("Cache-Control","no-store, max-age=0")
             if(bytes!=null) { connection.doOutput=true; connection.outputStream.use { it.write(bytes) } }
             check(connection.responseCode in 200..299) { "server_operation_failed" }
             connection.inputStream.use { it.readBytes() }
@@ -35,7 +37,8 @@ import javax.inject.Singleton
     }
     suspend fun load(path: String): Bitmap?=mutex.withLock {
         val key=client.auth.currentUserOrNull()?.id+":"+path
-        cache.get(key) ?: request("/storage/v1/object/authenticated/avatars/$path").let { bytes ->
+        // Revalidate authorization at the origin after an in-memory cache miss.
+        cache.get(key) ?: request("/storage/v1/object/authenticated/avatars/$path?cacheNonce=${UUID.randomUUID()}").let { bytes ->
             val options=BitmapFactory.Options().apply { inJustDecodeBounds=true }
             BitmapFactory.decodeByteArray(bytes,0,bytes.size,options)
             var sample=1

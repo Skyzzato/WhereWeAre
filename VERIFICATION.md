@@ -1,5 +1,18 @@
 # Verifiche WhereWeAre
 
+## Collaudo APK v0.2 — 11 settembre 2026
+
+- Build debug con URL e chiave publishable del progetto reale in `local.properties` (escluso da Git). Nessuna chiave amministrativa nell'APK.
+- Test Android: 12 test, 0 errori/fallimenti. Lint: 0 errori, 45 warning (44 risorse inutilizzate e 1 ObsoleteSdkInt).
+- Suite SQL locale completa, inclusa regressione del trigger Storage: `ALL SQL TESTS PASSED`.
+- Collaudo HTTPS/WebSocket reale `live-v02.mjs`: `ALL LIVE V0.2 TESTS PASSED`. Include regressioni condivisione/revoca/Stop/Realtime, gruppi e join ripetuti, scadenza scelta dal proprietario, isolamento da terzi, upload e download avatar, revoca degli accessi, invalidazione privata Realtime, cancellazione autenticata con avatar, JWT eliminato bloccato e cancellazione del creatore con cascata sui gruppi.
+- Account creati esclusivamente per il test, con password casuali in memoria; cleanup completato anche durante le iterazioni fallite.
+- Il collaudo ha individuato e corretto il trigger avatar: Storage persiste tramite una connessione interna senza `auth.uid()`. La migration 003 usa l'ownership verificata da Storage, conservando lock sul profilo e tombstone. [Riferimento ownership](https://supabase.com/docs/guides/storage/security/ownership).
+- Verificata anche la revoca con richieste nuove: il client disabilita la cache HTTP e usa `cacheNonce` nelle letture dopo un cache miss RAM, evitando risposte CDN precedenti alla revoca. I dati già ricevuti non possono essere cancellati retroattivamente dai dispositivi altrui. [Riferimento CDN](https://supabase.com/docs/guides/storage/cdn/smart-cdn).
+- APK universale, package `com.whereweare.app`, versione 0.2/code 2, min SDK 26, target 37; firma debug APK v2 verificata.
+
+Limite esplicito: nessun dispositivo ADB collegato e nessun AVD configurato. Non sono state eseguite installazione/avvio su Android né prove fisiche di GPS, fotocamera/galleria, rendering mappa, batteria o foreground service. La release GitHub è pertanto una **prerelease di collaudo**, non una certificazione di produzione. I limiti del precedente deploy sotto sono superati soltanto per i casi coperti dal nuovo test live.
+
 ## Deploy remoto v0.2 — 11 settembre 2026 (Europe/Rome)
 
 Progetto `vqvouzpsgbuaddcyitzg`, aggiornato tramite dashboard Supabase autenticato.
