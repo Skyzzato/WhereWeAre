@@ -1,0 +1,25 @@
+# WhereWeAre v0.31 — rapporto
+
+1. **Bengala.** La v0.3 escludeva il creatore nell'osservatore dei ritrovi e aspettava la sincronizzazione. La v0.31 genera l'UUID lato client, accoda il bengala prima della RPC e registra l'evento in DataStore. L'eco server usa lo stesso identificativo e non ripete l'animazione. I destinatari mantengono animazione e banner; il marker resta legato al ritrovo persistito. In caso di errore di invio compare l'errore e non viene inventato un marker salvato.
+
+2. **File principali.** `MeetingFeedback.kt`, `ViewModels.kt`, `SharingRepository.kt`, `Models.kt`, `MainActivity.kt`, `GroupsScreen.kt`, `GroupEditor.kt`, `PeopleScreen.kt`, `MeetingUi.kt`, `AvatarEditor.kt`, `AvatarDraftStore.kt`, `SettingsScreen.kt`, `file_paths.xml`, risorse `values`/`values-it`, `app/build.gradle.kts`; test in `AvatarDraftTest.kt`, `MeetingFeedbackTest.kt`, `security_v031.sql`.
+
+3. **UI gruppi.** Creazione e Modifica gruppo condividono il dialogo con nome e icona preselezionati. Identità aggiornata in elenco, dettaglio e selettori; emoji a 31 sp. Card codice grigia con copia, condivisione e modifica; eliminato il paragrafo esplicativo. Membri a sinistra e Seleziona membri a destra. Inviti aggiunti da questo selettore, senza pulsante Aggiungi al gruppo nel dettaglio. Conservate azioni di visibilità, selezione multipla, rimozione e uscita.
+
+4. **Inviti.** I pending in uscita sono righe della lista membri con Invito inviato e menu Annulla invito. La cancellazione è ottimistica con rollback su errore e cancella davvero la richiesta pending sul server. Invito ricevuto conserva accetta/rifiuta. La risposta sincronizza appartenenza e stato; una cancellazione tardiva non elimina un membro già accettato. Nessuna nuova tabella o duplicazione di inviti.
+
+5. **Fotocamera/avatar.** Il vecchio flusso usava un file cache condiviso e un bitmap solo in memoria, cancellando l'originale prima dell'esito dell'upload. Ora ogni account ha una bozza privata con nome unico e riferimento persistito; camera e picker convergono sullo stesso ritaglio con orientamento EXIF. Il picker copia il file prima di usarlo. Dopo ricreazione dell'Activity/processo, una bozza non vuota riapre le impostazioni e il ritaglio. Il file viene rimosso dopo upload riuscito, annullamento, sostituzione, logout o cancellazione account. Gli errori di upload lasciano la bozza per riprovare. I tre comandi restano su una riga con uguale peso e testo a capo; etichette italiano/inglese aggiornate.
+
+6. **Supabase.** Nuove RPC `edit_group` e `cancel_group_invitation`; `group_inbox` aggiunge emoji e permesso di annullamento. Un trigger invalida tramite `account_events` amministratore, membri e invitato a ogni cambiamento della richiesta. Nome/icona aggiornati notificano anche gli invitati in attesa. Avatar remoto e cache esistenti conservati; nessuna modifica ai diritti GPS o alla conservazione dell'ultima posizione.
+
+7. **Migrazione.** `supabase/migrations/005_v0_31.sql`, transazionale e incrementale dopo la 004. Mantiene RPC legacy, codici, dati, appartenenze e versione minima client 4; annuncia 0.31/codice 6. **Non applicata al database remoto**: istruzioni in `SETUP_v0.31.md`.
+
+8. **RLS.** `group_request_read` consente ai membri effettivi di leggere gli inviti pending del proprio gruppo; conserva accesso del destinatario/amministratore. Nessun accesso per estranei. Solo amministratore/invitante può annullare; solo amministratore modifica nome/icona. Accesso anonimo alle nuove RPC revocato. I client non possono cancellare direttamente righe della tabella. Inviti pending non concedono GPS né appartenenza.
+
+9. **Test.** Suite SQL completa dalla migrazione 001 alla 005, con quattro utenti/ruoli e regressione v0.3 ripetuta dopo la 005: superata. Verificati deduplicazione, invito/annullamento/accettazione/rifiuto, risposte tardive, notifiche delle revisioni, RLS e compatibilità legacy. Test Android locali aggiunti per persistenza/separazione delle bozze, copia file, import fallito, permessi della camera, deduplicazione e coda bengala. Conservati i test che riproducono il vecchio crash Hilt e verificano il contesto Activity localizzato.
+
+10. **Build.** `:app:build` riuscito per debug/release, 31 test superati; lint 0 errori e 33 warning non bloccanti. APK debug installabile `WhereWeAre-v0.31-build6-debug.apk`; dettagli in `VERIFICATION.md`.
+
+11. **Limiti.** Nessun telefono o emulatore disponibile: camera reale, resa su schermi/font differenti e sincronizzazione su due dispositivi richiedono la checklist in `SETUP_v0.31.md`. Il test locale della bozza non equivale a una prova completa di process death con fotocamera esterna. Firebase resta da configurare come già previsto nella v0.3; push a processo chiuso non verificati. La migrazione 005 deve essere applicata prima di utilizzare le nuove RPC.
+
+12. **Versione.** `versionName=0.31`, `versionCode=6`, package `com.whereweare.app`, branch locale `codex/v0.31`. Conservata la correzione Hilt della build 5. Nessuna pubblicazione GitHub né deploy remoto eseguiti.

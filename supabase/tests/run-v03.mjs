@@ -7,9 +7,9 @@ try {
    console.log('RUN '+file);await db.exec(readFileSync(file,'utf8').replace(/^\\set.*$/gm,''));
  }
  await db.exec('create role service_role nologin bypassrls');
- for(const file of ['supabase/migrations/004_v0_3.sql','supabase/tests/security_v03.sql']) {
+ for(const file of ['supabase/migrations/004_v0_3.sql','supabase/tests/security_v03.sql',...(process.argv.includes('--v031') ? ['supabase/migrations/005_v0_31.sql','supabase/tests/security_v031.sql','supabase/tests/security_v03.sql'] : [])]) {
    console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
  }
- console.log('ALL V0.3 SQL AND REGRESSION TESTS PASSED');
+ console.log('ALL SQL AND REGRESSION TESTS PASSED'+(process.argv.includes('--v031') ? ' (v0.31)' : ' (v0.3)'));
 } catch(error) {console.error(error.message,error.where ?? '',error.detail ?? '');process.exitCode=1;}
 finally {await db.close();}

@@ -48,8 +48,8 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         Busy(operation)
         Text(Strings.text(R.string.ui_078),style=MaterialTheme.typography.titleLarge)
         state.profile?.let { Avatar(it.id,it.displayName,it.avatarPath,false,vm.avatars,64.dp) }
-        AvatarEditor(onSave=vm::avatar,onError={vm.message(com.whereweare.app.R.string.error_generic)})
-        if(state.profile?.avatarPath!=null) TextButton(onClick=vm::removeAvatar,enabled=!operation.busy) { Text(Strings.text(R.string.ui_079),color=MaterialTheme.colorScheme.error) }
+        vm.userId?.let {user -> AvatarEditor(user,vm.avatarDrafts,operation.busy,state.profile?.avatarPath!=null,
+            onSave=vm::avatar,onRemove=vm::removeAvatar,onError={vm.message(R.string.error_generic)},error=operation.message) }
         OutlinedTextField(name,{name=it},label={Text(Strings.text(R.string.name))},singleLine=true,modifier=Modifier.fillMaxWidth())
         TextButton(onClick={vm.rename(name)},enabled=!operation.busy){Text(Strings.text(R.string.save))}
         val code=state.profile?.inviteCode.orEmpty()

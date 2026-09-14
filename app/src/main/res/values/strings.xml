@@ -98,7 +98,7 @@
     <string name="ui_002">Account deleted successfully</string>
     <string name="ui_003">Shared group</string>
     <string name="ui_004">Take photo</string>
-    <string name="ui_005">Choose photo / File</string>
+    <string name="ui_005">Choose file</string>
     <string name="ui_006">Cancel</string>
     <string name="ui_007">Save photo</string>
     <string name="ui_008">Reconnecting to synchronization</string>
@@ -119,7 +119,13 @@
     <string name="ui_023">Group code</string>
     <string name="ui_024">%1$s %2$s · WhereWeAre: %3$s</string>
     <string name="ui_025">After approval, group members can view locations you share with the group. You can disable group sharing independently. The main ON/OFF switch always applies.</string>
-    <string name="ui_026">Rename</string>
+    <string name="ui_026">Edit group</string>
+    <string name="members">Members</string>
+    <string name="member_actions">Member actions</string>
+    <string name="invitation_sent">Invitation sent</string>
+    <string name="invitation_received">Invitation received</string>
+    <string name="cancel_invitation">Cancel invitation</string>
+    <string name="no_members_to_invite">No people available to invite</string>
     <string name="ui_027">Select members</string>
     <string name="ui_028">Select all</string>
     <string name="ui_029">Deselect all</string>

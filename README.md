@@ -1,18 +1,18 @@
-# WhereWeAre v0.3
+# WhereWeAre v0.31
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-Versione `0.3`, `versionCode=5` (correzione del crash di avvio), sviluppata dalla release GitHub `v0.2` mantenendo le modifiche v0.21. Vedi [rapporto completo v0.3](RELEASE_NOTES_v0.3.md), [configurazione server e Firebase](SETUP_v0.3.md) e [verifiche](VERIFICATION.md).
+Versione `0.31`, `versionCode=6`, sviluppata sulla v0.3 build 5, conservando la correzione del crash di avvio. Vedi [rapporto v0.31](RELEASE_NOTES_v0.31.md), [aggiornamento server](SETUP_v0.31.md), [configurazione Firebase](SETUP_v0.3.md) e [verifiche](VERIFICATION.md).
 
 ## Avvio
 
 1. Installa Android Studio, JDK 21, SDK API 37 e Build Tools 36.0.0. Minimo Android 8/API 26; serve Google Play Services per Fused Location e FCM.
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
-3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql`, `002_v0_2.sql`, `003_storage_upload_guard.sql`, `004_v0_3.sql`. Su un progetto esistente applica soltanto quelle mancanti. Non rieseguire la prima sul database esistente.
+3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql`, `002_v0_2.sql`, `003_storage_upload_guard.sql`, `004_v0_3.sql`, `005_v0_31.sql`. Su un progetto v0.3 già aggiornato applica soltanto la 005.
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. Installa `app/build/outputs/apk/debug/WhereWeAre-v0.3-debug.apk` se presente, oppure `app-debug.apk`. È una build con firma debug. La release per distribuzione richiede la propria chiave di firma.
+5. Installa `app/build/outputs/apk/debug/WhereWeAre-v0.31-build6-debug.apk` se presente, oppure `app-debug.apk`. È una build con firma debug. La release per distribuzione richiede la propria chiave di firma.
 
-Finché la migrazione 004 non è applicata, la v0.3 mostra il messaggio di aggiornamento backend. La migrazione porta la versione minima client a 4: distribuire il nuovo APK insieme all’aggiornamento del server.
+La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
 ## Funzioni
 

@@ -91,6 +91,11 @@ import io.github.jan.supabase.auth.status.SessionStatus
     }
     key((session as SessionStatus.Authenticated).session.user?.id) {
         val nav=rememberNavController()
+        val user=(session as SessionStatus.Authenticated).session.user?.id
+        LifecycleResumeEffect(user) {
+            if(user!=null && (appearance.avatarDrafts.pending(user)?.length() ?: 0)>0) nav.navigate("settings") {launchSingleTop=true;restoreState=true}
+            onPauseOrDispose {}
+        }
         val stack by nav.currentBackStackEntryAsState()
         var focus by remember {mutableStateOf<MapFocus?>(null)}
         val notice by appearance.notification.collectAsStateWithLifecycle()
@@ -126,7 +131,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
                 composable("privacy") { Surface(Modifier.fillMaxSize()) { PrivacyScreen { nav.popBackStack() } } }
             }
         }
-        MeetingFlare(flare) {appearance.flare.value=null}
+        MeetingFlare(flare) {appearance.finishFlare(flare)}
         }
         invitation?.let {details -> AlertDialog(onDismissRequest={appearance.invite.value=null},title={Text(Strings.text(R.string.ui_127))},text={Text(details["name"].toString().trim('"'))},confirmButton={TextButton(onClick={inviteToken?.let {appearance.resolve(it,true)}}) {Text(Strings.text(R.string.send_request))}},dismissButton={TextButton(onClick={appearance.invite.value=null}) {Text(Strings.text(R.string.ui_006))}}) }
     }

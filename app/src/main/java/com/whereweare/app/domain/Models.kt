@@ -52,7 +52,7 @@ data class Snapshot(val profile: UserProfile? = null, val names: Map<String,Stri
     val contacts: Map<String,ContactProfile> = emptyMap(),val groups: List<Group> = emptyList(),val members: List<GroupMember> = emptyList(),
     val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false)
 
-@kotlinx.serialization.Serializable data class GroupRequest(val id: String,val group_id: String,val group_name: String,val user_id: String,val name: String,val kind: String,val status: String,val can_respond: Boolean)
+@kotlinx.serialization.Serializable data class GroupRequest(val id: String,val group_id: String,val group_name: String,val user_id: String,val name: String,val kind: String,val status: String,val can_respond: Boolean,val group_emoji: String="📍",val can_cancel: Boolean=false)
 @kotlinx.serialization.Serializable data class MeetingPoint(val id: String,val creator_id: String,val creator_name: String,val latitude: Double,val longitude: Double,val active: Boolean,val created_at: String,val removed_at: String?=null,val recipients: List<String> = emptyList())
 fun stalePosition(fix: UserLocation,profile: ContactProfile?,now: Instant,graceSeconds: Int)=
     Duration.between(fix.recordedAt,now).seconds>((profile?.updateInterval ?: 60)+graceSeconds).toLong()

@@ -29,7 +29,7 @@ data class MapFocus(val person: String?=null,val meeting: String?=null)
         Text(Strings.text(R.string.ui_060),style=MaterialTheme.typography.titleSmall)
         snapshot.contacts.values.filter {it.id!=snapshot.profile?.id}.forEach { p -> Row {Checkbox(p.id in people,{people=if(it) people+p.id else people-p.id});Text(p.name)} }
         Text(Strings.text(R.string.ui_061),style=MaterialTheme.typography.titleSmall)
-        snapshot.groups.forEach { g -> Row {Checkbox(g.id in groups,{groups=if(it) groups+g.id else groups-g.id});Text(g.name)} }
+        snapshot.groups.forEach { g -> Row {Checkbox(g.id in groups,{groups=if(it) groups+g.id else groups-g.id});GroupIdentity(g.emoji,g.name,Modifier.weight(1f))} }
     }},confirmButton={TextButton(onClick={confirm(all,people,groups)},enabled=all||people.isNotEmpty()||groups.isNotEmpty()){Text(Strings.text(R.string.ui_049))}},dismissButton={TextButton(onClick=cancel){Text(Strings.text(R.string.ui_006))}})
 }
 @Composable fun MeetingConnections(camera: MapState,meetings: List<MeetingPoint>,people: List<UserLocation>) {

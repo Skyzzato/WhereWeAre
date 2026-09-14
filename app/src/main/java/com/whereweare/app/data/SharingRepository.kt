@@ -137,11 +137,21 @@ import javax.inject.Singleton
     suspend fun removeMember(group: String,member: String)=mutate({ s -> s.copy(members=s.members.filterNot { it.groupId==group && it.userId==member }) },{ s -> s.members.none { it.groupId==group && it.userId==member } }) { rpc("remove_group_member",buildJsonObject { put("gid",group); put("member",member) }) }
     suspend fun deleteGroup(group: String)=mutate({s -> s.copy(groups=s.groups.filterNot { it.id==group }) },{s -> s.groups.none {it.id==group} }) { rpc("delete_group",buildJsonObject { put("gid",group) }) }
     suspend fun renameGroup(group: String,name: String)=mutate({ s -> s.copy(groups=s.groups.map { if(it.id==group) it.copy(name=name) else it }) },{s -> s.groups.any {it.id==group && it.name==name} }) { rpc("rename_group",buildJsonObject { put("gid",group); put("group_name",name) }) }
+    suspend fun editGroup(group: String,name: String,emoji: String)=mutate({s -> s.copy(
+        groups=s.groups.map {if(it.id==group) it.copy(name=name.trim(),emoji=emoji) else it},
+        groupRequests=s.groupRequests.map {if(it.group_id==group) it.copy(group_name=name.trim(),group_emoji=emoji) else it})},
+        {s -> s.groups.any {it.id==group && it.name==name.trim() && it.emoji==emoji}}) {
+        rpc("edit_group",buildJsonObject {put("gid",group);put("group_name",name.trim());put("group_emoji",emoji)})
+    }
+    suspend fun cancelGroupInvitation(id: String)=mutate({s -> s.copy(groupRequests=s.groupRequests.filterNot {it.id==id})},
+        {s -> s.groupRequests.none {it.id==id && it.status=="pending"}}) {
+        rpc("cancel_group_invitation",buildJsonObject {put("request_id",id)})
+    }
     suspend fun groupSharing(group: String,enabled: Boolean)=mutate({s -> s.copy(members=s.members.map {if(it.groupId==group && it.userId==auth.userId) it.copy(sharingEnabled=enabled) else it}) },{s -> s.members.any {it.groupId==group && it.userId==auth.userId && it.sharingEnabled==enabled} }) { rpc("set_group_sharing",buildJsonObject { put("gid",group); put("enabled",enabled) }) }
     suspend fun inviteMember(group: String,person: String)=rpc("invite_group_member",buildJsonObject { put("gid",group); put("person",person) })
     suspend fun respondGroup(request: String,accept: Boolean)=mutate({s -> s.copy(groupRequests=s.groupRequests.map {if(it.id==request) it.copy(status=if(accept) "accepted" else "rejected") else it}) },{s -> s.groupRequests.none {it.id==request && it.status=="pending"} }) { rpc("respond_group_request",buildJsonObject { put("request_id",request); put("accept",accept) }) }
-    suspend fun createMeeting(lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>)=rpc("create_meeting",buildJsonObject {
-        put("mid",java.util.UUID.randomUUID().toString()); put("lat",lat); put("lon",lon); put("all_people",all)
+    suspend fun createMeeting(id: String,lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>)=rpc("create_meeting",buildJsonObject {
+        put("mid",id); put("lat",lat); put("lon",lon); put("all_people",all)
         putJsonArray("people") {people.forEach {add(it)}}; putJsonArray("group_ids") {groups.forEach {add(it)}}
     })
     suspend fun removeMeeting(id: String)=mutate({s -> s.copy(meetings=s.meetings.map {if(it.id==id) it.copy(active=false) else it}) },{s -> s.meetings.none {it.id==id && it.active} }) { rpc("remove_meeting",buildJsonObject {put("mid",id)}) }

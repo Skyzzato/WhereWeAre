@@ -98,7 +98,7 @@
     <string name="ui_002">Account cancellato correttamente</string>
     <string name="ui_003">Gruppo in comune</string>
     <string name="ui_004">Scatta foto</string>
-    <string name="ui_005">Scegli foto / File</string>
+    <string name="ui_005">Scegli file</string>
     <string name="ui_006">Annulla</string>
     <string name="ui_007">Salva foto</string>
     <string name="ui_008">Dati remoti non aggiornati</string>
@@ -119,7 +119,13 @@
     <string name="ui_023">Codice gruppo</string>
     <string name="ui_024">%1$s %2$s · WhereWeAre: %3$s</string>
     <string name="ui_025">Entrare nel gruppo consente ai membri di vedere le posizioni condivise. Il master ON/OFF resta sovrano.</string>
-    <string name="ui_026">Rinomina</string>
+    <string name="ui_026">Modifica gruppo</string>
+    <string name="members">Membri</string>
+    <string name="member_actions">Azioni sui membri</string>
+    <string name="invitation_sent">Invito inviato</string>
+    <string name="invitation_received">Invito ricevuto</string>
+    <string name="cancel_invitation">Annulla invito</string>
+    <string name="no_members_to_invite">Nessuna persona disponibile da invitare</string>
     <string name="ui_027">Seleziona membri</string>
     <string name="ui_028">Seleziona tutti</string>
     <string name="ui_029">Deseleziona tutti</string>

@@ -1,4 +1,19 @@
-# WhereWeAre v0.3 — verifiche
+# WhereWeAre — verifiche
+
+## v0.31 — build 6
+
+`versionName=0.31`, `versionCode=6`, branch `codex/v0.31`.
+
+- `:app:build`: riuscito, compilazione debug e release, test JVM e lint.
+- **31 test superati**, 0 fallimenti/errori: 25 regressioni esistenti più 4 test bozza/avatar e 2 test bengala.
+- Lint debug: **0 errori, 33 warning** (risorse non usate, suggerimenti KTX/aggiornamento dipendenza e scrittura sincrona delle preferenze). Il riferimento alla bozza viene persistito prima del passaggio alla fotocamera.
+- `node supabase/tests/run-v03.mjs --v031`: riuscito. Migrazioni 001–005; suite precedenti, 4 utenti/ruoli v0.31 e suite v0.3 rieseguita dopo la 005.
+- `git diff --check`: nessun errore di whitespace.
+- `adb devices` e lista AVD: nessun dispositivo/emulatore disponibile. Nessuna prova completa su due telefoni, fotocamera esterna o Firebase eseguita.
+
+APK installabile: `app/build/outputs/apk/debug/WhereWeAre-v0.31-build6-debug.apk`. Firma v2 verificata, stesso certificato debug della build 5 (`acf785391278fa98832980a51e594c88ffb06ff36b590c73c18c917f975080c6`); package/versione verificati tramite aapt. SHA-256 APK: `6E91AC576C7EA8B792F47308676F13298BEBBDA5F757EC5006C114AE176DF888`. Log: `.tools/v031-build.log`, `.tools/v031-sql.log`. Migrazione remota 005 ancora da applicare: `SETUP_v0.31.md`. Report completo: `RELEASE_NOTES_v0.31.md`.
+
+Le sezioni successive sono lo storico delle versioni precedenti.
 
 ## Correzione crash di avvio — build 5
 
