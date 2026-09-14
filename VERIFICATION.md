@@ -1,96 +1,74 @@
-# Verifiche WhereWeAre
+# WhereWeAre v0.3 — verifiche
 
-## Collaudo v0.21 — 11 settembre 2026
+## Correzione crash di avvio — build 5
 
-- Verifica finale ripetuta il 12 settembre: `:app:build` **BUILD SUCCESSFUL**, varianti debug e release. Lint: 0 errori, 44 avvisi su risorse inutilizzate. Firma debug APK v2 verificata; report e hash nell’elenco release notes. Corretto il blocco AccessDenied su directory temporanee Lint di sola lettura.
+La build 4 aveva un errore runtime non coperto dai test di dominio: il contesto localizzato dell’Application veniva passato alla factory Hilt, che richiede un’Activity. L’esame della dipendenza Hilt 1.4.0 conferma l’eccezione `Expected an activity context for creating a HiltViewModelFactory`.
 
-- 17 test JVM debug superati: regressioni v0.1/v0.2 e nuove verifiche coordinate, link, stili raster, data/timezone e sessione persistita.
-- Suite SQL locale completa: `ALL SQL TESTS PASSED`; nessuna migration aggiunta o applicata al progetto remoto.
-- `live-v02.mjs`, esteso per v0.21: `ALL LIVE V0.2 / V0.21 TESTS PASSED`. Tre account temporanei creati e rimossi, due client HTTPS/WebSocket; test di registrazione, accesso, scambio posizioni, revoca/Stop, Realtime, gruppi, RLS, upload/sostituzione/rimozione avatar e cancellazione account. Verificati `created_at` Auth e riuso idempotente della sessione: una vecchia revisione non può riattivare lo sharing dopo Stop.
-- HEAD HTTPS: stile OpenFreeMap e un tile ciascuno OpenTopoMap/CyclOSM restituiscono HTTP 200 e MIME previsto. Questo verifica la raggiungibilità, non il rendering su dispositivo.
-- `adb devices` non mostra dispositivi; nessun AVD né system image Android disponibile. Non eseguiti test UI strumentati, layout su schermi diversi o prove GPS fisiche/Doze/recenti/ricreazione processo. I due client backend non sostituiscono due emulatori.
-- Esito finale build e checklist dettagliata: [report v0.21](RELEASE_NOTES_v0.21.md).
+La build 5 mantiene l’Activity nella catena ContextWrapper e usa un contesto applicativo separato per Strings. Test dedicati in `LocalizedActivityTest`: riproduzione della precedente IllegalStateException e conservazione di Activity/risorse italiano e inglese. I test usano [Robolectric](https://robolectric.org/getting-started/) sul PC, senza dispositivo.
 
-## Collaudo APK v0.2 — 11 settembre 2026
+Esito build 5: `assembleDebug`, `testDebugUnitTest` e `lintDebug` riusciti; **25 test superati**, inclusi entrambi i test Android di regressione. Lint: 0 errori, 24 warning. Firma v2 verificata, stesso certificato debug della build precedente, package `com.whereweare.app`, versione `0.3`, codice `5`. SHA-256 APK: `ED54316BDCB6B5C4399E757196858F74553B73B41639B03AF48D63886FFD1A1A`. Nessuna verifica su telefono fisico: il difetto precedente è riprodotto nel test locale, non tramite log del dispositivo dell’utente.
 
-- Build debug con URL e chiave publishable del progetto reale in `local.properties` (escluso da Git). Nessuna chiave amministrativa nell'APK.
-- Test Android: 12 test, 0 errori/fallimenti. Lint: 0 errori, 45 warning (44 risorse inutilizzate e 1 ObsoleteSdkInt).
-- Suite SQL locale completa, inclusa regressione del trigger Storage: `ALL SQL TESTS PASSED`.
-- Collaudo HTTPS/WebSocket reale `live-v02.mjs`: `ALL LIVE V0.2 TESTS PASSED`. Include regressioni condivisione/revoca/Stop/Realtime, gruppi e join ripetuti, scadenza scelta dal proprietario, isolamento da terzi, upload e download avatar, revoca degli accessi, invalidazione privata Realtime, cancellazione autenticata con avatar, JWT eliminato bloccato e cancellazione del creatore con cascata sui gruppi.
-- Account creati esclusivamente per il test, con password casuali in memoria; cleanup completato anche durante le iterazioni fallite.
-- Il collaudo ha individuato e corretto il trigger avatar: Storage persiste tramite una connessione interna senza `auth.uid()`. La migration 003 usa l'ownership verificata da Storage, conservando lock sul profilo e tombstone. [Riferimento ownership](https://supabase.com/docs/guides/storage/security/ownership).
-- Verificata anche la revoca con richieste nuove: il client disabilita la cache HTTP e usa `cacheNonce` nelle letture dopo un cache miss RAM, evitando risposte CDN precedenti alla revoca. I dati già ricevuti non possono essere cancellati retroattivamente dai dispositivi altrui. [Riferimento CDN](https://supabase.com/docs/guides/storage/cdn/smart-cdn).
-- APK universale, package `com.whereweare.app`, versione 0.2/code 2, min SDK 26, target 37; firma debug APK v2 verificata.
+Verifica backend successiva alla segnalazione: la RPC pubblica remota `app_bootstrap` restituisce `api_version=3`, versione 0.3 e minimo 4; la suite SQL locale completa passa. Non è necessario rieseguire la migrazione 004 per installare la build 5.
 
-Limite esplicito: nessun dispositivo ADB collegato e nessun AVD configurato. Non sono state eseguite installazione/avvio su Android né prove fisiche di GPS, fotocamera/galleria, rendering mappa, batteria o foreground service. La release GitHub è pertanto una **prerelease di collaudo**, non una certificazione di produzione. I limiti del precedente deploy sotto sono superati soltanto per i casi coperti dal nuovo test live.
+L’APK corretto è `app/build/outputs/apk/debug/WhereWeAre-v0.3-build5-debug.apk`. I log aggiornati sono in `.tools/v03-hotfix-build.log`. Le verifiche e l’hash riportati sotto sono lo storico della **build 4**, precedente alla correzione e da non reinstallare.
 
-## Deploy remoto v0.2 — 11 settembre 2026 (Europe/Rome)
+## Rapporto storico — build 4
 
-Progetto `vqvouzpsgbuaddcyitzg`, aggiornato tramite dashboard Supabase autenticato.
+Data: 12 settembre 2026. Branch locale `codex/v0.3`. Versione APK `0.3`, versionCode `4`, package `com.whereweare.app`.
 
-- Preflight: migration v0.2 assente, 3 profili presenti.
-- Applicate in transazione le istruzioni di `002_v0_2.sql`: esito SQL `Success. No rows returned`.
-- Dopo la migration: 3 profili e 3 righe `account_events`; sessioni delle posizioni migrate correttamente.
-- RLS attiva sulle tre nuove tabelle; INSERT diretto su `groups` negato ad `anon` e `authenticated` (scritture tramite RPC).
-- Bucket `avatars` privato, quattro policy avatar e trigger `avatars_guard` presenti.
-- `account_events` presente nella publication `supabase_realtime`.
-- Job `whereweare-expiry` assente, come previsto dalla conservazione dell'ultima posizione v0.2.
-- `app_bootstrap()` eseguita anche con `SET LOCAL ROLE anon`, in transazione annullata: versione `0.2`, codice 2, minimo 2, manutenzione disattivata.
-- Edge Function `delete-account` pubblicata dal sorgente del repository, verifica JWT attiva. POST senza Authorization e con token volutamente invalido respinti con HTTP 401.
-- Nessuna credenziale amministrativa copiata nel repository o nel client; nessun account esistente eliminato durante questi controlli.
+## Risultati automatici
 
-Limiti: i controlli HTTP della funzione verificano il rifiuto al gateway, non l'esecuzione completa della cancellazione. Restano da collaudare su account esclusivamente di prova cancellazione autenticata, upload avatar e gruppi end-to-end; restano inoltre le prove su due telefoni Android. I risultati v0.1 sotto sono storici, non una nuova esecuzione sulla v0.2.
+| Verifica | Esito |
+| --- | --- |
+| Gradle `:app:build` | Build debug e release, test JVM e lint |
+| JVM | **23 test, 0 fallimenti, 0 errori**: DomainTest 6, V02Test 6, V021Test 5, V03Test 6 |
+| SQL/PGlite 0.5.8 + pgcrypto | **PASS**: tutte le migrazioni e le suite security, security_v02, storage_guard, security_v03 |
+| Edge Function | `deno check` superato, Deno 2.9.6 / TypeScript 6.0.3 |
+| Test dispatcher | **1 test superato**: GET, POST non autenticato, secret errato →401; Firebase assente/invalido →503, nessun segreto nell’errore; nessuna rete richiesta |
+| Localizzazione | 225 stringhe inglesi e 225 italiane; stessi identificativi, risorse compilate |
+| Lint | **0 errori, 23 warning**: risorse precedenti inutilizzate e suggerimenti KTX |
+| Firma APK | `apksigner verify`: firma **v2 valida**, certificato Android Debug |
+| Metadati APK | `aapt dump badging`: versione 0.3/4, min SDK26, target SDK37 |
+| Whitespace Git | `git diff --check` senza errori; soli avvisi di conversione LF/CRLF del sistema |
 
-Riferimento autenticazione: [Supabase — Securing Edge Functions](https://supabase.com/docs/guides/functions/auth).
+La compilazione segnala anche API FCM deprecate, ancora disponibili nell’SDK fissato. Il controllo Deno segnala la deprecazione `punycode` in una dipendenza transitiva. Non sono errori bloccanti.
 
-## Verifica v0.1 — 9 settembre 2026
+## Copertura aggiunta
 
-## Android
+JVM: codici 3-3 e precedenti 4-4, rifiuto caratteri invalidi, iniziale Angelo→A e Unicode, fallback sistema tedesco→inglese, override, soglia 600+180 secondi e confine, backend precedente bloccato, raggruppamento marker a diverse scale, UI immediata con successo, rollback, conservazione foto e isolamento account.
 
-Build eseguita con la configurazione reale in `local.properties`, escluso da Git:
+SQL: creazione codice breve, normalizzazione/case e codici precedenti; collisione gruppo forzata con retry; limite lookup che persiste anche sui tentativi inesistenti; richiesta di adesione senza accesso GPS prima del consenso; admin/invitato corretti, rifiuto e accettazione; inviti e uscita; disabilitazione condivisione gruppo; meeting con destinatari deduplicati, idempotenza, ownership e isolamento; nessun nuovo diritto GPS; link con anteprima e conferma; impossibilità di enumerare token o leggere analytics; privilegi esclusivi push server; cascata account; metadati visibili soltanto ai membri autorizzati; conteggio aggregato aggiornamenti.
 
-```text
-gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --console=plain
-BUILD SUCCESSFUL in 21s
-```
+Il database SQL è temporaneo e locale. **La migrazione v0.3 non è stata applicata al Supabase remoto.** Le prove live citate nei vecchi report appartengono alla v0.21, non alla v0.3.
 
-- JDK Temurin 21, Gradle 9.7.1, AGP 9.4.0, Android API 37.
-- APK configurato: `app/build/outputs/apk/debug/app-debug.apk`.
-- Unit test: 6 test, 0 errori, 0 fallimenti, 0 saltati.
-- Lint rieseguito senza cache dei task dopo l'ultima modifica al manifest: **No issues found**, build riuscita in 20s.
-- Report: `app/build/reports/tests/testDebugUnitTest/index.html`, `app/build/reports/lint-results-debug.html`.
+## Artefatto
 
-## Supabase reale
+`app/build/outputs/apk/debug/WhereWeAre-v0.3-debug.apk`
 
-Migration `supabase/migrations/001_initial_schema.sql` applicata integralmente tramite la sessione autenticata del SQL Editor al progetto `vqvouzpsgbuaddcyitzg`. Nessuna chiave amministrativa usata nel client o salvata nel repository.
+- 67.849.880 byte (circa 64,7 MiB).
+- SHA-256: `A27CED10F670736EB5D361207F97EDE7E9BEC74D1340A28F0BF301676CACA320`.
+- Certificato debug SHA-256: `acf785391278fa98832980a51e594c88ffb06ff36b590c73c18c917f975080c6`.
+- Release compilata in `app/build/outputs/apk/release`; la distribuzione richiede la propria firma.
 
-Verifiche con due sessioni Auth reali e chiamate HTTPS PostgREST / WebSocket Realtime, usando esclusivamente la Publishable Key e i JWT utente:
+Log locali: `.tools/v03-build.log`, `.tools/v03-sql.log`, `.tools/v03-edge-final.log`, `.tools/v03-edge-test.log`, `.tools/v03-apk-signature.log`. Report JVM/lint in `app/build/reports`.
 
-- Login dei due account sintetici, profili automatici e codici personali diversi; ogni account legge soltanto il proprio profilo.
-- Ricerca esatta per codice e invio richiesta; ricezione dell'evento sul secondo client.
-- Accettazione con creazione delle due autorizzazioni direzionali.
-- Avvio condivisione e pubblicazione di coordinate sintetiche da entrambi gli account.
-- Letture reciproche e ricezione degli INSERT/UPDATE tramite Realtime, con sottoscrizioni confermate dal server.
-- Revoca: posizione immediatamente assente dalla SELECT del destinatario e evento UPDATE ricevuto.
-- Stop: posizione immediatamente assente dalla SELECT del destinatario e evento di stato ricevuto.
-- Upload tardivo dopo Stop respinto con `sharing_stopped`.
-- Scadenza: portata soltanto la coordinata sintetica a oltre due ore tramite SQL; la SELECT del destinatario la esclude, mentre la riga del proprietario esiste ancora. La protezione non dipende dal cleanup.
-- Accesso anonimo alle tabelle respinto con HTTP 401.
-- Job `whereweare-expiry` presente, attivo, pianificato ogni 15 minuti.
+## Ambiente e limite del collaudo
 
-Primo collaudo con fixture confermate nel dashboard; successivamente, su richiesta del proprietario, **Confirm Email disabilitato**. Verificato `mailer_autoconfirm=true`, create due nuove utenze tramite `/auth/v1/signup` (HTTP 200), poi eseguito integralmente `supabase/tests/live-clients.mjs` con quelle credenziali: tutti i controlli PASS. I profili e i codici sono stati generati dal trigger durante la registrazione reale. Gli account temporanei sono stati rimossi dopo il test. Non è stato inviato alcun messaggio email nella modalità finale di collaudo.
-La variante ripetibile del test client è `supabase/tests/live-clients.mjs`: richiede due account nuovi di prova già confermati e credenziali nelle variabili ambiente descritte nel README. Non incorpora password o token.
+Windows, JDK21 Android Studio, SDK37, Gradle Wrapper del progetto. Windows assegnava l’attributo ReadOnly ad alcune directory generate da Hilt; durante il collaudo l’attributo è stato rimosso esclusivamente dentro `app/build`, senza modificare sorgenti o permessi di sistema.
 
-## SQL locale
+`adb devices -l` non mostra dispositivi e `emulator -list-avds` non mostra AVD. Non è quindi stata eseguita una verifica visiva/strumentata Android. Firebase non esiste ancora e non sono stati inviati messaggi reali. I test automatici non certificano rendering, gesture, batteria o puntualità GPS/FCM.
 
-Migration eseguita anche su PostgreSQL 17.11 locale con ruoli Auth simulati. `supabase/tests/security.sql`: **26 asserzioni PASS**, oltre alle eccezioni attese; dati annullati con ROLLBACK.
+## Checklist manuale prima della distribuzione
 
-Verificati anche non enumerabilità, richieste inverse e retry, negazione a terzi, timestamp futuri, sessioni precedenti, limite esatto delle due ore e protezione contro avvii tardivi dopo Stop.
+1. Applicare migration 004 in staging e usare almeno tre account reali con i consensi indicati nelle suite SQL; controllare Realtime e storage.
+2. Verificare foto invariata mentre si consente/revoca la visibilità; iniziale Angelo→A; sei temi, scala75–150%, cluster e hitbox; mappa sotto ogni banner.
+3. Muovere la posizione: follow ricentra anche fuori viewport, drag lo disattiva, pulsante lo riattiva. Verificare passaggio fra provider.
+4. Impostare 10 minuti, provare foreground/background e blocco schermo per almeno tre cicli; confrontare i timestamp con un tempo affidabile, senza conservare coordinate nei log. Provare rete assente, app riaperta, stop e cambio account.
+5. Provare richieste gruppo, admin, rifiuto, inviti destinatario, rimozione e gruppo inesistente; distinguere occhio locale da autorizzazione server.
+6. Creare meeting per persone/gruppi sovrapposti: un destinatario una volta; linee solo per GPS già autorizzato, bengala una volta, rimozione solo creatore, apertura da banner.
+7. Configurare Firebase e scheduler; verificare notifica in background, permesso negato, deep link, duplicati, logout e cambio account. Verificare che il contenuto dell’account precedente non resti visibile. FCM non consegna dopo force-stop finché l’app non viene riaperta.
+8. Provare sistema italiano/inglese/tedesco e override; controllare notifiche GPS e meeting anche dopo riavvio processo.
+9. Simulare errori HTTP durante modifiche: UI aggiornata subito, rollback e messaggio coerenti, nessuna foto persa.
+10. Verificare eliminazione account con avatar e meeting, cleanup server e revoca immediata delle letture.
 
-## Collaudo ancora da eseguire su dispositivi
-
-Non sono stati collegati due telefoni Android. Restano da verificare materialmente rendering MapLibre, permessi e acquisizione GPS, cadenza approssimativa di un minuto e comportamento del foreground service sotto le restrizioni energetiche dei dispositivi. Il test live verifica il backend e la consegna Realtime con due client distinti, non simula il sistema operativo Android. Seguire la procedura a due dispositivi nel README.
-
-### Configurazione Auth finale
-
-Signup email/password abilitato, Confirm Email disabilitato su scelta esplicita del proprietario, Custom SMTP disabilitato. Il blocco SMTP non impedisce più la registrazione in questa modalità di collaudo. La verifica delle caselle e la consegna email restano fuori dal collaudo; per riattivarle occorre configurare SMTP nel dashboard.
+I passaggi di configurazione sono in [SETUP_v0.3.md](SETUP_v0.3.md); il riepilogo richiesto in 18 punti è in [RELEASE_NOTES_v0.3.md](RELEASE_NOTES_v0.3.md).

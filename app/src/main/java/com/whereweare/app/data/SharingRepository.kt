@@ -20,6 +20,7 @@ import javax.inject.Singleton
     private val refreshes=MutableSharedFlow<Unit>(extraBufferCapacity=1)
     private data class AvatarChange(val user: String,val path: String?)
     private val avatarChange=MutableStateFlow<AvatarChange?>(null)
+    private val optimistic=OptimisticSnapshots()
     private data class ClockAnchor(val server: Instant,val elapsed: Long)
     @Volatile private var clock=ClockAnchor(Instant.now(),SystemClock.elapsedRealtime())
     fun now(): Instant = clock.let { it.server.plusMillis(SystemClock.elapsedRealtime()-it.elapsed) }
@@ -30,7 +31,8 @@ import javax.inject.Singleton
         if(change==null || snapshot.profile?.id!=change.user) snapshot
         else if(snapshot.profile.avatarPath==change.path) { avatarChange.compareAndSet(change,null); snapshot }
         else snapshot.copy(profile=snapshot.profile.copy(avatarPath=change.path))
-    }.stateIn(scope,SharingStarted.WhileSubscribed(5_000,0),Snapshot())
+    }.combine(optimistic.changes) { snapshot,pending -> optimistic.render(snapshot,pending) }
+        .stateIn(scope,SharingStarted.WhileSubscribed(5_000,0),Snapshot())
 
     private fun observe(id: String): Flow<Snapshot> = channelFlow {
         var last=Snapshot()
@@ -46,28 +48,28 @@ import javax.inject.Singleton
                 try {
                     val readingGeneration=generation.get()
                     val readMetadata=metadataDirty
-                    if(readMetadata) {
-                        val requestStarted=SystemClock.elapsedRealtime()
-                        val time=client.postgrest.rpc("server_time").decodeAs<String>()
-                        clock=ClockAnchor(Instant.parse(time),requestStarted)
-                    }
-                    val profile=if(readMetadata) client.from("profiles").select().decodeSingle<ProfileDto>().domain() else last.profile
-                    val names=if(readMetadata) client.postgrest.rpc("contact_names").decodeList<NameDto>().associate { it.user_id to it.display_name } else last.names
-                    val requests=if(readMetadata) client.from("share_requests").select().decodeList<RequestDto>().map { it.domain() } else last.requests
-                    val shares=if(readMetadata) client.from("location_shares").select().decodeList<ShareDto>().map { it.domain() } else last.shares
-                    val statuses=if(readMetadata) client.from("sharing_status").select().decodeList<StatusDto>().map { it.domain() } else last.statuses
-                    val locations=client.from("latest_locations").select().decodeList<LocationDto>().map { it.domain() }
-                    val contacts=if(readMetadata) client.postgrest.rpc("contact_profiles").decodeList<ContactDto>().map { it.domain() }.associateBy { it.id } else last.contacts
-                    val groups=if(readMetadata) client.from("groups").select().decodeList<GroupDto>().map { it.domain() } else last.groups
-                    val members=if(readMetadata) client.from("group_members").select().decodeList<MemberDto>().map { it.domain() } else last.members
+                    val requestStarted=SystemClock.elapsedRealtime()
+                    val metadata=if(readMetadata) client.postgrest.rpc("app_metadata").decodeAs<MetadataDto>() else null
+                    if(metadata!=null) clock=ClockAnchor(Instant.parse(metadata.server_time),requestStarted)
+                    val profile=metadata?.profile?.domain() ?: last.profile
+                    val names=metadata?.names?.associate {it.user_id to it.display_name} ?: last.names
+                    val requests=metadata?.requests?.map {it.domain()} ?: last.requests
+                    val shares=metadata?.shares?.map {it.domain()} ?: last.shares
+                    val statuses=metadata?.statuses?.map {it.domain()} ?: last.statuses
+                    val locations=client.from("latest_locations").select().decodeList<LocationDto>().map {it.domain()}
+                    val contacts=metadata?.contacts?.map {it.domain()}?.associateBy {it.id} ?: last.contacts
+                    val groups=metadata?.groups?.map {it.domain()} ?: last.groups
+                    val members=metadata?.members?.map {it.domain()} ?: last.members
+                    val groupRequests=metadata?.group_requests ?: last.groupRequests
+                    val meetings=metadata?.meetings ?: last.meetings
                     if(readingGeneration!=generation.get()) { signals.trySend(Unit); continue }
                     if(readMetadata) metadataDirty=false
-                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=!realtimeOnline,contacts=contacts,groups=groups,members=members)
+                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=!realtimeOnline,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
                     send(last)
                 } catch(e: CancellationException) { throw e
                 } catch(_: Exception) {
-                    last=last.copy(loading=false,offline=true); send(last)
+                    last=last.copy(loading=false,offline=true,syncFailed=true); send(last)
                     delay(5_000); signals.trySend(Unit)
                 }
             }
@@ -91,7 +93,7 @@ import javax.inject.Singleton
                                 if(tableName=="location_shares" || tableName=="sharing_status" || tableName=="account_events") {
                                     generation.incrementAndGet()
                                     // Invalidate first: an older in-memory fix must not survive revocation.
-                                    last=last.copy(locations=last.locations.filter { it.userId==id },contacts=emptyMap()); send(last)
+                                    last=last.copy(locations=last.locations.filter { it.userId==id }); send(last)
                                 }
                                 signals.trySend(Unit)
                             }
@@ -115,6 +117,10 @@ import javax.inject.Singleton
         }
     }.flowOn(Dispatchers.IO.limitedParallelism(1))
     fun refresh() { refreshes.tryEmit(Unit) }
+    private suspend fun mutate(change: (Snapshot)->Snapshot,confirmed: (Snapshot)->Boolean,action: suspend ()->Unit) {
+        val key=optimistic.begin(requireNotNull(auth.userId),change,confirmed)
+        try { action(); refresh() } catch(e: Exception) { optimistic.rollback(key); throw e }
+    }
     suspend fun setAvatar(path: String?) {
         val user=requireNotNull(auth.userId)
         client.postgrest.rpc("set_avatar",buildJsonObject { put("path",path?.let(::JsonPrimitive) ?: JsonNull) })
@@ -124,12 +130,22 @@ import javax.inject.Singleton
     suspend fun saveOwn(fix: UserLocation) { preferences.lastFix(fix.userId,Json.encodeToString(LocationDto.serializer(),LocationDto(fix.userId,fix.latitude,fix.longitude,fix.accuracy,fix.speed,fix.bearing,fix.recordedAt.toString()))) }
     suspend fun rpc(name: String,params: JsonObject=buildJsonObject {}) { client.postgrest.rpc(name,params); refresh() }
     suspend fun visibility(seconds: Int) = rpc("set_visibility",buildJsonObject { put("seconds",seconds) })
-    suspend fun remove(person: String)=rpc("remove_connection",buildJsonObject { put("other_user_id",person) })
+    suspend fun remove(person: String)=mutate({ s -> s.copy(shares=s.shares.filter { it.owner!=person && it.viewer!=person }) },{ s -> s.shares.none { it.owner==person || it.viewer==person } }) { rpc("remove_connection",buildJsonObject { put("other_user_id",person) }) }
     suspend fun dismiss(id: String)=rpc("dismiss_request",buildJsonObject { put("request_id",id) })
     suspend fun createGroup(name: String,emoji: String) { require(validGroupName(name)); rpc("create_group",buildJsonObject { put("group_name",name.trim()); put("group_emoji",emoji) }) }
-    suspend fun joinGroup(code: String) { check(client.postgrest.rpc("join_group",buildJsonObject { put("code",code) }).data!="null") { "not_found" }; refresh() }
-    suspend fun removeMember(group: String,member: String)=rpc("remove_group_member",buildJsonObject { put("gid",group); put("member",member) })
-    suspend fun deleteGroup(group: String)=rpc("delete_group",buildJsonObject { put("gid",group) })
+    suspend fun joinGroup(code: String) { check(client.postgrest.rpc("join_group",buildJsonObject { put("code",code) }).data!="null") { "group_not_found" }; refresh() }
+    suspend fun removeMember(group: String,member: String)=mutate({ s -> s.copy(members=s.members.filterNot { it.groupId==group && it.userId==member }) },{ s -> s.members.none { it.groupId==group && it.userId==member } }) { rpc("remove_group_member",buildJsonObject { put("gid",group); put("member",member) }) }
+    suspend fun deleteGroup(group: String)=mutate({s -> s.copy(groups=s.groups.filterNot { it.id==group }) },{s -> s.groups.none {it.id==group} }) { rpc("delete_group",buildJsonObject { put("gid",group) }) }
+    suspend fun renameGroup(group: String,name: String)=mutate({ s -> s.copy(groups=s.groups.map { if(it.id==group) it.copy(name=name) else it }) },{s -> s.groups.any {it.id==group && it.name==name} }) { rpc("rename_group",buildJsonObject { put("gid",group); put("group_name",name) }) }
+    suspend fun groupSharing(group: String,enabled: Boolean)=mutate({s -> s.copy(members=s.members.map {if(it.groupId==group && it.userId==auth.userId) it.copy(sharingEnabled=enabled) else it}) },{s -> s.members.any {it.groupId==group && it.userId==auth.userId && it.sharingEnabled==enabled} }) { rpc("set_group_sharing",buildJsonObject { put("gid",group); put("enabled",enabled) }) }
+    suspend fun inviteMember(group: String,person: String)=rpc("invite_group_member",buildJsonObject { put("gid",group); put("person",person) })
+    suspend fun respondGroup(request: String,accept: Boolean)=mutate({s -> s.copy(groupRequests=s.groupRequests.map {if(it.id==request) it.copy(status=if(accept) "accepted" else "rejected") else it}) },{s -> s.groupRequests.none {it.id==request && it.status=="pending"} }) { rpc("respond_group_request",buildJsonObject { put("request_id",request); put("accept",accept) }) }
+    suspend fun createMeeting(lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>)=rpc("create_meeting",buildJsonObject {
+        put("mid",java.util.UUID.randomUUID().toString()); put("lat",lat); put("lon",lon); put("all_people",all)
+        putJsonArray("people") {people.forEach {add(it)}}; putJsonArray("group_ids") {groups.forEach {add(it)}}
+    })
+    suspend fun removeMeeting(id: String)=mutate({s -> s.copy(meetings=s.meetings.map {if(it.id==id) it.copy(active=false) else it}) },{s -> s.meetings.none {it.id==id && it.active} }) { rpc("remove_meeting",buildJsonObject {put("mid",id)}) }
+    suspend fun inviteLink(token: String,confirm: Boolean): JsonObject? = client.postgrest.rpc("resolve_invite_link",buildJsonObject {put("token",token);put("confirm",confirm)}).data.let { if(it=="null") null else Json.parseToJsonElement(it).jsonObject }.also { if(confirm) refresh() }
     suspend fun lookup(code: String): UserProfile? = client.postgrest.rpc("lookup_user_by_invite_code",buildJsonObject { put("code",normalizeInviteCode(code)) }).decodeList<LookupDto>().firstOrNull()?.domain()
     suspend fun sendRequest(code: String) {
         val result=client.postgrest.rpc("send_share_request",buildJsonObject { put("code",normalizeInviteCode(code)) }).data
@@ -137,7 +153,7 @@ import javax.inject.Singleton
     }
     suspend fun respond(id: String,accept: Boolean) { client.postgrest.rpc("respond_to_share_request",buildJsonObject { put("request_id",id); put("accept",accept) }); refresh() }
     suspend fun cancel(id: String) { client.postgrest.rpc("cancel_share_request",buildJsonObject { put("request_id",id) }); refresh() }
-    suspend fun permission(viewer: String,enabled: Boolean) { client.postgrest.rpc("set_location_share",buildJsonObject { put("viewer",viewer); put("enabled",enabled) }); refresh() }
+    suspend fun permission(viewer: String,enabled: Boolean)=mutate({s -> s.copy(shares=s.shares.map {if(it.owner==auth.userId && it.viewer==viewer) it.copy(enabled=enabled) else it}) },{s -> s.shares.any {it.owner==auth.userId && it.viewer==viewer && it.enabled==enabled} }) { rpc("set_location_share",buildJsonObject { put("viewer",viewer); put("enabled",enabled) }) }
     suspend fun sharingRevision(): Long = client.from("sharing_status").select { filter { eq("user_id",requireNotNull(auth.userId)) } }.decodeSingle<StatusDto>().revision
     suspend fun sharing(active: Boolean,session: String?=null,revision: Long?=null) { client.postgrest.rpc("set_sharing",buildJsonObject {
         put("active",active); put("session",session?.let(::JsonPrimitive)?:JsonNull)
@@ -152,7 +168,8 @@ import javax.inject.Singleton
     }
     suspend fun rename(name: String) {
         require(validName(name))
-        client.from("profiles").update(buildJsonObject { put("display_name",name.trim()) }) { filter { eq("id",requireNotNull(auth.userId)) } }
-        refresh()
+        mutate({it.copy(profile=it.profile?.copy(displayName=name.trim()))},{it.profile?.displayName==name.trim()}) {
+            client.from("profiles").update(buildJsonObject {put("display_name",name.trim())}) {filter {eq("id",requireNotNull(auth.userId))}}
+        }
     }
 }

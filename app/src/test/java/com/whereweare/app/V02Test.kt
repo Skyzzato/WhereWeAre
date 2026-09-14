@@ -26,7 +26,7 @@ class V02Test {
     @Test fun accuracyWarningDoesNotDiscardFix() {
         assertFalse(lowAccuracy(10.0,100));assertTrue(lowAccuracy(2000.0,100))
         assertFalse(lowAccuracy(100.0,100));assertTrue(lowAccuracy(100.1,100))
-        assertEquals(listOf(5,30,60,300,1800,3600),updateIntervals)
+        assertEquals(listOf(5,30,60,300,600,1800,3600),updateIntervals)
         assertEquals(listOf(25,50,100,250,500,1000),accuracyThresholds)
     }
     @Test fun visibilityUsesOwnerTimeout() {
@@ -37,7 +37,7 @@ class V02Test {
     }
     @Test fun bootstrapUsesNumericCodesAndFailsClosedWithoutCache() {
         val c=BootstrapConfig(10,"0.10",2,false)
-        assertEquals(BootstrapGate.READY,bootstrapGate(c,9))
+        assertEquals(BootstrapGate.READY,bootstrapGate(c.copy(api_version=3),9))
         assertEquals(BootstrapGate.UPDATE,bootstrapGate(c,1))
         assertEquals(BootstrapGate.MAINTENANCE,bootstrapGate(c.copy(maintenance_mode=true),2))
         assertEquals(BootstrapGate.FIRST_CONNECTION,bootstrapGate(null,2))

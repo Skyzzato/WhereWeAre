@@ -11,14 +11,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Serializable data class BootstrapConfig(val latest_version_code: Int,val latest_version_name: String,
-    val minimum_supported_version_code: Int,val maintenance_mode: Boolean,val maintenance_message: String?=null) {
+    val minimum_supported_version_code: Int,val maintenance_mode: Boolean,val maintenance_message: String?=null,
+    val defaults: GlobalDefaults=GlobalDefaults(),val features: FeatureFlags=FeatureFlags(),val api_version: Int=2) {
     fun valid()=minimum_supported_version_code>0 && latest_version_code>=minimum_supported_version_code && latest_version_name.isNotBlank()
 }
-enum class BootstrapGate { LOADING, READY, UPDATE, MAINTENANCE, FIRST_CONNECTION }
+@Serializable data class GlobalDefaults(val gps_interval_seconds: Int=60,val high_accuracy: Boolean=true,val theme: String="default",val avatar_scale: Float=1f,val stale_grace_seconds: Int=180)
+@Serializable data class FeatureFlags(val meeting_points: Boolean=true,val invite_links: Boolean=false,val client_analytics: Boolean=false)
+enum class BootstrapGate { LOADING, READY, UPDATE, MAINTENANCE, FIRST_CONNECTION, BACKEND_UPDATE }
 fun bootstrapGate(config: BootstrapConfig?,installed: Int): BootstrapGate=when {
     config==null || !config.valid() -> BootstrapGate.FIRST_CONNECTION
     installed<config.minimum_supported_version_code -> BootstrapGate.UPDATE
     config.maintenance_mode -> BootstrapGate.MAINTENANCE
+    installed>=4 && config.api_version<3 -> BootstrapGate.BACKEND_UPDATE
     else -> BootstrapGate.READY
 }
 data class BootstrapState(val gate: BootstrapGate=BootstrapGate.LOADING,val config: BootstrapConfig?=null)

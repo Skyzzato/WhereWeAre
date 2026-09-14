@@ -1,5 +1,7 @@
 package com.whereweare.app.ui
 
+import com.whereweare.app.R
+
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -58,8 +60,8 @@ import kotlin.math.*
             val file=File(dir,"avatar.jpg")
             val uri=FileProvider.getUriForFile(context,context.packageName+".files",file)
             cameraUri=uri.toString();camera.launch(uri)
-        } catch(_: Exception) {onError()}}){Text("Scatta foto")}
-        TextButton(enabled=!loading,onClick={picker.launch(arrayOf("image/*"))}){Text("Scegli foto / File")}
+        } catch(_: Exception) {onError()}}){Text(Strings.text(R.string.ui_004))}
+        TextButton(enabled=!loading,onClick={picker.launch(arrayOf("image/*"))}){Text(Strings.text(R.string.ui_005))}
     }
     if(loading) LinearProgressIndicator(Modifier.fillMaxWidth())
     image?.let { bitmap -> CropAvatar(bitmap,onDismiss={image=null; File(context.cacheDir,"camera/avatar.jpg").delete()},onSave={bytes -> image=null; File(context.cacheDir,"camera/avatar.jpg").delete(); onSave(bytes)}) }
@@ -76,8 +78,8 @@ import kotlin.math.*
     }
     Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Surface(Modifier.fillMaxSize()) { Column(Modifier.safeDrawingPadding().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-            Text("Centra il viso",style=MaterialTheme.typography.headlineSmall)
-            Text("Trascina e pizzica per spostare e ingrandire.")
+            Text(Strings.text(com.whereweare.app.R.string.crop_title),style=MaterialTheme.typography.headlineSmall)
+            Text(Strings.text(com.whereweare.app.R.string.crop_hint))
             Canvas(Modifier.fillMaxWidth().aspectRatio(1f).onSizeChanged {side=it.width.toFloat()}
                 .pointerInput(bitmap,side) { detectTransformGestures { _,delta,scale,_ ->
                     zoom=(zoom*scale).coerceIn(1f,5f);pan=constrain(pan+delta,zoom)
@@ -88,7 +90,7 @@ import kotlin.math.*
                 drawPath(mask,Color.Black.copy(alpha=.65f));drawCircle(Color.White,radius=side/2-2,style=androidx.compose.ui.graphics.drawscope.Stroke(2f))
             }
             Slider(zoom,{zoom=it;pan=constrain(pan,it)},valueRange=1f..5f)
-            Row {TextButton(onClick=onDismiss){Text("Annulla")};Button(onClick={
+            Row {TextButton(onClick=onDismiss){Text(Strings.text(R.string.ui_006))};Button(onClick={
                 val output=createBitmap(512,512,Bitmap.Config.ARGB_8888)
                 val canvas=android.graphics.Canvas(output)
                 val factor=512f/side; val width=bitmap.width*base*zoom;val height=bitmap.height*base*zoom
@@ -96,7 +98,7 @@ import kotlin.math.*
                 @Suppress("DEPRECATION")
                 val bytes=ByteArrayOutputStream().use {output.compress(Bitmap.CompressFormat.WEBP,85,it);it.toByteArray()}
                 output.recycle();onSave(bytes)
-            }){Text("Salva foto")}}
+            }){Text(Strings.text(R.string.ui_007))}}
         } }
     }
 }

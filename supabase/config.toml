@@ -1,0 +1,6 @@
+[functions.send-meeting-push]
+# The scheduler uses PUSH_DISPATCH_SECRET, validated inside the function.
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = true

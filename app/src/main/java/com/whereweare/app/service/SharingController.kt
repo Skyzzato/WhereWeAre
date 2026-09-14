@@ -78,7 +78,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                             // A revoked permission must terminate sharing, not escape a child job and crash.
                             requestStop()
                         }
-                        .collect { latest.value=it; signals.trySend(Unit) }
+                        .collect { latest.value=it; mutableState.value=state.value.copy(fix=it); signals.trySend(Unit) }
                 }
                 try {
                     var started=false
@@ -88,6 +88,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                         try {
                             if(bootstrap.state.value.gate!=BootstrapGate.READY) break
                             if(!started) {
+                                repository.rpc("set_update_interval",kotlinx.serialization.json.buildJsonObject {put("seconds",kotlinx.serialization.json.JsonPrimitive(preferences.interval.first()))})
                                 if(revision==null) {
                                     revision=repository.sharingRevision()
                                     saved=saved.copy(revision=revision)

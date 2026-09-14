@@ -5,12 +5,12 @@ import java.time.Instant
 import java.util.Locale
 
 data class UserProfile(val id: String, val displayName: String, val inviteCode: String, val avatarPath: String?=null, val visibilitySeconds: Int=86400)
-data class ContactProfile(val id: String,val name: String,val avatarPath: String?,val visibilitySeconds: Int,val commonGroup: Boolean)
+data class ContactProfile(val id: String,val name: String,val avatarPath: String?,val visibilitySeconds: Int,val commonGroup: Boolean,val canView: Boolean=true,val updateInterval: Int=60)
 data class Group(val id: String,val name: String,val emoji: String,val code: String,val creator: String,val createdAt: Instant)
-data class GroupMember(val groupId: String,val userId: String)
+data class GroupMember(val groupId: String,val userId: String,val sharingEnabled: Boolean=true)
 enum class LocationPermission { NONE, APPROXIMATE, PRECISE }
 fun locationPermission(coarse: Boolean,fine: Boolean) = when { fine -> LocationPermission.PRECISE; coarse -> LocationPermission.APPROXIMATE; else -> LocationPermission.NONE }
-val updateIntervals = listOf(5,30,60,300,1800,3600)
+val updateIntervals = listOf(5,30,60,300,600,1800,3600)
 val accuracyThresholds = listOf(25,50,100,250,500,1000)
 val visibilityTimeouts = listOf(600,1800,3600,7200,14400,43200,86400)
 fun lowAccuracy(accuracy: Double,threshold: Int) = accuracy>threshold
@@ -36,9 +36,11 @@ fun canSee(enabled: Boolean, sharing: Boolean, at: Instant, now: Instant) =
     enabled && sharing && freshness(at, now) != LocationFreshness.EXPIRED
 fun normalizeInviteCode(input: String): String {
     val clean = input.uppercase(Locale.ROOT).replace(Regex("[\\s-]"), "")
-    return if (clean.length == 8) clean.take(4) + "-" + clean.drop(4) else clean
+    return when(clean.length) { 6 -> clean.take(3)+"-"+clean.drop(3); 8 -> clean.take(4)+"-"+clean.drop(4); else -> clean }
 }
-fun validInviteCode(code: String) = normalizeInviteCode(code).matches(Regex("[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}"))
+object InviteCodes { const val ALPHABET="23456789ABCDEFGHJKMNPQRSTUVWXYZ"; val acceptedLengths=setOf(6,8) }
+fun validInviteCode(code: String): Boolean { val raw=normalizeInviteCode(code).replace("-",""); return raw.length in InviteCodes.acceptedLengths && raw.all { it in InviteCodes.ALPHABET } }
+fun avatarInitial(name: String)=name.trim().takeIf { it.isNotEmpty() }?.let { String(Character.toChars(it.codePointAt(0))).uppercase(Locale.ROOT) } ?: "?"
 fun validName(name: String) = name.trim().length in 1..80
 fun validEmail(email: String) = email.trim().matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
 fun validPassword(password: String) = password.length in 8..128
@@ -47,4 +49,22 @@ data class Snapshot(val profile: UserProfile? = null, val names: Map<String,Stri
     val requests: List<ShareRequest> = emptyList(), val shares: List<LocationShare> = emptyList(),
     val statuses: List<SharingStatus> = emptyList(), val locations: List<UserLocation> = emptyList(),
     val loading: Boolean = true, val offline: Boolean = false,
-    val contacts: Map<String,ContactProfile> = emptyMap(),val groups: List<Group> = emptyList(),val members: List<GroupMember> = emptyList())
+    val contacts: Map<String,ContactProfile> = emptyMap(),val groups: List<Group> = emptyList(),val members: List<GroupMember> = emptyList(),
+    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false)
+
+@kotlinx.serialization.Serializable data class GroupRequest(val id: String,val group_id: String,val group_name: String,val user_id: String,val name: String,val kind: String,val status: String,val can_respond: Boolean)
+@kotlinx.serialization.Serializable data class MeetingPoint(val id: String,val creator_id: String,val creator_name: String,val latitude: Double,val longitude: Double,val active: Boolean,val created_at: String,val removed_at: String?=null,val recipients: List<String> = emptyList())
+fun stalePosition(fix: UserLocation,profile: ContactProfile?,now: Instant,graceSeconds: Int)=
+    Duration.between(fix.recordedAt,now).seconds>((profile?.updateInterval ?: 60)+graceSeconds).toLong()
+
+// Greedy screen-space clusters avoid overlapping hit targets at every avatar scale.
+data class MarkerScreenPoint(val index: Int,val x: Float,val y: Float)
+fun clusterMarkers(points: List<MarkerScreenPoint>,distance: Float): List<List<Int>> {
+    val remaining=points.toMutableList();val result=mutableListOf<List<Int>>()
+    while(remaining.isNotEmpty()) {
+        val anchor=remaining.removeAt(0)
+        val neighbors=remaining.filter {kotlin.math.abs(it.x-anchor.x)<distance && kotlin.math.abs(it.y-anchor.y)<distance}
+        remaining.removeAll(neighbors.toSet());result+=listOf(anchor.index)+neighbors.map {it.index}
+    }
+    return result
+}

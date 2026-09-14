@@ -19,11 +19,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.*
 import com.whereweare.app.data.BootstrapGate
 import com.whereweare.app.ui.*
@@ -31,15 +34,31 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.auth.status.SessionStatus
 
 @AndroidEntryPoint class MainActivity: ComponentActivity() {
+    private var link by mutableStateOf<android.net.Uri?>(null)
+    override fun onStart() {super.onStart(); visible=true}
+    override fun onStop() {visible=false;super.onStop()}
+    companion object {@Volatile var visible=false; private set}
+    override fun onNewIntent(intent: android.content.Intent) {super.onNewIntent(intent);setIntent(intent);link=intent.data ?: intent.getStringExtra("meeting_id")?.let {android.net.Uri.parse("whereweare://meeting/$it")}}
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); enableEdgeToEdge()
-        setContent { MaterialTheme(colorScheme=lightColorScheme(primary=Color(0xFF147D73),secondary=Color(0xFF4F635F),tertiary=Color(0xFF52618C))) {
-            Surface(Modifier.fillMaxSize()) { App() }
-        } }
+        link=intent.data ?: intent.getStringExtra("meeting_id")?.let {android.net.Uri.parse("whereweare://meeting/$it")}
+        setContent {
+            val appearance: AppearanceViewModel=hiltViewModel()
+            val theme by appearance.theme.collectAsStateWithLifecycle()
+            val language by appearance.language.collectAsStateWithLifecycle()
+            val context=remember(language) {localizedActivityContext(this@MainActivity,language)}
+            val stringsContext=remember(language) {localizedContext(applicationContext,language)}
+            SideEffect {Strings.configure(stringsContext)}
+            CompositionLocalProvider(LocalContext provides context,LocalConfiguration provides context.resources.configuration) {
+                MaterialTheme(colorScheme=appColors(theme)) {Surface(Modifier.fillMaxSize()) {App(appearance=appearance,link=link,linkHandled={link=null})}}
+            }
+        }
     }
 }
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun App(auth: AuthViewModel=hiltViewModel(),bootstrap: BootstrapViewModel=hiltViewModel()) {
+@Composable private fun App(auth: AuthViewModel=hiltViewModel(),bootstrap: BootstrapViewModel=hiltViewModel(),appearance: AppearanceViewModel,link: android.net.Uri?,linkHandled: ()->Unit) {
+    val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(lifecycle,appearance) { lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {appearance.observeMeetings()} }
     val session by auth.session.collectAsStateWithLifecycle()
     val boot by bootstrap.repository.state.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) { bootstrap.refresh(); onPauseOrDispose {} }
@@ -50,37 +69,65 @@ import io.github.jan.supabase.auth.status.SessionStatus
             Text("v${BuildConfig.VERSION_NAME}")
             Spacer(Modifier.height(24.dp))
             when(boot.gate) {
-                BootstrapGate.UPDATE -> { Text("Aggiornamento necessario",style=MaterialTheme.typography.headlineSmall); Text("Questa versione di WhereWeAre non è più supportata. Aggiorna l'app per continuare a utilizzarla.") }
-                BootstrapGate.MAINTENANCE -> { Text("WhereWeAre è temporaneamente in manutenzione",style=MaterialTheme.typography.headlineSmall); boot.config?.maintenance_message?.let { Text(it) } }
-                BootstrapGate.FIRST_CONNECTION -> Text("È necessaria una prima connessione per verificare la compatibilità dell'app. Controlla la rete e riprova.")
+                BootstrapGate.UPDATE -> { Text(Strings.text(R.string.ui_120),style=MaterialTheme.typography.headlineSmall); Text(Strings.text(R.string.ui_121)) }
+                BootstrapGate.MAINTENANCE -> { Text(Strings.text(R.string.ui_122),style=MaterialTheme.typography.headlineSmall); boot.config?.maintenance_message?.let { Text(it) } }
+                BootstrapGate.FIRST_CONNECTION -> Text(Strings.text(R.string.ui_123))
+                BootstrapGate.BACKEND_UPDATE -> Text(Strings.text(R.string.backend_update))
                 else -> CircularProgressIndicator()
             }
-            if(boot.gate !in listOf(BootstrapGate.LOADING,BootstrapGate.READY)) TextButton(onClick=bootstrap::refresh) { Text("Riprova") }
+            if(boot.gate !in listOf(BootstrapGate.LOADING,BootstrapGate.READY)) TextButton(onClick=bootstrap::refresh) { Text(Strings.text(R.string.ui_124)) }
         }
         return
     }
     if(session !is SessionStatus.Authenticated) { Box(Modifier.safeDrawingPadding()) { AuthScreen(auth) }; return }
+    val notificationPermission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
+    var notificationAsked by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
+    val appContext=LocalContext.current
+    LaunchedEffect(session) {
+        if(!notificationAsked && android.os.Build.VERSION.SDK_INT>=33 && com.google.firebase.FirebaseApp.getApps(appContext).isNotEmpty()) {
+            notificationAsked=true
+            if(androidx.core.content.ContextCompat.checkSelfPermission(appContext,android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED) notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     key((session as SessionStatus.Authenticated).session.user?.id) {
         val nav=rememberNavController()
         val stack by nav.currentBackStackEntryAsState()
+        var focus by remember {mutableStateOf<MapFocus?>(null)}
+        val notice by appearance.notification.collectAsStateWithLifecycle()
+        val flare by appearance.flare.collectAsStateWithLifecycle()
+        val invitation by appearance.invite.collectAsStateWithLifecycle()
+        var inviteToken by remember {mutableStateOf<String?>(null)}
+        LaunchedEffect(link) {
+            if(link?.scheme=="whereweare" && link.host=="meeting") {focus=MapFocus(meeting=link.lastPathSegment);nav.navigate("map") {launchSingleTop=true};linkHandled()}
+            else if(link?.scheme=="https" && link.host=="whereweare.app" && link.pathSegments.firstOrNull()=="join") {
+                val token=link.lastPathSegment.orEmpty()
+                if(token.matches(Regex("[0-9a-f]{64}"))) {inviteToken=token;appearance.resolve(token)}
+                linkHandled()
+            }
+        }
         val routes=listOf("map","people","groups","settings")
-        val labels=listOf("Mappa","Persone","Gruppi","Impostazioni")
+        val labels=listOf(Strings.text(R.string.map),Strings.text(R.string.people),Strings.text(R.string.ui_119),Strings.text(R.string.settings))
         val icons=listOf(Icons.Default.Map,Icons.Default.People,Icons.Default.Groups,Icons.Default.Settings)
-        Scaffold(topBar={ TopAppBar(title={ Row(verticalAlignment=Alignment.CenterVertically) {
+        Box(Modifier.fillMaxSize()) { Scaffold(topBar={ Column {TopAppBar(title={ Row(verticalAlignment=Alignment.CenterVertically) {
             Image(painterResource(R.drawable.ic_location),null,Modifier.size(28.dp)); Spacer(Modifier.width(8.dp)); Text("WhereWeAre")
-        } }) },bottomBar={ NavigationBar { routes.forEachIndexed { index,route ->
+        } });notice?.let {point -> Surface(onClick={if(point.active) {focus=MapFocus(meeting=point.id);nav.navigate("map") {launchSingleTop=true}};appearance.notification.value=null},color=MaterialTheme.colorScheme.primaryContainer) {
+            Text(if(point.active) Strings.text(R.string.ui_125, (point.creator_name).toString()) else Strings.text(R.string.ui_126, (point.creator_name).toString()),Modifier.fillMaxWidth().padding(12.dp))
+        }} } },bottomBar={ NavigationBar { routes.forEachIndexed { index,route ->
             NavigationBarItem(selected=stack?.destination?.route==route,onClick={ nav.navigate(route) {
                 popUpTo(nav.graph.startDestinationId) { saveState=true }; launchSingleTop=true; restoreState=true
             } },icon={ Icon(icons[index],labels[index]) },label={ Text(labels[index]) })
         } } }) { padding ->
             NavHost(nav,startDestination="map",modifier=Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background),
                 enterTransition={ EnterTransition.None },exitTransition={ ExitTransition.None },popEnterTransition={ EnterTransition.None },popExitTransition={ ExitTransition.None }) {
-                composable("map") { MapScreen(hiltViewModel()) }
-                composable("people") { Surface(Modifier.fillMaxSize()) { PeopleScreen(hiltViewModel()) } }
+                composable("map") { MapScreen(hiltViewModel(),focus,{focus=null}) }
+                composable("people") { Surface(Modifier.fillMaxSize()) { PeopleScreen(hiltViewModel(),onShow={id -> focus=MapFocus(person=id);nav.navigate("map") {launchSingleTop=true}}) } }
                 composable("groups") { Surface(Modifier.fillMaxSize()) { GroupsScreen(hiltViewModel()) } }
                 composable("settings") { Surface(Modifier.fillMaxSize()) { SettingsScreen(hiltViewModel(),onPrivacy={ nav.navigate("privacy") }) } }
                 composable("privacy") { Surface(Modifier.fillMaxSize()) { PrivacyScreen { nav.popBackStack() } } }
             }
         }
+        MeetingFlare(flare) {appearance.flare.value=null}
+        }
+        invitation?.let {details -> AlertDialog(onDismissRequest={appearance.invite.value=null},title={Text(Strings.text(R.string.ui_127))},text={Text(details["name"].toString().trim('"'))},confirmButton={TextButton(onClick={inviteToken?.let {appearance.resolve(it,true)}}) {Text(Strings.text(R.string.send_request))}},dismissButton={TextButton(onClick={appearance.invite.value=null}) {Text(Strings.text(R.string.ui_006))}}) }
     }
 }

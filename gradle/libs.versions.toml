@@ -40,3 +40,7 @@ ktor-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 maplibre = { module = "org.maplibre.compose:maplibre-compose", version = "0.16.0" }
 maplibre-runtime = { module = "org.maplibre.compose:maplibre-compose-runtime-opengl-android", version = "0.16.0" }
 junit = { module = "junit:junit", version = "4.13.2" }
+robolectric = { module = "org.robolectric:robolectric", version = "4.16.1" }
+
+firebase-bom = { module = "com.google.firebase:firebase-bom", version = "34.19.0" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }

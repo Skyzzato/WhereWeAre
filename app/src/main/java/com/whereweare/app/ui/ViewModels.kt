@@ -33,6 +33,7 @@ open class OperationViewModel: ViewModel() {
                     "location_disabled" in key -> R.string.location_disabled
                     "already_connected" in key -> R.string.error_connected
                     "not_authorized" in key -> R.string.error_forbidden
+                    "group_not_found" in key -> R.string.group_not_found
                     "not_found" in key -> R.string.not_found
                     "invalid_credentials" in key || "email_not_confirmed" in key -> R.string.error_auth
                     else -> R.string.error_generic
@@ -60,13 +61,15 @@ open class OperationViewModel: ViewModel() {
 data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisiblePerson> = emptyList(),val now: Instant=Instant.now())
 @HiltViewModel class MapViewModel @Inject constructor(
     val controller: SharingController,private val sharing: SharingRepository,
-    val location: LocationRepository,private val preferences: PreferencesRepository,private val auth: AuthRepository,val avatars: AvatarRepository
+    val location: LocationRepository,private val preferences: PreferencesRepository,private val auth: AuthRepository,val avatars: AvatarRepository,
+    network: NetworkMonitor,bootstrap: BootstrapRepository
 ): OperationViewModel() {
     private val ticks=flow { while(true) { emit(sharing.now()); delay(1_000) } }
-    val state=combine(sharing.state,ticks,preferences.hidden(auth.userId.orEmpty())) { snapshot,now,hidden ->
+    val state=combine(sharing.state,ticks,preferences.hidden(auth.userId.orEmpty()),preferences.hiddenGroups(auth.userId.orEmpty())) { snapshot,now,hidden,hiddenGroups ->
+        val groupHidden=snapshot.members.filter { it.groupId in hiddenGroups }.map {it.userId}.toSet()
         val visible=snapshot.locations.filter { fix ->
-            fix.userId!=auth.userId && fix.userId !in hidden &&
-                (snapshot.contacts[fix.userId]?.commonGroup==true || snapshot.shares.any { it.owner==fix.userId && it.viewer==auth.userId && it.enabled }) &&
+            fix.userId!=auth.userId && fix.userId !in hidden && fix.userId !in groupHidden &&
+                snapshot.contacts[fix.userId]?.canView==true &&
                 snapshot.statuses.any { it.userId==fix.userId && it.sharing } &&
                 withinVisibility(fix.recordedAt,now,snapshot.contacts[fix.userId]?.visibilitySeconds ?: 600)
         }.map { VisiblePerson(snapshot.names[it.userId].orEmpty(),it,freshness(it.recordedAt,now)) }
@@ -77,6 +80,11 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
         (snapshot.locations.filter { it.userId==auth.userId }+listOfNotNull(tracking.fix)).maxByOrNull { it.recordedAt }
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)
     val threshold=preferences.threshold.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),100)
+    val online=network.online
+    val config=bootstrap.state
+    val avatarScale=preferences.avatarScale.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1f)
+    fun meeting(lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>) { perform {sharing.createMeeting(lat,lon,all,people,groups)} }
+    fun removeMeeting(id: String) {perform {sharing.removeMeeting(id)}}
     val mapStyle=preferences.mapStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"standard")
     val permission=permissionEpoch.map { location.permission() }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),location.permission())
     val pendingStop=controller.pendingStop.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)
@@ -103,17 +111,25 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun respond(id: String,accept: Boolean) { perform { sharing.respond(id,accept) } }
     fun cancel(id: String) { perform { sharing.cancel(id) } }
     fun permission(viewer: String,enabled: Boolean) { perform { sharing.permission(viewer,enabled) } }
+    fun invite(group: String,person: String) { perform(R.string.request_sent) {sharing.inviteMember(group,person)} }
+    fun reveal(person: String) {perform {preferences.hide(requireNotNull(userId),setOf(person),false);state.value.members.filter {it.userId==person}.forEach {preferences.hideGroup(requireNotNull(userId),it.groupId,false)}}}
 }
 @HiltViewModel class SettingsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,
-    private val preferences: PreferencesRepository,private val controller: SharingController,val avatars: AvatarRepository,val location: LocationRepository): OperationViewModel() {
+    private val preferences: PreferencesRepository,private val controller: SharingController,val avatars: AvatarRepository,val location: LocationRepository,private val push: com.whereweare.app.service.PushRegistration,private val analytics: ClientAnalytics): OperationViewModel() {
     val state=sharing.state
     val email get()=auth.email
     val registeredSince get()=registrationDate(auth.createdAt)
-    val highAccuracy=preferences.highAccuracy.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),false)
+    val highAccuracy=preferences.highAccuracy.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     val interval=preferences.interval.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),60)
     val threshold=preferences.threshold.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),100)
     val mapStyle=preferences.mapStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"standard")
-    fun interval(value: Int) { perform { preferences.interval(value) } }
+    val theme=preferences.theme.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"default")
+    val avatarScale=preferences.avatarScale.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1f)
+    val language=preferences.language.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"system")
+    fun theme(value: String) {perform {preferences.theme(value); viewModelScope.launch {analytics.preferencesChanged()}}}
+    fun avatarScale(value: Float) {perform {preferences.avatarScale(value); viewModelScope.launch {analytics.preferencesChanged()}}}
+    fun language(value: String) {perform {preferences.language(value); viewModelScope.launch {analytics.preferencesChanged()}}}
+    fun interval(value: Int) { perform { sharing.rpc("set_update_interval",kotlinx.serialization.json.buildJsonObject {put("seconds",kotlinx.serialization.json.JsonPrimitive(value))}); preferences.interval(value) } }
     fun threshold(value: Int) { perform { preferences.threshold(value) } }
     fun visibility(value: Int) { perform { sharing.visibility(value) } }
     fun mapStyle(value: String) { perform { preferences.mapStyle(value) } }
@@ -126,17 +142,47 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     } }
     fun accuracy(value: Boolean) { perform { preferences.accuracy(value) } }
     fun rename(name: String) { if(!validName(name)) message(R.string.invalid_form) else perform(R.string.saved) { sharing.rename(name) } }
-    fun logout() { perform { val id=auth.userId; controller.logout(); avatars.clear(); if(id!=null) preferences.clearUser(id) } }
+    fun logout() { perform { val id=auth.userId; push.unregister(); controller.logout(); avatars.clear(); if(id!=null) preferences.clearUser(id) } }
 }
 @HiltViewModel class GroupsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository): OperationViewModel() {
     val state=sharing.state
     val userId get()=auth.userId
     val hidden=preferences.hidden(auth.userId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),emptySet())
+    val hiddenGroups=preferences.hiddenGroups(auth.userId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),emptySet())
+    fun hideGroup(gid: String,hide: Boolean) {perform {preferences.hideGroup(requireNotNull(userId),gid,hide)}}
+    fun groupSharing(gid: String,enabled: Boolean) {perform {sharing.groupSharing(gid,enabled)}}
+    fun rename(gid: String,name: String) {perform {sharing.renameGroup(gid,name)}}
+    fun invite(gid: String,person: String) {perform(R.string.request_sent) {sharing.inviteMember(gid,person)}}
+    fun respond(request: String,accept: Boolean) {perform {sharing.respondGroup(request,accept)}}
     fun hide(ids: Set<String>,value: Boolean) { perform { preferences.hide(requireNotNull(userId),ids,value) } }
     fun create(name: String,emoji: String) { perform { sharing.createGroup(name,emoji) } }
-    fun join(code: String) { perform { sharing.joinGroup(code) } }
+    fun join(code: String) { perform(R.string.request_sent) { sharing.joinGroup(code) } }
     fun remove(group: String,ids: Set<String>) { perform { ids.forEach { sharing.removeMember(group,it) } } }
     fun delete(group: String) { perform { sharing.deleteGroup(group) } }
+}
+@HiltViewModel class AppearanceViewModel @Inject constructor(val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context): OperationViewModel() {
+    val theme=preferences.theme.stateIn(viewModelScope,SharingStarted.Eagerly,"default")
+    val language=preferences.language.stateIn(viewModelScope,SharingStarted.Eagerly,"system")
+    val notification=MutableStateFlow<MeetingPoint?>(null)
+    val flare=MutableStateFlow<String?>(null)
+    val invite=MutableStateFlow<kotlinx.serialization.json.JsonObject?>(null)
+    init {
+        viewModelScope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collect {
+            notification.value=null;flare.value=null;invite.value=null
+            val manager=context.getSystemService(android.app.NotificationManager::class.java)
+            manager.activeNotifications.filter {it.notification.channelId=="meetings"}.forEach {manager.cancel(it.id)}
+        }}
+        viewModelScope.launch {combine(auth.session,preferences.language) {_,lang -> auth.userId to lang}.distinctUntilChanged().collect {(id,_) -> if(id!=null) com.whereweare.app.service.PushRegistration.enqueue(context)}}
+    }
+    suspend fun observeMeetings() {sharing.state.collect { snapshot ->
+        val user=auth.userId ?: return@collect
+        if(snapshot.profile?.id!=user) return@collect
+        snapshot.meetings.filter {it.creator_id!=user}.sortedBy {it.created_at}.forEach { point ->
+            val event=point.id+if(point.active) ":created" else ":removed"
+            if(preferences.markMeetingSeen(user,event)) {notification.value=point; if(point.active) flare.value=event}
+        }
+    }}
+    fun resolve(token: String,confirm: Boolean=false) {perform {invite.value=sharing.inviteLink(token,confirm); if(confirm) invite.value=null}}
 }
 @HiltViewModel class BootstrapViewModel @Inject constructor(val repository: BootstrapRepository,private val controller: SharingController): ViewModel() {
     init { refresh() }

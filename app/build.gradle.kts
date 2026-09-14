@@ -19,17 +19,22 @@ android {
         applicationId = "com.whereweare.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.21"
+        versionCode = 5
+        versionName = "0.3"
         buildConfigField("String", "SUPABASE_URL", "\"${setting("SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${setting("SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "MAP_STYLE_URL", "\"${setting("MAP_STYLE_URL", "https://tiles.openfreemap.org/styles/liberty")}\"")
+        listOf("FIREBASE_APP_ID","FIREBASE_API_KEY","FIREBASE_PROJECT_ID","FIREBASE_SENDER_ID").forEach { key -> buildConfigField("String",key,"\"${setting(key)}\"") }
     }
+    bundle { language { enableSplit=false } }
+    testOptions { unitTests.isIncludeAndroidResources = true }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 dependencies {
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.material.icons)
     implementation(libs.exif)
     implementation(platform(libs.compose.bom))
@@ -56,4 +61,5 @@ dependencies {
     implementation(libs.maplibre)
     runtimeOnly(libs.maplibre.runtime)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
 }
