@@ -32,6 +32,7 @@ open class OperationViewModel: ViewModel() {
                     "location_permission" in key -> R.string.location_permission
                     "location_disabled" in key -> R.string.location_disabled
                     "already_connected" in key -> R.string.error_connected
+                    "self_invite" in key -> R.string.self_invite
                     "not_authorized" in key -> R.string.error_forbidden
                     "group_not_found" in key -> R.string.group_not_found
                     "not_found" in key -> R.string.not_found
@@ -109,11 +110,15 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun dismiss(id: String) { perform { sharing.dismiss(id) } }
     val found=MutableStateFlow<UserProfile?>(null)
     fun clearLookup() { found.value=null; message(null) }
+    fun requestPerson(person: String) {perform(R.string.request_sent) {sharing.rpc("request_saved_person",kotlinx.serialization.json.buildJsonObject {put("person",kotlinx.serialization.json.JsonPrimitive(person))})}}
     fun lookup(code: String) {
         if(!validInviteCode(code)) { message(R.string.not_found); return }
-        perform { found.value=sharing.lookup(code); check(found.value!=null) { "not_found" } }
+        perform { val result=sharing.lookup(code);check(result!=null) {"not_found"}
+            check(result.id!=userId) {"self_invite"}
+            check(result.id !in state.value.savedPeople && state.value.shares.none {it.owner==result.id || it.viewer==result.id}) {"already_connected"}
+            found.value=result }
     }
-    fun send() { val code=found.value?.inviteCode ?: return; perform(R.string.request_sent) { sharing.sendRequest(code); found.value=null } }
+    fun send(completed: ()->Unit={}) { val code=found.value?.inviteCode ?: return; perform(R.string.request_sent) { sharing.sendRequest(code); found.value=null;completed() } }
     fun respond(id: String,accept: Boolean) { perform { sharing.respond(id,accept) } }
     fun cancel(id: String) { perform { sharing.cancel(id) } }
     fun permission(viewer: String,enabled: Boolean) { perform { sharing.permission(viewer,enabled) } }
@@ -161,6 +166,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun logout() { perform { val id=auth.userId; push.unregister(); controller.logout(); avatars.clear(); if(id!=null) {preferences.clearUser(id);avatarDrafts.clear(id)} } }
 }
 @HiltViewModel class GroupsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository): OperationViewModel() {
+    fun savePerson(id: String) {perform(R.string.saved) {sharing.savePerson(id)}}
     val state=sharing.state
     val userId get()=auth.userId
     val hidden=preferences.hidden(auth.userId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),emptySet())
@@ -175,11 +181,15 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun respond(request: String,accept: Boolean) {perform {sharing.respondGroup(request,accept)}}
     fun hide(ids: Set<String>,value: Boolean) { perform { preferences.hide(requireNotNull(userId),ids,value) } }
     fun create(name: String,emoji: String) { perform { sharing.createGroup(name,emoji) } }
-    fun join(code: String) { perform(R.string.request_sent) { sharing.joinGroup(code) } }
+    fun join(code: String,completed: ()->Unit={}) {
+        if(state.value.groups.any {normalizeInviteCode(it.code)==normalizeInviteCode(code)}) {message(R.string.already_group_member);return}
+        if(!validInviteCode(code)) {message(R.string.group_not_found);return}
+        perform(R.string.request_sent) {sharing.joinGroup(code);completed()}
+    }
     fun remove(group: String,ids: Set<String>) { perform { ids.forEach { sharing.removeMember(group,it) } } }
     fun delete(group: String) { perform { sharing.deleteGroup(group) } }
 }
-@HiltViewModel class AppearanceViewModel @Inject constructor(val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context): OperationViewModel() {
+@HiltViewModel class AppearanceViewModel @Inject constructor(val invites: InviteStore,val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context): OperationViewModel() {
     val theme=preferences.theme.stateIn(viewModelScope,SharingStarted.Eagerly,"default")
     val language=preferences.language.stateIn(viewModelScope,SharingStarted.Eagerly,"system")
     val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)

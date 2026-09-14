@@ -14,10 +14,10 @@
     <string name="invalid_form">Controlla i campi: nome da 1 a 80 caratteri, email valida e password da 8 a 128 caratteri. Le password devono coincidere.</string>
     <string name="error_network">Connessione non disponibile. Riprova.</string>
     <string name="error_auth">Accesso non riuscito. Controlla email, password e conferma email.</string>
-    <string name="error_generic">Operazione non riuscita. Controlla la connessione e riprova.</string>
-    <string name="error_config">Configura SUPABASE_URL e SUPABASE_ANON_KEY in local.properties e ricompila.</string>
+    <string name="error_generic">Operazione non riuscita. Riprova.</string>
+    <string name="error_config">La configurazione del servizio non è disponibile. Contatta chi ti ha fornito l’app.</string>
     <string name="error_connected">Siete già collegati. Gestisci il permesso nella sezione Persone.</string>
-    <string name="error_forbidden">Condivisione non autorizzata.</string>
+    <string name="error_forbidden">Operazione non autorizzata.</string>
     <string name="not_found">Utente non trovato: verifica il codice, non usare il tuo e riprova più tardi se hai effettuato molte ricerche.</string>
     <string name="map">Mappa</string>
     <string name="people">Persone</string>
@@ -33,7 +33,7 @@
     <string name="waiting">In attesa di connessione o posizione</string>
     <string name="stop_pending">GPS fermato. Stop remoto in attesa di connessione: la posizione potrebbe essere ancora visibile fino al timeout configurato. Attendi la conferma prima del logout o di un nuovo avvio.</string>
     <string name="process_stopped">Il servizio non è attivo su questo dispositivo. L’ultima posizione può restare visibile fino al timeout configurato. Puoi interromperne ora la visibilità.</string>
-    <string name="location_permission">Permesso di localizzazione necessario. Autorizza Posizione precisa nelle impostazioni Android.</string>
+    <string name="location_permission">Permesso di localizzazione necessario. Autorizza la posizione nelle impostazioni Android.</string>
     <string name="location_disabled">Localizzazione di sistema disattivata. Attivala nelle impostazioni.</string>
     <string name="open_location_settings">Impostazioni localizzazione</string>
     <string name="open_app_settings">Permessi applicazione</string>
@@ -41,7 +41,7 @@
     <string name="fit_all">Mostra tutti</string>
     <string name="you">Tu</string>
     <string name="empty_map">Nessuna posizione condivisa disponibile</string>
-    <string name="map_error">Cartografia non disponibile. Controlla la connessione o MAP_STYLE_URL.</string>
+    <string name="map_error">Cartografia non disponibile. Controlla la connessione e riprova.</string>
     <string name="offline">Dati remoti non aggiornati: riconnessione in corso</string>
     <string name="close">Chiudi</string>
     <string name="live">LIVE · Aggiornato ora</string>
@@ -117,7 +117,7 @@
     <string name="ui_021">%1$s membri</string>
     <string name="ui_022">Tutti i gruppi</string>
     <string name="ui_023">Codice gruppo</string>
-    <string name="ui_024">%1$s %2$s · WhereWeAre: %3$s</string>
+    <string name="ui_024">Hai ricevuto un invito per il gruppo %1$s %2$s su WhereWeAre:\n%3$s</string>
     <string name="ui_025">Entrare nel gruppo consente ai membri di vedere le posizioni condivise. Il master ON/OFF resta sovrano.</string>
     <string name="ui_026">Modifica gruppo</string>
     <string name="members">Membri</string>
@@ -235,4 +235,19 @@
     <string name="backend_update">Il server deve essere aggiornato alla versione 0.3. Applica la migrazione del database v0.3.</string>
     <string name="crop_title">Centra il viso</string>
     <string name="crop_hint">Trascina e pizzica per spostare e ingrandire.</string>
+    <string name="sharing_starting">Avvio…</string>
+    <string name="sharing_stopping">Interruzione…</string>
+    <string name="remote_session_active">Sessione remota attiva</string>
+    <string name="realtime_unavailable">Aggiornamento in tempo reale temporaneamente non disponibile</string>
+    <string name="search_name">Cerca per nome</string>
+    <string name="clear_search">Cancella ricerca</string>
+    <string name="center_map">Centra sulla mappa</string>
+    <string name="save_group_person">Aggiungi a Persone</string>
+    <string name="already_group_member">Fai già parte di questo gruppo</string>
+    <string name="self_invite">Questo è il tuo codice</string>
+    <string name="flare_number">%1$d · Bengala</string>
+    <string name="rocket_number">%1$d · Razzo</string>
+    <string name="invalid_invite">Invito non valido. Controlla il codice e riprova.</string>
+    <string name="share_group_code">Hai ricevuto un invito per il gruppo %1$s %2$s su WhereWeAre:\nCodice gruppo: %3$s\nApri WhereWeAre, vai in Gruppi e scegli Entra con codice.</string>
+    <string name="share_person_code">Aggiungimi su WhereWeAre!\nCodice personale: %1$s\nApri Persone, scegli Aggiungi persona e inserisci il codice.</string>
 </resources>

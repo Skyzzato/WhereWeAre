@@ -8,3 +8,12 @@ local.properties
 *.iml
 captures/
 supabase/.temp/
+*.apk
+*.aab
+*.jks
+*.keystore
+.env
+.env.*
+!.env.example
+google-services.json
+*service-account*.json

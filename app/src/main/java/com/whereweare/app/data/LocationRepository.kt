@@ -53,7 +53,8 @@ import javax.inject.Singleton
         // Release FLP between bounded single-shot acquisitions for long intervals.
         return flow {
             while(currentCoroutineContext().isActive) {
-                check(hasPermission()) { "location_permission" }
+                if(!hasPermission()) throw SecurityException("location_permission")
+                if(!enabled()) {delay(5_000);continue}
                 val token=CancellationTokenSource()
                 val started=SystemClock.elapsedRealtime()
                 var acquired=false

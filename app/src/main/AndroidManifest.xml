@@ -33,11 +33,11 @@
                 <data android:scheme="whereweare" android:host="group" />
             </intent-filter>
             <!-- Domain association is deliberately disabled until assetlinks.json is published. -->
-            <intent-filter android:autoVerify="false">
+            <intent-filter android:autoVerify="${inviteAutoVerify}">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="whereweare.app" android:pathPrefix="/join/" />
+                <data android:scheme="${inviteScheme}" android:host="${inviteHost}" />
             </intent-filter>
         </activity>
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.files" android:exported="false" android:grantUriPermissions="true">

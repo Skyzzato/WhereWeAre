@@ -61,11 +61,9 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
                 Text(code,style=MaterialTheme.typography.headlineSmall)
                 Row {
                     TextButton(enabled=code.isNotBlank(),onClick={
-                        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(Strings.text(R.string.invite_code),code))
-                        android.widget.Toast.makeText(context,com.whereweare.app.R.string.code_copied,android.widget.Toast.LENGTH_SHORT).show()
+                        vm.message(if(copyInviteCode(context,code)) R.string.code_copied else R.string.error_generic)
                     }) { Text(Strings.text(R.string.ui_080)) }
-                    TextButton(enabled=code.isNotBlank(),onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(Intent.EXTRA_TEXT,Strings.text(R.string.ui_082, inviteLink("person",code))),Strings.text(R.string.ui_083)))}) { Text(Strings.text(R.string.ui_081)) }
+                    TextButton(enabled=code.isNotBlank(),onClick={if(!shareInviteText(context,Strings.text(if(inviteLink("person",code).startsWith("https://")) R.string.ui_082 else R.string.share_person_code,inviteLink("person",code)))) vm.message(R.string.error_generic)}) { Text(Strings.text(R.string.ui_081)) }
                 }
             }
         }
@@ -80,7 +78,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         Choice(Strings.text(R.string.ui_090),MapStyle.fromId(style).id,MapStyle.entries.map { it.id },{MapStyle.fromId(it).label},vm::mapStyle)
         HorizontalDivider();Text(Strings.text(R.string.ui_091),style=MaterialTheme.typography.titleLarge)
         Text(Strings.text(R.string.flare_section),style=MaterialTheme.typography.titleLarge)
-        Choice(Strings.text(R.string.flare_style),flareStyle,(1..30).toList(),{"$it · ${com.whereweare.app.domain.FlareStyles.get(it).nameOrFallback()}"},vm::flareStyle)
+        Choice(Strings.text(R.string.flare_style),flareStyle,(1..50).toList(),{Strings.text(if(it<=30) R.string.flare_number else R.string.rocket_number,it)},vm::flareStyle)
         Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {Text(Strings.text(R.string.flare_sound),Modifier.weight(1f));Switch(flareSound,vm::flareSound)}
         Choice(Strings.text(R.string.ui_092),theme,listOf("default","ocean","sunset","lavender","graphite","dark"),{it.replaceFirstChar(Char::uppercase)},vm::theme)
         Text(Strings.text(R.string.ui_093),style=MaterialTheme.typography.titleSmall)

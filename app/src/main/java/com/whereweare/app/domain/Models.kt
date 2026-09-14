@@ -50,7 +50,7 @@ data class Snapshot(val profile: UserProfile? = null, val names: Map<String,Stri
     val statuses: List<SharingStatus> = emptyList(), val locations: List<UserLocation> = emptyList(),
     val loading: Boolean = true, val offline: Boolean = false,
     val contacts: Map<String,ContactProfile> = emptyMap(),val groups: List<Group> = emptyList(),val members: List<GroupMember> = emptyList(),
-    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false)
+    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false,val realtimeUnavailable: Boolean=false,val savedPeople: Set<String> = emptySet())
 
 @kotlinx.serialization.Serializable data class GroupRequest(val id: String,val group_id: String,val group_name: String,val user_id: String,val name: String,val kind: String,val status: String,val can_respond: Boolean,val group_emoji: String="📍",val can_cancel: Boolean=false)
 @kotlinx.serialization.Serializable data class MeetingPoint(val id: String,val creator_id: String,val creator_name: String,val latitude: Double,val longitude: Double,val active: Boolean,val created_at: String,val removed_at: String?=null,val recipients: List<String> = emptyList(),val flare_style_id: Int?=1)

@@ -11,5 +11,11 @@ try {
    console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
  }
  console.log('ALL SQL AND REGRESSION TESTS PASSED'+(process.argv.includes('--v032') ? ' (v0.32)' : process.argv.includes('--v031') ? ' (v0.31)' : ' (v0.3)'));
+ if(process.argv.includes('--v033')) {
+   for(const file of ['supabase/migrations/005_v0_31.sql','supabase/tests/security_v031.sql','supabase/migrations/006_v0_32.sql','supabase/migrations/007_v0_33.sql','supabase/migrations/007_v0_33.sql','supabase/tests/security_v033.sql','supabase/tests/security_v03.sql']) {
+     console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
+   }
+   console.log('ALL v0.33 SQL AND REGRESSION TESTS PASSED');
+ }
 } catch(error) {console.error(error.message,error.where ?? '',error.detail ?? '');process.exitCode=1;}
 finally {await db.close();}

@@ -33,6 +33,6 @@ import kotlinx.coroutines.CancellationException
             if(path!=null && bitmap!=null) Image(bitmap!!.asImageBitmap(),name,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
             else Text(com.whereweare.app.domain.avatarInitial(name),color=Color.White,style=MaterialTheme.typography.titleMedium)
         }
-        if(star) Icon(Icons.Default.Star,Strings.text(R.string.ui_003),tint=Color(0xFFFFC107),modifier=Modifier.size(14.dp).align(Alignment.TopEnd))
+        if(star) Icon(Icons.Default.Star,Strings.text(R.string.ui_003),tint=Color(0xFFFFC107),modifier=Modifier.size((size.value*.28f).coerceIn(7f,22f).dp).align(Alignment.TopStart).offset(x=(-size.value*.04f).dp,y=(-size.value*.04f).dp))
     }
 }

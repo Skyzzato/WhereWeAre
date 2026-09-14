@@ -36,7 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
         OutlinedTextField(email,{ email=it },label={ Text(stringResource(R.string.email)) },keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Email),singleLine=true,modifier=Modifier.fillMaxWidth())
         OutlinedTextField(password,{ password=it },label={ Text(stringResource(R.string.password)) },visualTransformation=PasswordVisualTransformation(),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Password),singleLine=true,modifier=Modifier.fillMaxWidth())
         if(registering) OutlinedTextField(confirm,{ confirm=it },label={ Text(stringResource(R.string.confirm_password)) },visualTransformation=PasswordVisualTransformation(),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Password),singleLine=true,modifier=Modifier.fillMaxWidth())
-        Busy(operation)
+        Busy(operation,inline=true)
         if(confirmation) Notice(R.string.confirmation)
         Button(onClick={ if(registering) vm.register(name,email,password,confirm) else vm.login(email,password) },enabled=!operation.busy,modifier=Modifier.fillMaxWidth()) {
             Text(stringResource(if(registering) R.string.register else R.string.login))

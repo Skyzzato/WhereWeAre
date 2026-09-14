@@ -14,10 +14,10 @@
     <string name="invalid_form">Check your details: name 1–80 characters, valid email and password 8–128 characters. Passwords must match.</string>
     <string name="error_network">Connection unavailable. Try again.</string>
     <string name="error_auth">Sign-in failed. Check your email, password and email confirmation.</string>
-    <string name="error_generic">The change could not be saved and has been rolled back. Check your connection and try again.</string>
-    <string name="error_config">This app has not been configured. Contact the app administrator.</string>
+    <string name="error_generic">Operation failed. Please try again.</string>
+    <string name="error_config">The service configuration is unavailable. Contact the person who provided the app.</string>
     <string name="error_connected">You are already connected. Manage permissions in People.</string>
-    <string name="error_forbidden">Sharing is not authorized.</string>
+    <string name="error_forbidden">Operation not authorized.</string>
     <string name="not_found">User not found. Check the code, do not use your own and try later if you have made many searches.</string>
     <string name="map">Map</string>
     <string name="people">People</string>
@@ -33,7 +33,7 @@
     <string name="waiting">Waiting for a connection or location</string>
     <string name="stop_pending">GPS stopped. Waiting for a connection to stop remote sharing: your last location may remain visible until its timeout. Wait for confirmation before signing out or starting again.</string>
     <string name="process_stopped">The service is not active on this device. Your last location may remain visible until its timeout. You can stop sharing it now.</string>
-    <string name="location_permission">Location permission is required. Allow precise location in Android settings.</string>
+    <string name="location_permission">Location permission is required. Allow location in Android settings.</string>
     <string name="location_disabled">System location is disabled. Enable it in settings.</string>
     <string name="open_location_settings">Location settings</string>
     <string name="open_app_settings">App permissions</string>
@@ -41,7 +41,7 @@
     <string name="fit_all">Show all</string>
     <string name="you">You</string>
     <string name="empty_map">No shared locations available</string>
-    <string name="map_error">Map unavailable. Check your connection or choose another map.</string>
+    <string name="map_error">Map unavailable. Check the connection and try again.</string>
     <string name="offline">Reconnecting to synchronization</string>
     <string name="close">Close</string>
     <string name="live">LIVE · Updated now</string>
@@ -117,7 +117,7 @@
     <string name="ui_021">%1$s members</string>
     <string name="ui_022">All groups</string>
     <string name="ui_023">Group code</string>
-    <string name="ui_024">%1$s %2$s · WhereWeAre: %3$s</string>
+    <string name="ui_024">You have received an invitation to the group %1$s %2$s on WhereWeAre:\n%3$s</string>
     <string name="ui_025">After approval, group members can view locations you share with the group. You can disable group sharing independently. The main ON/OFF switch always applies.</string>
     <string name="ui_026">Edit group</string>
     <string name="members">Members</string>
@@ -235,4 +235,19 @@
     <string name="backend_update">The server must be updated for version 0.3. Please apply the v0.3 database migration.</string>
     <string name="crop_title">Center your face</string>
     <string name="crop_hint">Drag and pinch to move and zoom.</string>
+    <string name="sharing_starting">Starting…</string>
+    <string name="sharing_stopping">Stopping…</string>
+    <string name="remote_session_active">Remote session active</string>
+    <string name="realtime_unavailable">Live updates temporarily unavailable</string>
+    <string name="search_name">Search by name</string>
+    <string name="clear_search">Clear search</string>
+    <string name="center_map">Center on map</string>
+    <string name="save_group_person">Add to People</string>
+    <string name="already_group_member">You already belong to this group</string>
+    <string name="self_invite">This is your own code</string>
+    <string name="flare_number">%1$d · Flare</string>
+    <string name="rocket_number">%1$d · Rocket</string>
+    <string name="invalid_invite">Invalid invitation. Check the code and try again.</string>
+    <string name="share_group_code">You have received an invitation to the group %1$s %2$s on WhereWeAre:\nGroup code: %3$s\nOpen WhereWeAre, go to Groups and choose Join with code.</string>
+    <string name="share_person_code">Add me on WhereWeAre!\nPersonal code: %1$s\nOpen People, choose Add person and enter the code.</string>
 </resources>

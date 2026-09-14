@@ -32,7 +32,7 @@ import javax.inject.Inject
         try {
             ServiceCompat.startForeground(this,10,notification,if(Build.VERSION.SDK_INT>=29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0)
             controller.attach(scope,restarting=intent==null) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
-        } catch(_: SecurityException) { stopSelf(); return START_NOT_STICKY }
+        } catch(_: SecurityException) { controller.serviceStartFailed();stopSelf(); return START_NOT_STICKY }
         return START_STICKY
     }
     override fun onDestroy() { scope.cancel(); super.onDestroy() }

@@ -4,7 +4,7 @@ import com.whereweare.app.domain.*
 import kotlinx.serialization.Serializable
 import java.time.Instant
 
-@Serializable data class MetadataDto(val profile: ProfileDto,val names: List<NameDto>,val requests: List<RequestDto>,val shares: List<ShareDto>,val statuses: List<StatusDto>,val contacts: List<ContactDto>,val groups: List<GroupDto>,val members: List<MemberDto>,val group_requests: List<GroupRequest>,val meetings: List<MeetingPoint>,val server_time: String)
+@Serializable data class MetadataDto(val profile: ProfileDto,val names: List<NameDto>,val requests: List<RequestDto>,val shares: List<ShareDto>,val statuses: List<StatusDto>,val contacts: List<ContactDto>,val groups: List<GroupDto>,val members: List<MemberDto>,val group_requests: List<GroupRequest>,val meetings: List<MeetingPoint>,val server_time: String,val saved_people: List<String> = emptyList())
 
 @Serializable data class ProfileDto(val id: String, val display_name: String, val invite_code: String,val avatar_path: String?=null,val visibility_seconds: Int=86400) {
     fun domain() = UserProfile(id, display_name, invite_code,SafeAvatar.reference(avatar_path),visibility_seconds)

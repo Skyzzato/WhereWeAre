@@ -1,5 +1,30 @@
 # WhereWeAre — verifiche
 
+## v0.33 — verifica per la pubblicazione del repository
+
+14 settembre 2026, Android `versionName=0.33`, `versionCode=8`. Codice applicativo, risorse, migrazioni e dipendenze invariati rispetto al working tree iniziale, verificati con inventario SHA-256 esterno. Le modifiche di questa attività sono documentazione e `.gitignore`; `ROADMAP.md` invariato.
+
+| Controllo | Esito corrente |
+| --- | --- |
+| Gradle `:app:build --console=plain` | PASS: debug/release, test e lint; 114 task, 18 eseguiti e 96 aggiornati. JDK 21 Android Studio, wrapper Gradle 9.7.1, SDK 37. |
+| Build isolata dai file destinati a Git | PASS: `:app:assembleDebug :app:testDebugUnitTest :app:lintDebug`; 64 task eseguiti, nessun output di build preesistente nella copia. Configurazione locale copiata separatamente e non versionata; dipendenze dalla cache/download Gradle. |
+| Test JVM/Robolectric isolati | **39 test, 0 fallimenti, 0 errori** nelle otto suite esistenti. |
+| Lint isolato | **0 errori, 49 warning** preesistenti; presenti anche avvisi Kotlin/API FCM deprecate. Non corretti incidentalmente. |
+| SQL `node supabase/tests/run-v03.mjs --v033` | PASS su PGlite 0.5.8 temporaneo: migrazioni 001–007, 007 ripetuta, suite iniziali, storage, v0.3, v0.31, v0.33 e regressione v0.3 finale. |
+| Dispatcher push | `deno check --cached-only` PASS; test con `--cached-only --allow-env`, senza permesso rete: **1 passato**. Avviso transitivo `punycode`. |
+| Risorse/audio | 251 stringhe EN e 251 IT, stessi identificativi; compilazione risorse riuscita. Tre WAV validati da `tools/verify-audio.mjs`. |
+| Manifest/dipendenze | Manifest debug/release uniti e compilati; servizi applicativi non esportati, foreground type location, backup e cleartext disabilitati. Dipendenze risolte, controllo duplicati e metadati AAR passato; nessun aggiornamento introdotto. |
+| Versione visibile | Splash, Informazioni e User-Agent usano BuildConfig; APK verificato con aapt: package `com.whereweare.app`, 0.33/8, min SDK 26. Nessun nome della tecnologia backend nelle stringhe IT/EN. |
+| Firma/identità APK locale | `apksigner verify` PASS. L'APK debug del progetto ha lo stesso SHA-256 dell'APK presente all'inizio: `748DD9684991CA09F34130924BC5AD5E8CE3F1675CD9CC0C9FECF2F4BEFFC350`. La prova isolata certifica la build da sorgente, senza promessa di identità binaria fra directory diverse. |
+| Segreti e cronologia | Controllati 201 blob storici distinti selezionati e file correnti; nessuna chiave privata, JWT o token nei formati cercati. Configurazioni locali, APK e chiavi esclusi dall'indice. Alberi dei quattro commit recuperati identici agli originali. |
+| Whitespace | `git diff --check` e controllo dell'indice superati. |
+
+Log locali esclusi da Git: `.tools/repository-v033-build.log`, `.tools/repository-v033-repro.log`, `.tools/repository-v033-sql.log`. Report del collaudo isolato in `.tools/repro-v033/app/build/reports`.
+
+Nessun dispositivo ADB o AVD disponibile. Non eseguiti test fisici di background/schermo spento, fotocamera, audio o scambio fra telefoni. Nessun test live e nessuna modifica al database remoto. Restano configurazione Firebase, eventuale distribuzione App Links e verifica della 007 sul server, come descritto in `SETUP_v0.33.md`. La 006 conserva l'incongruenza storica del bootstrap (code 6 per 0.32); la 007 annuncia correttamente 0.33/8.
+
+Le sezioni sottostanti sono report storici conservati, non risultati rieseguiti in questa attività.
+
 ## v0.32 — build 7
 
 Build completa riuscita (`:app:build`): debug/release, test JVM e lint. 31 test superati, 0 errori/fallimenti; lint 0 errori. Suite SQL `node supabase/tests/run-v03.mjs --v032` superata con migrazione 006 e regressione precedente. APK debug: `app/build/outputs/apk/debug/WhereWeAre-v0.32-build7-debug.apk`, SHA-256 `31644E507D034A3F77BE9578766A3B452D7DF4272740A5B06EBBFB6F86A8F10E`.

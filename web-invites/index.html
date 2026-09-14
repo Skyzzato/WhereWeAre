@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WhereWeAre — Invito</title>
+<style>body{font:18px system-ui;margin:4rem auto;padding:1.5rem;max-width:32rem;background:#eff6f5;color:#193c37}code{display:block;font-size:2rem;margin:2rem 0}a{display:inline-block;padding:1rem;background:#147d73;color:white;border-radius:.5rem}p{line-height:1.6}</style>
+<h1>WhereWeAre</h1><p id="message"></p><code id="code"></code><a id="open" hidden></a><p id="fallback"></p>
+<script>
+// Static fallback template: configure hosting to serve this page for typed invite paths.
+// No automatic redirection, analytics or fabricated store/download URL.
+const en=!navigator.language.toLowerCase().startsWith('it');document.documentElement.lang=en?'en':'it';
+let parts=[];try{parts=location.pathname.split('/').filter(Boolean).map(decodeURIComponent);}catch{}
+const type=parts.at(-2),raw=parts.at(-1)||'',code=raw.replace('-','').toUpperCase();
+const valid=!location.search&&!location.hash&&['person','group'].includes(type)&&/^[A-Za-z2-9]{3,4}-?[A-Za-z2-9]{3,4}$/.test(raw)&&/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}([ABCDEFGHJKMNPQRSTUVWXYZ23456789]{2})?$/.test(code);
+if(valid){
+ const normalized=code.slice(0,code.length/2)+'-'+code.slice(code.length/2);
+ document.querySelector('#message').textContent=en?(type==='group'?'Group invitation':'Personal invitation'):(type==='group'?'Invito a un gruppo':'Invito personale');
+ document.querySelector('#code').textContent=normalized;
+ const open=document.querySelector('#open');open.hidden=false;open.href='whereweare://'+type+'/'+normalized;open.textContent=en?'Open WhereWeAre':'Apri WhereWeAre';
+ document.querySelector('#fallback').textContent=en?'If the app does not open, keep this code. Once WhereWeAre is installed, enter it in People → Add person or Groups → Join with code. Ask the sender how to install the app.':'Se l’app non si apre, conserva questo codice. Dopo aver installato WhereWeAre, inseriscilo in Persone → Aggiungi persona oppure Gruppi → Entra con codice. Chiedi a chi ti ha invitato come installare l’app.';
+}else document.querySelector('#message').textContent=en?'Invalid invitation. Ask the sender to check the code.':'Invito non valido. Chiedi a chi ti ha invitato di verificare il codice.';
+</script></html>

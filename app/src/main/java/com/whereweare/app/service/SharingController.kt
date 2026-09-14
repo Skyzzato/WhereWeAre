@@ -15,7 +15,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
@@ -42,11 +42,15 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
         check(bootstrap.state.value.gate==BootstrapGate.READY) { "bootstrap_blocked" }
         check(location.hasPermission()) { "location_permission" }
         check(location.enabled()) { "location_disabled" }
-        ContextCompat.startForegroundService(context,Intent(context,LocationForegroundService::class.java))
+        if(state.value.starting || state.value.active) return
+        mutableState.value=state.value.copy(starting=true)
+        try {ContextCompat.startForegroundService(context,Intent(context,LocationForegroundService::class.java))}
+        catch(e: Exception) {mutableState.value=TrackingState();throw e}
     }
     @OptIn(ExperimentalCoroutinesApi::class)
     fun attach(serviceScope: CoroutineScope,restarting: Boolean=false,stopService: () -> Unit) {
         if(tracking?.isActive==true) return
+        mutableState.value=state.value.copy(starting=true)
         tracking=serviceScope.launch {
             try {
                 auth.awaitSession()
@@ -116,18 +120,23 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
             } finally {
                 // Destruction cancels the scope: preserve the session for Android's sticky restart.
                 // A normal termination (remote stop, revoked permission, blocked bootstrap) clears it.
-                if(currentCoroutineContext().isActive) preferences.trackingSession(null)
-                mutableState.value=state.value.copy(active=false); stopService()
+                if(currentCoroutineContext().isActive) {
+                    preferences.trackingSession(null)
+                    auth.userId?.let {preferences.pendingStop(it);enqueueStop(it)}
+                }
+                mutableState.value=state.value.copy(active=false,starting=false); stopService()
             }
         }
     }
     fun requestStop() { scope.launch { stop() } }
+    fun serviceStartFailed() {mutableState.value=TrackingState();requestStop()}
     suspend fun stop() = mutex.withLock {
         val id=auth.userId ?: return@withLock
         // Persist intent before terminating the foreground service or making a network call.
         preferences.pendingStop(id)
         enqueueStop(id)
-        tracking?.cancelAndJoin(); tracking=null
+        // Cancel without holding a join on a job that may be awaiting this same mutex.
+        val stopped=tracking;tracking=null;stopped?.cancel()
         context.stopService(Intent(context,LocationForegroundService::class.java))
         mutableState.value=TrackingState()
         try { withTimeout(12_000) { repository.sharing(false) }; preferences.pendingStop(null)
@@ -140,6 +149,9 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
         repository.sharing(false)
         preferences.pendingStop(null)
         true
+    }
+    fun reconcileRemote(remote: Boolean) {
+        if(remote && !state.value.active && !state.value.starting && tracking?.isActive!=true) requestStop()
     }
     suspend fun logout() {
         stop()

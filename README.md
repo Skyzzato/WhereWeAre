@@ -1,16 +1,18 @@
-# WhereWeAre v0.32
+# WhereWeAre v0.33
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-Versione `0.32`, `versionCode=7`, sviluppata sulla v0.31, conservando la correzione del crash di avvio. Vedi [rapporto v0.32](RELEASE_NOTES_v0.32.md), [aggiornamento server](SETUP_v0.32.md), [configurazione Firebase](SETUP_v0.3.md) e [verifiche](VERIFICATION.md).
+Versione `0.33`, `versionCode=8`, sviluppata sulla v0.32. Per installazione, migrazione 007, inviti tramite solo codice senza hosting e limitazioni background vedi [SETUP v0.33](SETUP_v0.33.md).
+
+La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
 ## Avvio
 
 1. Installa Android Studio, JDK 21, SDK API 37 e Build Tools 36.0.0. Minimo Android 8/API 26; serve Google Play Services per Fused Location e FCM.
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
-3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql`, `002_v0_2.sql`, `003_storage_upload_guard.sql`, `004_v0_3.sql`, `005_v0_31.sql`, `006_v0_32.sql`. Su un progetto v0.31 già aggiornato applica soltanto la 006.
+3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Su un progetto già aggiornato alla v0.32 applica soltanto la 007.
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. Installa `app/build/outputs/apk/debug/WhereWeAre-v0.31-build6-debug.apk` se presente, oppure `app-debug.apk`. È una build con firma debug. La release per distribuzione richiede la propria chiave di firma.
+5. Installa `WhereWeAre-v0.33-build8-debug.apk` oppure `app/build/outputs/apk/debug/app-debug.apk`. È una build con firma debug.
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
@@ -37,12 +39,12 @@ La migrazione 002 disattiva il vecchio cleanup fisso a due ore: non reintrodurlo
 
 ## Cartografia
 
-Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.3`. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
+Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.33` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
 
 ## Test riproducibili
 
 - Android/JVM/lint: `.\gradlew.bat :app:build`.
-- SQL: `node supabase/tests/run-v03.mjs`, con PGlite e pgcrypto nella cartella `.tools/pglite/package` (vedi SETUP).
+- SQL completo v0.33: `node supabase/tests/run-v03.mjs --v033`, con PGlite 0.5.8 e pgcrypto nella cartella `.tools/pglite/package` (vedi SETUP).
 - Edge: `deno check supabase/functions/send-meeting-push/index.ts`.
 - Test su dispositivo e checklist Firebase: [VERIFICATION.md](VERIFICATION.md).
 

@@ -25,13 +25,15 @@ private data class Spark(val angle: Float,val speed: Float,val size: Float,val d
 
 @Composable fun FlareAnimation(id: String?,styleId: Int=1,sound: Boolean=true,modifier: Modifier=Modifier.fillMaxSize(),finished: ()->Unit) {
     if(id==null) return
-    val style=remember(id) {FlareStyles.get(styleId)}
+    val rocket=remember(id) {if(FlareStyles.normalize(styleId)>=31) RocketStyles.flight(styleId,id.hashCode()) else null}
+    val style=remember(id) {FlareStyles.get(styleId).let {base -> rocket?.let {base.copy(ascent=it.burstTime/(it.duration/1000f))} ?: base}}
     val progress=remember(id) {Animatable(0f)}
     val color=MaterialTheme.colorScheme.primary
     val context=LocalContext.current.applicationContext
     val audio=remember(id) {FlareAudio(context)}
     val lifecycle=LocalLifecycleOwner.current.lifecycle
     val done by rememberUpdatedState(finished)
+    val rocketParticles=remember(id) {rocket?.let {RocketStyles.particles(it,id.hashCode())}.orEmpty()}
     val enabled by rememberUpdatedState(sound)
     val sparks=remember(id) {val random=Random(id.hashCode());List(style.particles) {i ->
         Spark((2*PI*i/style.particles).toFloat()+(random.nextFloat()-.5f)*style.irregularity,
@@ -50,6 +52,7 @@ private data class Spark(val angle: Float,val speed: Float,val size: Float,val d
     }
     Canvas(modifier) {
         val p=progress.value
+        if(rocket!=null) {drawRocket(rocket,p,rocketParticles);return@Canvas}
         // The v0.31 reference is deliberately unchanged, including its original pixel sizes.
         if(style.id==1) {classicFlare(p,color);return@Canvas}
         fun position(t: Float): Offset {

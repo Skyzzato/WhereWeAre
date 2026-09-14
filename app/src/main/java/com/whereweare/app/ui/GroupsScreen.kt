@@ -21,7 +21,7 @@ import com.whereweare.app.domain.normalizeInviteCode
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@Composable fun GroupsScreen(vm: GroupsViewModel,initialCode: String?=null) {
+@Composable fun GroupsScreen(vm: GroupsViewModel,initialCode: String?=null,inviteId: String?=null,inviteHandled: ()->Unit={}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
     val hidden by vm.hidden.collectAsStateWithLifecycle()
@@ -30,8 +30,11 @@ import java.time.format.DateTimeFormatter
     var selectedGroup by rememberSaveable {mutableStateOf<String?>(null)}
     var creating by rememberSaveable {mutableStateOf(false)}
     var editing by rememberSaveable {mutableStateOf(false)}
-    var joining by rememberSaveable(initialCode) {mutableStateOf(initialCode!=null)}
-    var code by rememberSaveable(initialCode) {mutableStateOf(initialCode.orEmpty())}
+    var joining by rememberSaveable(inviteId) {mutableStateOf(initialCode!=null)}
+    var code by rememberSaveable(inviteId) {mutableStateOf(initialCode.orEmpty())}
+    var searching by rememberSaveable {mutableStateOf(false)}
+    var query by rememberSaveable {mutableStateOf("")}
+    LaunchedEffect(inviteId) {if(inviteId!=null) vm.message(null)}
     var selecting by remember {mutableStateOf(false)}
     var selected by remember {mutableStateOf(emptySet<String>())}
     var inviting by remember {mutableStateOf(false)}
@@ -44,8 +47,9 @@ import java.time.format.DateTimeFormatter
     val date=DateTimeFormatter.ofPattern(Strings.text(R.string.ui_013)).withZone(ZoneId.systemDefault())
     LaunchedEffect(members) {selected=selected.intersect(members.toSet())}
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item {Busy(operation);if(state.offline) Text(Strings.text(R.string.ui_008))}
+        item {if(!joining) Busy(operation);if(state.offline) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)}
         if(group==null) {
+            item {SearchHeader(Strings.text(R.string.ui_119),query,searching,{searching=it},{query=it})}
             items(state.groupRequests.filter {it.status=="pending" && (it.kind=="join" || it.user_id==vm.userId)},key={"request-${it.id}"}) {request ->
                 OutlinedCard(Modifier.fillMaxWidth()) {Column(Modifier.padding(12.dp)) {
                     GroupIdentity(request.group_emoji,request.group_name);Text(request.name)
@@ -58,10 +62,10 @@ import java.time.format.DateTimeFormatter
             }
             item {Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 Button(onClick={creating=true}) {Text(Strings.text(R.string.ui_017))}
-                OutlinedButton(onClick={joining=true}) {Text(Strings.text(R.string.ui_018))}
+                OutlinedButton(onClick={vm.message(null);joining=true}) {Text(Strings.text(R.string.ui_018))}
             }}
             if(state.groups.isEmpty()) item {Text(Strings.text(R.string.ui_019))}
-            items(state.groups,key={it.id}) {g -> ElevatedCard(onClick={selectedGroup=g.id;selecting=false;selected=emptySet()},modifier=Modifier.fillMaxWidth()) {
+            items(state.groups.filter {it.name.contains(query,ignoreCase=true)},key={it.id}) {g -> ElevatedCard(onClick={selectedGroup=g.id;selecting=false;selected=emptySet()},modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         GroupIdentity(g.emoji,g.name,Modifier.weight(1f))
@@ -85,9 +89,8 @@ import java.time.format.DateTimeFormatter
                         Text(Strings.text(R.string.ui_023),style=MaterialTheme.typography.titleSmall)
                         Text(normalizeInviteCode(group.code),style=MaterialTheme.typography.headlineSmall)
                         Row {
-                            TextButton(onClick={context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(Strings.text(R.string.ui_023),group.code))}) {Text(Strings.text(R.string.ui_080))}
-                            TextButton(onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                                .putExtra(Intent.EXTRA_TEXT,Strings.text(R.string.ui_024,group.emoji,group.name,inviteLink("group",group.code))),null))}) {Text(Strings.text(R.string.ui_081))}
+                            TextButton(onClick={vm.message(if(copyInviteCode(context,group.code)) R.string.code_copied else R.string.error_generic)}) {Text(Strings.text(R.string.ui_080))}
+                            TextButton(onClick={if(!shareInviteText(context,Strings.text(if(inviteLink("group",group.code).startsWith("https://")) R.string.ui_024 else R.string.share_group_code,group.emoji,group.name,inviteLink("group",group.code)))) vm.message(R.string.error_generic)}) {Text(Strings.text(R.string.ui_081))}
                         }
                     }
                 }
@@ -108,6 +111,7 @@ import java.time.format.DateTimeFormatter
                     Avatar(id,if(own) state.profile?.displayName.orEmpty() else p?.name.orEmpty(),if(own) state.profile?.avatarPath else p?.avatarPath,!own,vm.avatars)
                     Text(if(own) Strings.text(R.string.you) else p?.name.orEmpty(),Modifier.weight(1f).padding(start=10.dp))
                     if(!own) IconButton(onClick={vm.hide(setOf(id),id !in hidden)}) {Icon(if(id in hidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,Strings.text(R.string.ui_020))}
+                    if(!own && id !in state.savedPeople && state.shares.none {it.owner==id || it.viewer==id}) IconButton(onClick={vm.savePerson(id)},enabled=!operation.busy) {Icon(Icons.Default.PersonAdd,Strings.text(R.string.save_group_person))}
                     if(group.creator==vm.userId && !own) IconButton(onClick={removing=setOf(id)},enabled=!operation.busy) {Icon(Icons.Default.Delete,Strings.text(R.string.ui_031))}
                 }
             }
@@ -130,10 +134,10 @@ import java.time.format.DateTimeFormatter
     }
     if(creating) GroupEditor(false,busy=operation.busy,dismiss={creating=false}) {name,emoji -> vm.create(name,emoji);creating=false}
     if(editing && group!=null) GroupEditor(true,group.name,group.emoji,operation.busy,{editing=false}) {name,emoji -> vm.edit(group.id,name,emoji);editing=false}
-    if(joining) AlertDialog(onDismissRequest={joining=false},title={Text(Strings.text(R.string.ui_018))},text={Column {
-        OutlinedTextField(code,{code=it},label={Text(Strings.text(R.string.ui_023))},trailingIcon={IconButton(onClick={code=context.getSystemService(ClipboardManager::class.java).primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()}) {Icon(Icons.Default.ContentPaste,Strings.text(R.string.ui_012))}})
-        Text(Strings.text(R.string.ui_037));Busy(operation)
-    }},confirmButton={TextButton(onClick={vm.join(code);joining=false},enabled=code.isNotBlank()&&!operation.busy) {Text(Strings.text(R.string.ui_038))}},dismissButton={TextButton(onClick={joining=false}) {Text(Strings.text(R.string.ui_006))}})
+    if(joining) AlertDialog(onDismissRequest={joining=false;vm.message(null);inviteHandled()},title={Text(Strings.text(R.string.ui_018))},text={Column {
+        OutlinedTextField(code,{code=it;vm.message(null)},label={Text(Strings.text(R.string.ui_023))},trailingIcon={IconButton(onClick={code=context.getSystemService(ClipboardManager::class.java).primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()}) {Icon(Icons.Default.ContentPaste,Strings.text(R.string.ui_012))}})
+        Text(Strings.text(R.string.ui_037));Busy(operation,inline=true)
+    }},confirmButton={TextButton(onClick={vm.join(code) {joining=false;vm.message(null);inviteHandled()}},enabled=code.isNotBlank()&&!operation.busy) {Text(Strings.text(R.string.ui_038))}},dismissButton={TextButton(onClick={joining=false;vm.message(null);inviteHandled()}) {Text(Strings.text(R.string.ui_006))}})
     if(inviting && group!=null) {
         val candidates=state.contacts.values.filter {it.id !in members && invitations.none {r -> r.user_id==it.id}}.sortedBy {it.name}
         AlertDialog(onDismissRequest={inviting=false},title={Text(Strings.text(R.string.ui_027))},text={

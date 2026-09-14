@@ -41,10 +41,19 @@ import android.util.Log
         if(cached!=null) { last=last.copy(locations=listOf(cached)); send(last) }
         var realtimeOnline=false
         var realtimeStatus="CONNECTING"
+        var disconnectedAt=SystemClock.elapsedRealtime()
+        var lastPoll=0L
         var metadataDirty=true
         val generation=AtomicLong(0)
         val signals=Channel<Unit>(Channel.CONFLATED)
         launch { refreshes.collect { metadataDirty=true; signals.trySend(Unit) } }
+        launch {while(isActive) {
+            delay(5_000)
+            val time=SystemClock.elapsedRealtime()
+            val unavailable=!realtimeOnline && time-disconnectedAt>=20_000
+            if(last.realtimeUnavailable!=unavailable) {last=last.copy(realtimeUnavailable=unavailable);send(last)}
+            if(!realtimeOnline && time-lastPoll>=30_000) {lastPoll=time;metadataDirty=true;signals.trySend(Unit)}
+        }}
         launch {
             for(signal in signals) {
                 try {
@@ -67,12 +76,12 @@ import android.util.Log
                     if(readingGeneration!=generation.get()) { signals.trySend(Unit); continue }
                     if(readMetadata) metadataDirty=false
                     // REST success means data is current enough to display; Realtime status is tracked separately.
-                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false)
+                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
                     send(last)
                 } catch(e: CancellationException) { throw e
                 } catch(e: Exception) {
-                    Log.w("WhereWeAreRealtime","REST refresh failed: ${e.javaClass.simpleName}")
+                    if(com.whereweare.app.BuildConfig.DEBUG) Log.w("WhereWeAreRealtime","REST refresh failed: ${e.javaClass.simpleName}")
                     last=last.copy(loading=false,offline=true,syncFailed=true); send(last)
                     delay(5_000); signals.trySend(Unit)
                 }
@@ -105,16 +114,14 @@ import android.util.Log
                     }
                     launch { channel.status.collect { status ->
                         val previous=realtimeStatus; realtimeStatus=status.name
-                        Log.d("WhereWeAreRealtime","status $previous -> $realtimeStatus")
+                        if(com.whereweare.app.BuildConfig.DEBUG) Log.d("WhereWeAreRealtime","status $previous -> $realtimeStatus")
+                        if(realtimeOnline && status!=RealtimeChannel.Status.SUBSCRIBED) disconnectedAt=SystemClock.elapsedRealtime()
                         realtimeOnline=status==RealtimeChannel.Status.SUBSCRIBED
                         if(realtimeOnline) { metadataDirty=true; signals.trySend(Unit) }
                         // CONNECTING/RECONNECTING is not an offline REST failure; avoid bootstrap flicker.
-                        else if(status.name in setOf("CLOSED","CHANNEL_ERROR","TIMED_OUT")) {
-                            last=last.copy(syncFailed=true); send(last)
-                        }
                     } }
                     launch { channel.systemFlow().collect { event ->
-                        Log.d("WhereWeAreRealtime","system status=${event.status}")
+                        if(com.whereweare.app.BuildConfig.DEBUG) Log.d("WhereWeAreRealtime","system status=${event.status}")
                         check(event.status!="error") { "realtime_unavailable" }
                     } }
                     channel.subscribe(blockUntilSubscribed=true)
@@ -122,7 +129,7 @@ import android.util.Log
                     awaitCancellation()
                 }
             } catch(e: CancellationException) { throw e
-            } catch(e: Exception) { realtimeOnline=false; realtimeStatus="ERROR"; Log.w("WhereWeAreRealtime","channel error: ${e.javaClass.simpleName}"); last=last.copy(loading=false,syncFailed=true); send(last); delay(5_000)
+            } catch(e: Exception) { if(realtimeOnline) disconnectedAt=SystemClock.elapsedRealtime();realtimeOnline=false; realtimeStatus="ERROR"; if(com.whereweare.app.BuildConfig.DEBUG) Log.w("WhereWeAreRealtime","retry in 5s: ${e.javaClass.simpleName}");delay(5_000)
             } finally { withContext(NonCancellable) { runCatching { client.realtime.removeChannel(channel) } } }
         }
     }.flowOn(Dispatchers.IO.limitedParallelism(1))
@@ -140,7 +147,8 @@ import android.util.Log
     suspend fun saveOwn(fix: UserLocation) { preferences.lastFix(fix.userId,Json.encodeToString(LocationDto.serializer(),LocationDto(fix.userId,fix.latitude,fix.longitude,fix.accuracy,fix.speed,fix.bearing,fix.recordedAt.toString()))) }
     suspend fun rpc(name: String,params: JsonObject=buildJsonObject {}) { client.postgrest.rpc(name,params); refresh() }
     suspend fun visibility(seconds: Int) = rpc("set_visibility",buildJsonObject { put("seconds",seconds) })
-    suspend fun remove(person: String)=mutate({ s -> s.copy(shares=s.shares.filter { it.owner!=person && it.viewer!=person }) },{ s -> s.shares.none { it.owner==person || it.viewer==person } }) { rpc("remove_connection",buildJsonObject { put("other_user_id",person) }) }
+    suspend fun remove(person: String)=mutate({ s -> s.copy(shares=s.shares.filter { it.owner!=person && it.viewer!=person },savedPeople=s.savedPeople-person) },{ s -> person !in s.savedPeople && s.shares.none { it.owner==person || it.viewer==person } }) { rpc("remove_connection",buildJsonObject { put("other_user_id",person) }) }
+    suspend fun savePerson(person: String)=mutate({it.copy(savedPeople=it.savedPeople+person)},{person in it.savedPeople}) {rpc("save_group_person",buildJsonObject {put("person",person)})}
     suspend fun dismiss(id: String)=rpc("dismiss_request",buildJsonObject { put("request_id",id) })
     suspend fun createGroup(name: String,emoji: String) { require(validGroupName(name)); rpc("create_group",buildJsonObject { put("group_name",name.trim()); put("group_emoji",emoji) }) }
     suspend fun joinGroup(code: String) { check(client.postgrest.rpc("join_group",buildJsonObject { put("code",code) }).data!="null") { "group_not_found" }; refresh() }

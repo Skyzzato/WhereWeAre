@@ -1,20 +1,44 @@
 package com.whereweare.app.ui
 
 import android.net.Uri
+import com.whereweare.app.BuildConfig
 import com.whereweare.app.domain.normalizeInviteCode
+import com.whereweare.app.domain.validInviteCode
 
-/** Strictly typed invite links; never infer a group from a person code. */
-fun parseTypedInvite(uri: Uri?): Pair<String,String>? {
-    if(uri==null) return null
+private fun validOrigin(base: Uri)=base.scheme=="https" && !base.host.isNullOrBlank() && base.userInfo==null && base.port==-1 && base.query==null && base.fragment==null
+
+/** Configured HTTPS origin only. Custom scheme exists for local tests. */
+fun parseTypedInvite(uri: Uri?,baseUrl: String=BuildConfig.INVITE_BASE_URL): Pair<String,String>? {
+    if(uri==null || uri.query!=null || uri.fragment!=null || uri.userInfo!=null || uri.port!=-1) return null
     val parts=uri.pathSegments
-    val type: String=when {
-        (uri.scheme=="whereweare" && uri.host in setOf("person","group")) -> uri.host!!
-        (uri.scheme=="https" && uri.host=="whereweare.app" && parts.firstOrNull()=="join" && parts.getOrNull(1) in setOf("person","group")) -> parts[1]
-        else -> return null
+    val type: String
+    val raw: String
+    if(uri.scheme=="whereweare" && uri.host in setOf("person","group") && parts.size==1) {
+        type=uri.host ?: return null;raw=parts[0]
+    } else {
+        val base=Uri.parse(baseUrl)
+        if(baseUrl.isBlank() || !validOrigin(base) || uri.scheme!="https" || uri.host!=base.host) return null
+        val prefix=base.pathSegments
+        if(parts.size!=prefix.size+2 || parts.take(prefix.size)!=prefix) return null
+        type=parts[prefix.size];raw=parts.last()
+        if(type !in setOf("person","group")) return null
     }
-    val raw=if(uri.scheme=="whereweare") parts.firstOrNull() else parts.getOrNull(2)
-    val code=raw?.let(::normalizeInviteCode) ?: return null
-    if(code.isBlank() || code.length !in 6..9 || !code.matches(Regex("[A-Z0-9]{3,4}-[A-Z0-9]{3,4}"))) return null
-    return type to code
+    if(!raw.matches(Regex("[A-Za-z0-9]{3,4}-?[A-Za-z0-9]{3,4}")) || !validInviteCode(raw)) return null
+    return type to normalizeInviteCode(raw)
 }
-fun inviteLink(type: String,code: String): String = "whereweare://$type/${normalizeInviteCode(code)}"
+/** No hosted origin: share the usable code, never a misleading custom-scheme URL. */
+fun inviteLink(type: String,code: String,baseUrl: String=BuildConfig.INVITE_BASE_URL): String {
+    val normalized=normalizeInviteCode(code)
+    val base=Uri.parse(baseUrl)
+    if(baseUrl.isBlank() || !validOrigin(base)) return normalized
+    require(type in setOf("person","group") && validInviteCode(normalized))
+    return base.buildUpon().appendPath(type).appendPath(normalized).build().toString()
+}
+
+fun copyInviteCode(context: android.content.Context,code: String): Boolean=runCatching {
+    context.getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("WhereWeAre",code))
+}.isSuccess
+
+fun shareInviteText(context: android.content.Context,text: String): Boolean=runCatching {
+    context.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT,text),null))
+}.isSuccess

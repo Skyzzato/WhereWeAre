@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -34,13 +35,20 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.auth.status.SessionStatus
 
 @AndroidEntryPoint class MainActivity: ComponentActivity() {
+    @javax.inject.Inject lateinit var inviteStore: com.whereweare.app.data.InviteStore
+    private var invalidInvite by mutableStateOf(false)
+    private fun receiveInvite(uri: android.net.Uri) {
+        val intended=(uri.scheme=="whereweare" && uri.host in setOf("person","group")) || (uri.scheme=="https" && BuildConfig.INVITE_BASE_URL.isNotBlank() && uri.host==android.net.Uri.parse(BuildConfig.INVITE_BASE_URL).host && uri.pathSegments.firstOrNull()!="join")
+        if(intended) invalidInvite=!inviteStore.accept(uri)
+    }
     private var link by mutableStateOf<android.net.Uri?>(null)
     override fun onStart() {super.onStart(); visible=true}
     override fun onStop() {visible=false;super.onStop()}
     companion object {@Volatile var visible=false; private set}
-    override fun onNewIntent(intent: android.content.Intent) {super.onNewIntent(intent);setIntent(intent);link=intent.data ?: intent.getStringExtra("meeting_id")?.let {android.net.Uri.parse("whereweare://meeting/$it")}}
+    override fun onNewIntent(intent: android.content.Intent) {super.onNewIntent(intent);setIntent(intent);intent.data?.let {receiveInvite(it)};link=intent.data ?: intent.getStringExtra("meeting_id")?.let {android.net.Uri.parse("whereweare://meeting/$it")}}
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); enableEdgeToEdge()
+        if(savedInstanceState==null) intent.data?.let {receiveInvite(it)}
         link=intent.data ?: intent.getStringExtra("meeting_id")?.let {android.net.Uri.parse("whereweare://meeting/$it")}
         setContent {
             val appearance: AppearanceViewModel=hiltViewModel()
@@ -48,7 +56,12 @@ import io.github.jan.supabase.auth.status.SessionStatus
             val language by appearance.language.collectAsStateWithLifecycle()
             val context=remember(language) {localizedActivityContext(this@MainActivity,language)}
             val stringsContext=remember(language) {localizedContext(applicationContext,language)}
-            SideEffect {Strings.configure(stringsContext)}
+            LaunchedEffect(invalidInvite,language) {if(invalidInvite) {android.widget.Toast.makeText(stringsContext,stringsContext.getString(R.string.invalid_invite),android.widget.Toast.LENGTH_SHORT).show();invalidInvite=false}}
+            SideEffect {Strings.configure(stringsContext)
+                val bars=androidx.core.view.WindowCompat.getInsetsController(window,window.decorView)
+                val light=appColors(theme).background.luminance()>.5f
+                bars.isAppearanceLightStatusBars=light;bars.isAppearanceLightNavigationBars=light
+            }
             CompositionLocalProvider(LocalContext provides context,LocalConfiguration provides context.resources.configuration) {
                 MaterialTheme(colorScheme=appColors(theme)) {Surface(Modifier.fillMaxSize()) {App(appearance=appearance,link=link,linkHandled={link=null})}}
             }
@@ -80,7 +93,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
         return
     }
     if(session !is SessionStatus.Authenticated) { Box(Modifier.safeDrawingPadding()) { AuthScreen(auth) }; return }
-    val invite=remember(link) {parseTypedInvite(link)}
+    val invite by appearance.invites.pending.collectAsStateWithLifecycle()
     val notificationPermission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
     var notificationAsked by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
     val appContext=LocalContext.current
@@ -96,7 +109,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
         val stack by nav.currentBackStackEntryAsState()
         // Wait for NavHost to attach its graph; never navigate from an early startup effect.
         LifecycleResumeEffect(user,stack?.destination?.route) {
-            if(user!=null && stack!=null && stack?.destination?.route!="settings" && (appearance.avatarDrafts.pending(user)?.length() ?: 0)>0)
+            if(invite==null && user!=null && stack!=null && stack?.destination?.route!="settings" && (appearance.avatarDrafts.pending(user)?.length() ?: 0)>0)
                 nav.navigate("settings") {launchSingleTop=true;restoreState=true}
             onPauseOrDispose {}
         }
@@ -106,12 +119,12 @@ import io.github.jan.supabase.auth.status.SessionStatus
         val flareSound by appearance.flareSound.collectAsStateWithLifecycle()
         val invitation by appearance.invite.collectAsStateWithLifecycle()
         var inviteToken by remember {mutableStateOf<String?>(null)}
-        LaunchedEffect(invite) {
-            invite?.let { nav.navigate(if(it.first=="person") "people" else "groups") {launchSingleTop=true}; linkHandled() }
+        LaunchedEffect(invite?.id,stack!=null) {
+            if(stack!=null) invite?.let { nav.navigate(if(it.type=="person") "people" else "groups") {launchSingleTop=true} }
         }
         LaunchedEffect(link) {
             if(link?.scheme=="whereweare" && link.host=="meeting") {focus=MapFocus(meeting=link.lastPathSegment);nav.navigate("map") {launchSingleTop=true};linkHandled()}
-            else if(link?.scheme=="https" && link.host=="whereweare.app" && link.pathSegments.firstOrNull()=="join") {
+            else if(link?.scheme=="https" && BuildConfig.INVITE_BASE_URL.isNotBlank() && link.host==android.net.Uri.parse(BuildConfig.INVITE_BASE_URL).host && link.pathSegments.firstOrNull()=="join") {
                 val token=link.lastPathSegment.orEmpty()
                 if(token.matches(Regex("[0-9a-f]{64}"))) {inviteToken=token;appearance.resolve(token)}
                 linkHandled()
@@ -132,8 +145,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
             NavHost(nav,startDestination="map",modifier=Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background),
                 enterTransition={ EnterTransition.None },exitTransition={ ExitTransition.None },popEnterTransition={ EnterTransition.None },popExitTransition={ ExitTransition.None }) {
                 composable("map") { MapScreen(hiltViewModel(),focus,{focus=null}) }
-                composable("people") { Surface(Modifier.fillMaxSize()) { PeopleScreen(hiltViewModel(),onShow={id -> focus=MapFocus(person=id);nav.navigate("map") {launchSingleTop=true}},initialCode=invite?.takeIf {it.first=="person"}?.second) } }
-                composable("groups") { Surface(Modifier.fillMaxSize()) { GroupsScreen(hiltViewModel(),initialCode=invite?.takeIf {it.first=="group"}?.second) } }
+                composable("people") { Surface(Modifier.fillMaxSize()) {val current=invite?.takeIf {it.type=="person"};PeopleScreen(hiltViewModel(),onShow={id -> focus=MapFocus(person=id);nav.navigate("map") {launchSingleTop=true}},initialCode=current?.code,inviteId=current?.id,inviteHandled={current?.let {appearance.invites.consume(it.id)}}) } }
+                composable("groups") { Surface(Modifier.fillMaxSize()) {val current=invite?.takeIf {it.type=="group"}; GroupsScreen(hiltViewModel(),initialCode=current?.code,inviteId=current?.id,inviteHandled={current?.let {appearance.invites.consume(it.id)}}) } }
                 composable("settings") { Surface(Modifier.fillMaxSize()) { SettingsScreen(hiltViewModel(),onPrivacy={ nav.navigate("privacy") }) } }
                 composable("privacy") { Surface(Modifier.fillMaxSize()) { PrivacyScreen { nav.popBackStack() } } }
             }

@@ -9,7 +9,7 @@ data class FlareStyle(val id: Int,val duration: Int=1800,val ascent: Float=.55f,
     val name: String="") { fun nameOrFallback()=name.ifBlank {"Flare $id"} }
 
 object FlareStyles {
-    fun normalize(id: Int?)=id?.takeIf {it in 1..30} ?: 1
+    fun normalize(id: Int?)=id?.takeIf {it in 1..50} ?: 1
     val all=listOf(
         FlareStyle(1,1300,ascent=.65f,radius=.16f,particles=10),
         FlareStyle(2,1000,ascent=.42f,radius=.14f,particles=22,speedCurve=.65f),
@@ -41,6 +41,6 @@ object FlareStyles {
         FlareStyle(28,1450,height=.4f,head=2f,trail=7,particles=14,radius=.1f,brightness=.5f),
         FlareStyle(29,2400,height=.76f,head=7f,trail=45,particles=80,radius=.4f,brightness=1f),
         FlareStyle(30,3100,height=.78f,trail=56,trailLength=.32f,particles=96,radius=.4f,secondary=.48f,progressive=.18f,gravity=.2f,pulse=.25f)
-    )
+    )+RocketStyles.all.map {FlareStyle(it.id,it.duration,ascent=it.burstTime/(it.duration/1000f),particles=it.count)}
     fun get(id: Int?)=all[normalize(id)-1]
 }

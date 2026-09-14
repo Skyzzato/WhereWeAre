@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.net.URI
 
 plugins {
     alias(libs.plugins.android.application)
@@ -19,8 +20,13 @@ android {
         applicationId = "com.whereweare.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 7
-        versionName = "0.32"
+        versionCode = 8
+        versionName = "0.33"
+        buildConfigField("String", "INVITE_BASE_URL", "\"${setting("INVITE_BASE_URL")}\"")
+        val inviteOrigin=config.getProperty("INVITE_BASE_URL", "").takeIf {it.startsWith("https://")}?.let {URI(it).host}
+        manifestPlaceholders["inviteHost"] = inviteOrigin ?: "invites"
+        manifestPlaceholders["inviteScheme"] = if(inviteOrigin!=null) "https" else "whereweare-inactive"
+        manifestPlaceholders["inviteAutoVerify"] = if(inviteOrigin!=null) "true" else "false"
         buildConfigField("String", "SUPABASE_URL", "\"${setting("SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${setting("SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "MAP_STYLE_URL", "\"${setting("MAP_STYLE_URL", "https://tiles.openfreemap.org/styles/liberty")}\"")
