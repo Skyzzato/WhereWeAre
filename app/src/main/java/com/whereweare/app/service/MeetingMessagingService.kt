@@ -70,11 +70,14 @@ class MeetingNotificationWorker(context: Context,params: WorkerParameters): Coro
             val context=localizedContext(applicationContext,entry.preferences().language.first())
             if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) return Result.success()
             val manager=context.getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(NotificationChannel("meetings",context.getString(R.string.meeting_channel),NotificationManager.IMPORTANCE_DEFAULT))
+            val channelId="meetings-v032"
+            val channel=NotificationChannel(channelId,context.getString(R.string.meeting_channel),NotificationManager.IMPORTANCE_DEFAULT)
+            channel.setSound(android.net.Uri.parse("android.resource://${context.packageName}/${R.raw.flare_notification}"),android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT).build())
+            manager.createNotificationChannel(channel)
             val intent=Intent(context,MainActivity::class.java).setData(android.net.Uri.parse("whereweare://meeting/$id")).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             val open=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             if(!entry.preferences().markMeetingSeen(user,"push:$id:${point.active}")) return Result.success()
-            manager.notify(id.hashCode(),NotificationCompat.Builder(context,"meetings").setSmallIcon(R.drawable.ic_location).setContentTitle(context.getString(R.string.app_name))
+            manager.notify(id.hashCode(),NotificationCompat.Builder(context,channelId).setSmallIcon(R.drawable.ic_location).setContentTitle(context.getString(R.string.app_name))
                 .setContentText(context.getString(if(point.active) R.string.meeting_created else R.string.meeting_removed,point.creator_name)).setContentIntent(open).setAutoCancel(true).build())
             Result.success()
         } catch(e: kotlinx.coroutines.CancellationException) {throw e} catch(_: Exception) {if(runAttemptCount<5) Result.retry() else Result.failure()}

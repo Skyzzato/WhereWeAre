@@ -14,6 +14,7 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 @Singleton class SharingRepository @Inject constructor(private val client: SupabaseClient, private val auth: AuthRepository,private val preferences: PreferencesRepository) {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
@@ -39,6 +40,7 @@ import javax.inject.Singleton
         val cached=preferences.lastFix(id).first()?.let { runCatching { Json.decodeFromString<LocationDto>(it).domain() }.getOrNull() }
         if(cached!=null) { last=last.copy(locations=listOf(cached)); send(last) }
         var realtimeOnline=false
+        var realtimeStatus="CONNECTING"
         var metadataDirty=true
         val generation=AtomicLong(0)
         val signals=Channel<Unit>(Channel.CONFLATED)
@@ -64,11 +66,13 @@ import javax.inject.Singleton
                     val meetings=metadata?.meetings ?: last.meetings
                     if(readingGeneration!=generation.get()) { signals.trySend(Unit); continue }
                     if(readMetadata) metadataDirty=false
-                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=!realtimeOnline,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings)
+                    // REST success means data is current enough to display; Realtime status is tracked separately.
+                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
                     send(last)
                 } catch(e: CancellationException) { throw e
-                } catch(_: Exception) {
+                } catch(e: Exception) {
+                    Log.w("WhereWeAreRealtime","REST refresh failed: ${e.javaClass.simpleName}")
                     last=last.copy(loading=false,offline=true,syncFailed=true); send(last)
                     delay(5_000); signals.trySend(Unit)
                 }
@@ -100,11 +104,17 @@ import javax.inject.Singleton
                         }
                     }
                     launch { channel.status.collect { status ->
+                        val previous=realtimeStatus; realtimeStatus=status.name
+                        Log.d("WhereWeAreRealtime","status $previous -> $realtimeStatus")
                         realtimeOnline=status==RealtimeChannel.Status.SUBSCRIBED
                         if(realtimeOnline) { metadataDirty=true; signals.trySend(Unit) }
-                        else { last=last.copy(offline=true); send(last) }
+                        // CONNECTING/RECONNECTING is not an offline REST failure; avoid bootstrap flicker.
+                        else if(status.name in setOf("CLOSED","CHANNEL_ERROR","TIMED_OUT")) {
+                            last=last.copy(syncFailed=true); send(last)
+                        }
                     } }
                     launch { channel.systemFlow().collect { event ->
+                        Log.d("WhereWeAreRealtime","system status=${event.status}")
                         check(event.status!="error") { "realtime_unavailable" }
                     } }
                     channel.subscribe(blockUntilSubscribed=true)
@@ -112,7 +122,7 @@ import javax.inject.Singleton
                     awaitCancellation()
                 }
             } catch(e: CancellationException) { throw e
-            } catch(_: Exception) { realtimeOnline=false; last=last.copy(loading=false,offline=true); send(last); delay(5_000)
+            } catch(e: Exception) { realtimeOnline=false; realtimeStatus="ERROR"; Log.w("WhereWeAreRealtime","channel error: ${e.javaClass.simpleName}"); last=last.copy(loading=false,syncFailed=true); send(last); delay(5_000)
             } finally { withContext(NonCancellable) { runCatching { client.realtime.removeChannel(channel) } } }
         }
     }.flowOn(Dispatchers.IO.limitedParallelism(1))
@@ -150,7 +160,8 @@ import javax.inject.Singleton
     suspend fun groupSharing(group: String,enabled: Boolean)=mutate({s -> s.copy(members=s.members.map {if(it.groupId==group && it.userId==auth.userId) it.copy(sharingEnabled=enabled) else it}) },{s -> s.members.any {it.groupId==group && it.userId==auth.userId && it.sharingEnabled==enabled} }) { rpc("set_group_sharing",buildJsonObject { put("gid",group); put("enabled",enabled) }) }
     suspend fun inviteMember(group: String,person: String)=rpc("invite_group_member",buildJsonObject { put("gid",group); put("person",person) })
     suspend fun respondGroup(request: String,accept: Boolean)=mutate({s -> s.copy(groupRequests=s.groupRequests.map {if(it.id==request) it.copy(status=if(accept) "accepted" else "rejected") else it}) },{s -> s.groupRequests.none {it.id==request && it.status=="pending"} }) { rpc("respond_group_request",buildJsonObject { put("request_id",request); put("accept",accept) }) }
-    suspend fun createMeeting(id: String,lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>)=rpc("create_meeting",buildJsonObject {
+    suspend fun createMeeting(id: String,lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>,styleId: Int=1)=rpc("create_meeting_styled",buildJsonObject {
+        put("flare_style",com.whereweare.app.domain.FlareStyles.normalize(styleId))
         put("mid",id); put("lat",lat); put("lon",lon); put("all_people",all)
         putJsonArray("people") {people.forEach {add(it)}}; putJsonArray("group_ids") {groups.forEach {add(it)}}
     })

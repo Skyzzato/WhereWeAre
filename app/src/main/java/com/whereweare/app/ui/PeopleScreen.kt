@@ -17,14 +17,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whereweare.app.domain.normalizeInviteCode
 
-@Composable fun PeopleScreen(vm: PeopleViewModel,onShow: (String)->Unit={}) {
+@Composable fun PeopleScreen(vm: PeopleViewModel,onShow: (String)->Unit={},initialCode: String?=null) {
     val state by vm.state.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
     val found by vm.found.collectAsStateWithLifecycle()
     val hidden by vm.hidden.collectAsStateWithLifecycle()
     val context=LocalContext.current
-    var adding by remember { mutableStateOf(false) }
-    var code by remember { mutableStateOf("") }
+    var adding by remember(initialCode) { mutableStateOf(initialCode!=null) }
+    var code by remember(initialCode) { mutableStateOf(initialCode.orEmpty()) }
     var selecting by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var remove by remember { mutableStateOf<Set<String>?>(null) }

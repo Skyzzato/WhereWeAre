@@ -20,6 +20,18 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="whereweare" android:host="meeting" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="whereweare" android:host="person" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="whereweare" android:host="group" />
+            </intent-filter>
             <!-- Domain association is deliberately disabled until assetlinks.json is published. -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />

@@ -17,6 +17,12 @@ import javax.inject.Singleton
     private val themeKey=stringPreferencesKey("theme")
     private val scaleKey=floatPreferencesKey("avatar_scale")
     private val languageKey=stringPreferencesKey("language")
+    private val flareStyleKey=intPreferencesKey("flare_style_id")
+    private val flareSoundKey=booleanPreferencesKey("flare_sound")
+    val flareStyle=store.data.map {com.whereweare.app.domain.FlareStyles.normalize(it[flareStyleKey])}
+    val flareSound=store.data.map {it[flareSoundKey] ?: true}
+    suspend fun flareStyle(id: Int) {store.edit {it[flareStyleKey]=com.whereweare.app.domain.FlareStyles.normalize(id)}}
+    suspend fun flareSound(enabled: Boolean) {store.edit {it[flareSoundKey]=enabled}}
     private val json=kotlinx.serialization.json.Json {ignoreUnknownKeys=true}
     private fun defaults(p: Preferences)=p[bootstrapKey]?.let { runCatching { json.decodeFromString<BootstrapConfig>(it).defaults }.getOrNull() } ?: GlobalDefaults()
     val theme=store.data.map { it[themeKey] ?: defaults(it).theme }

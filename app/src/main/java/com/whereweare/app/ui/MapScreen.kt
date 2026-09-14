@@ -191,13 +191,17 @@ import java.time.format.DateTimeFormatter
                 val serverSharing=state.snapshot.statuses.any { it.userId==state.snapshot.profile?.id && it.sharing }
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.sharing),style=MaterialTheme.typography.titleMedium)
-                    Text(stringResource(if(tracking.active) R.string.on else R.string.off),color=if(tracking.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                val sharingState=when { pending!=null -> if(tracking.active) R.string.ui_055 else R.string.ui_056
+                    tracking.active -> R.string.on
+                    serverSharing -> R.string.process_stopped
+                    else -> R.string.off }
+                Text(stringResource(sharingState),color=if(tracking.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                 }
                 if(tracking.active) Text(if(tracking.waiting) Strings.text(R.string.ui_055) else Strings.text(R.string.ui_056, (tracking.fix?.accuracy?.toLong()).toString()),style=MaterialTheme.typography.bodySmall)
                 if(pending!=null) Notice(R.string.stop_pending)
                 if(serverSharing && !tracking.active && pending==null) Notice(R.string.process_stopped)
                 Button(onClick={ if(tracking.active || serverSharing) vm.stop() else requestPermission(true) },enabled=pending==null,modifier=Modifier.fillMaxWidth()) {
-                    Text(stringResource(if(tracking.active || serverSharing) R.string.stop else R.string.start))
+                    Text(stringResource(if(tracking.active) R.string.stop else if(serverSharing) R.string.reconcile_stop else R.string.start))
                 }
                 if(!vm.location.enabled()) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }) { Text(stringResource(R.string.open_location_settings)) }
                 if(permissionState!=LocationPermission.PRECISE) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri())) }) { Text(Strings.text(R.string.ui_057)) }

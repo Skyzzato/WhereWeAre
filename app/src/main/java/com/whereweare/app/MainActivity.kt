@@ -80,6 +80,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
         return
     }
     if(session !is SessionStatus.Authenticated) { Box(Modifier.safeDrawingPadding()) { AuthScreen(auth) }; return }
+    val invite=remember(link) {parseTypedInvite(link)}
     val notificationPermission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
     var notificationAsked by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
     val appContext=LocalContext.current
@@ -92,16 +93,22 @@ import io.github.jan.supabase.auth.status.SessionStatus
     key((session as SessionStatus.Authenticated).session.user?.id) {
         val nav=rememberNavController()
         val user=(session as SessionStatus.Authenticated).session.user?.id
-        LifecycleResumeEffect(user) {
-            if(user!=null && (appearance.avatarDrafts.pending(user)?.length() ?: 0)>0) nav.navigate("settings") {launchSingleTop=true;restoreState=true}
+        val stack by nav.currentBackStackEntryAsState()
+        // Wait for NavHost to attach its graph; never navigate from an early startup effect.
+        LifecycleResumeEffect(user,stack?.destination?.route) {
+            if(user!=null && stack!=null && stack?.destination?.route!="settings" && (appearance.avatarDrafts.pending(user)?.length() ?: 0)>0)
+                nav.navigate("settings") {launchSingleTop=true;restoreState=true}
             onPauseOrDispose {}
         }
-        val stack by nav.currentBackStackEntryAsState()
         var focus by remember {mutableStateOf<MapFocus?>(null)}
         val notice by appearance.notification.collectAsStateWithLifecycle()
         val flare by appearance.flare.collectAsStateWithLifecycle()
+        val flareSound by appearance.flareSound.collectAsStateWithLifecycle()
         val invitation by appearance.invite.collectAsStateWithLifecycle()
         var inviteToken by remember {mutableStateOf<String?>(null)}
+        LaunchedEffect(invite) {
+            invite?.let { nav.navigate(if(it.first=="person") "people" else "groups") {launchSingleTop=true}; linkHandled() }
+        }
         LaunchedEffect(link) {
             if(link?.scheme=="whereweare" && link.host=="meeting") {focus=MapFocus(meeting=link.lastPathSegment);nav.navigate("map") {launchSingleTop=true};linkHandled()}
             else if(link?.scheme=="https" && link.host=="whereweare.app" && link.pathSegments.firstOrNull()=="join") {
@@ -125,13 +132,13 @@ import io.github.jan.supabase.auth.status.SessionStatus
             NavHost(nav,startDestination="map",modifier=Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background),
                 enterTransition={ EnterTransition.None },exitTransition={ ExitTransition.None },popEnterTransition={ EnterTransition.None },popExitTransition={ ExitTransition.None }) {
                 composable("map") { MapScreen(hiltViewModel(),focus,{focus=null}) }
-                composable("people") { Surface(Modifier.fillMaxSize()) { PeopleScreen(hiltViewModel(),onShow={id -> focus=MapFocus(person=id);nav.navigate("map") {launchSingleTop=true}}) } }
-                composable("groups") { Surface(Modifier.fillMaxSize()) { GroupsScreen(hiltViewModel()) } }
+                composable("people") { Surface(Modifier.fillMaxSize()) { PeopleScreen(hiltViewModel(),onShow={id -> focus=MapFocus(person=id);nav.navigate("map") {launchSingleTop=true}},initialCode=invite?.takeIf {it.first=="person"}?.second) } }
+                composable("groups") { Surface(Modifier.fillMaxSize()) { GroupsScreen(hiltViewModel(),initialCode=invite?.takeIf {it.first=="group"}?.second) } }
                 composable("settings") { Surface(Modifier.fillMaxSize()) { SettingsScreen(hiltViewModel(),onPrivacy={ nav.navigate("privacy") }) } }
                 composable("privacy") { Surface(Modifier.fillMaxSize()) { PrivacyScreen { nav.popBackStack() } } }
             }
         }
-        MeetingFlare(flare) {appearance.finishFlare(flare)}
+        FlareAnimation(flare?.id?.removeSuffix(":created"),flare?.styleId ?: 1,flareSound) {appearance.finishFlare(flare)}
         }
         invitation?.let {details -> AlertDialog(onDismissRequest={appearance.invite.value=null},title={Text(Strings.text(R.string.ui_127))},text={Text(details["name"].toString().trim('"'))},confirmButton={TextButton(onClick={inviteToken?.let {appearance.resolve(it,true)}}) {Text(Strings.text(R.string.send_request))}},dismissButton={TextButton(onClick={appearance.invite.value=null}) {Text(Strings.text(R.string.ui_006))}}) }
     }

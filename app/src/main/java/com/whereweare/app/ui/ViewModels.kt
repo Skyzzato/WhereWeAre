@@ -86,8 +86,9 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun meeting(lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>) { perform {
         val user=requireNotNull(auth.userId)
         val id=java.util.UUID.randomUUID().toString()
-        feedback.created(user,id)
-        sharing.createMeeting(id,lat,lon,all,people,groups)
+        val style=preferences.flareStyle.first()
+        feedback.created(user,id,style)
+        sharing.createMeeting(id,lat,lon,all,people,groups,style)
     } }
     fun removeMeeting(id: String) {perform {sharing.removeMeeting(id)}}
     val mapStyle=preferences.mapStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"standard")
@@ -124,6 +125,10 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     val userId get()=auth.userId
     val state=sharing.state
     val email get()=auth.email
+    val flareStyle=preferences.flareStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1)
+    val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
+    fun flareStyle(id: Int) {perform {preferences.flareStyle(id)}}
+    fun flareSound(enabled: Boolean) {perform {preferences.flareSound(enabled)}}
     val registeredSince get()=registrationDate(auth.createdAt)
     val highAccuracy=preferences.highAccuracy.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     val interval=preferences.interval.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),60)
@@ -177,10 +182,11 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
 @HiltViewModel class AppearanceViewModel @Inject constructor(val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context): OperationViewModel() {
     val theme=preferences.theme.stateIn(viewModelScope,SharingStarted.Eagerly,"default")
     val language=preferences.language.stateIn(viewModelScope,SharingStarted.Eagerly,"system")
+    val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     val notification=MutableStateFlow<MeetingPoint?>(null)
-    val flare=combine(feedback.events,auth.session) {events,_ -> events.firstOrNull {it.user==auth.userId}?.id}
+    val flare=combine(feedback.events,auth.session) {events,_ -> events.firstOrNull {it.user==auth.userId}}
         .stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)
-    fun finishFlare(id: String?) {if(id!=null) auth.userId?.let {feedback.finish(it,id)}}
+    fun finishFlare(event: FlareEvent?) {if(event!=null) auth.userId?.let {feedback.finish(it,event.id)}}
     val invite=MutableStateFlow<kotlinx.serialization.json.JsonObject?>(null)
     init {
         viewModelScope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collect {
@@ -195,7 +201,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
         if(snapshot.profile?.id!=user) return@collect
         snapshot.meetings.sortedBy {it.created_at}.forEach { point ->
             val event=point.id+if(point.active) ":created" else ":removed"
-            val fresh=if(point.active) feedback.created(user,point.id) else preferences.markMeetingSeen(user,event)
+            val fresh=if(point.active) feedback.created(user,point.id,point.flare_style_id) else preferences.markMeetingSeen(user,event)
             if(fresh && point.creator_id!=user) notification.value=point
         }
     }}

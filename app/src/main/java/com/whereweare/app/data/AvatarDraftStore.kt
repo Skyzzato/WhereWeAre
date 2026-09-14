@@ -14,9 +14,14 @@ import javax.inject.Singleton
     private val directory=File(context.filesDir,"avatar-drafts")
     private val preferences=context.getSharedPreferences("avatar_drafts",Context.MODE_PRIVATE)
     @Synchronized fun pending(user: String): File? {
-        val name=preferences.getString("file_$user",null) ?: return null
-        if(!name.matches(Regex("[0-9a-f-]{36}\\.(image|jpg)"))) return null
-        return File(directory,name).takeIf {it.isFile}
+        val raw=preferences.all["file_$user"] ?: return null
+        val name=raw as? String
+        if(name==null || !name.matches(Regex("[0-9a-f-]{36}\\.(image|jpg)"))) {
+            preferences.edit().remove("file_$user").commit();SafeAvatar.diagnostic("draft_reference_reset");return null
+        }
+        return File(directory,name).takeIf {it.isFile && it.canRead()} ?: run {
+            preferences.edit().remove("file_$user").commit();SafeAvatar.diagnostic("missing_draft_reset");null
+        }
     }
     @Synchronized fun clear(user: String) {
         pending(user)?.delete()

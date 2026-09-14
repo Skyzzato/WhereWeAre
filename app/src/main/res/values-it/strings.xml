@@ -179,6 +179,11 @@
     <string name="ui_077">Azioni</string>
     <string name="ui_078">Profilo</string>
     <string name="ui_079">Elimina foto</string>
+    <string name="flare_section">Bengala</string>
+    <string name="flare_style">Stile bengala</string>
+    <string name="flare_sound">Suono bengala</string>
+    <string name="reconcile_stop">Interrompi sessione remota</string>
+    <string name="created_at">Creato il %1$s</string>
     <string name="ui_080">Copia</string>
     <string name="ui_081">Condividi</string>
     <string name="ui_082">Aggiungimi su WhereWeAre con il mio codice personale: %1$s</string>

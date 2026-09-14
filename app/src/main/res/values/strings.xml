@@ -179,6 +179,11 @@
     <string name="ui_077">Actions</string>
     <string name="ui_078">Profile</string>
     <string name="ui_079">Remove photo</string>
+    <string name="flare_section">Flare</string>
+    <string name="flare_style">Flare style</string>
+    <string name="flare_sound">Flare sound</string>
+    <string name="reconcile_stop">Stop remote session</string>
+    <string name="created_at">Created %1$s</string>
     <string name="ui_080">Copy</string>
     <string name="ui_081">Share</string>
     <string name="ui_082">Add me on WhereWeAre using my personal code: %1$s</string>

@@ -39,6 +39,8 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     val theme by vm.theme.collectAsStateWithLifecycle()
     val scale by vm.avatarScale.collectAsStateWithLifecycle()
     val language by vm.language.collectAsStateWithLifecycle()
+    val flareStyle by vm.flareStyle.collectAsStateWithLifecycle()
+    val flareSound by vm.flareSound.collectAsStateWithLifecycle()
     val context=LocalContext.current
     var name by remember(state.profile?.displayName) {mutableStateOf(state.profile?.displayName.orEmpty())}
     var precise by remember {mutableStateOf(vm.location.permission()==LocationPermission.PRECISE)}
@@ -63,7 +65,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
                         android.widget.Toast.makeText(context,com.whereweare.app.R.string.code_copied,android.widget.Toast.LENGTH_SHORT).show()
                     }) { Text(Strings.text(R.string.ui_080)) }
                     TextButton(enabled=code.isNotBlank(),onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(Intent.EXTRA_TEXT,Strings.text(R.string.ui_082, (code).toString())),Strings.text(R.string.ui_083)))}) { Text(Strings.text(R.string.ui_081)) }
+                        .putExtra(Intent.EXTRA_TEXT,Strings.text(R.string.ui_082, inviteLink("person",code))),Strings.text(R.string.ui_083)))}) { Text(Strings.text(R.string.ui_081)) }
                 }
             }
         }
@@ -77,6 +79,9 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         HorizontalDivider(); Text(Strings.text(R.string.map),style=MaterialTheme.typography.titleLarge)
         Choice(Strings.text(R.string.ui_090),MapStyle.fromId(style).id,MapStyle.entries.map { it.id },{MapStyle.fromId(it).label},vm::mapStyle)
         HorizontalDivider();Text(Strings.text(R.string.ui_091),style=MaterialTheme.typography.titleLarge)
+        Text(Strings.text(R.string.flare_section),style=MaterialTheme.typography.titleLarge)
+        Choice(Strings.text(R.string.flare_style),flareStyle,(1..30).toList(),{"$it · ${com.whereweare.app.domain.FlareStyles.get(it).nameOrFallback()}"},vm::flareStyle)
+        Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {Text(Strings.text(R.string.flare_sound),Modifier.weight(1f));Switch(flareSound,vm::flareSound)}
         Choice(Strings.text(R.string.ui_092),theme,listOf("default","ocean","sunset","lavender","graphite","dark"),{it.replaceFirstChar(Char::uppercase)},vm::theme)
         Text(Strings.text(R.string.ui_093),style=MaterialTheme.typography.titleSmall)
         val scales=listOf(.75f,1f,1.25f,1.5f)

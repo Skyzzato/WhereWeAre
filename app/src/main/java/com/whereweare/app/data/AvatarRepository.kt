@@ -32,18 +32,19 @@ import javax.inject.Singleton
             connection.setRequestProperty("Cache-Control","no-store, max-age=0")
             if(bytes!=null) { connection.doOutput=true; connection.outputStream.use { it.write(bytes) } }
             check(connection.responseCode in 200..299) { "server_operation_failed" }
-            connection.inputStream.use { it.readBytes() }
+            connection.inputStream.use {input ->
+                val output=java.io.ByteArrayOutputStream();val buffer=ByteArray(8192)
+                while(true) {val size=input.read(buffer);if(size<0) break;check(output.size()+size<=2*1024*1024) {"response_too_large"};output.write(buffer,0,size)}
+                output.toByteArray()
+            }
         } finally { connection.disconnect() }
     }
     suspend fun load(path: String): Bitmap?=mutex.withLock {
+        if(SafeAvatar.reference(path)==null) {SafeAvatar.diagnostic("remote_reference_ignored");return@withLock null}
         val key=client.auth.currentUserOrNull()?.id+":"+path
         // Revalidate authorization at the origin after an in-memory cache miss.
         cache.get(key) ?: request("/storage/v1/object/authenticated/avatars/$path?cacheNonce=${UUID.randomUUID()}").let { bytes ->
-            val options=BitmapFactory.Options().apply { inJustDecodeBounds=true }
-            BitmapFactory.decodeByteArray(bytes,0,bytes.size,options)
-            var sample=1
-            while(maxOf(options.outWidth,options.outHeight)/sample>512) sample*=2
-            BitmapFactory.decodeByteArray(bytes,0,bytes.size,BitmapFactory.Options().apply { inSampleSize=sample })?.also { cache.put(key,it) }
+            SafeAvatar.decode(bytes)?.also { cache.put(key,it) }
         }
     }
     suspend fun upload(bytes: ByteArray,previous: String?) {

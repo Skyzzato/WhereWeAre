@@ -21,7 +21,7 @@ import com.whereweare.app.domain.normalizeInviteCode
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@Composable fun GroupsScreen(vm: GroupsViewModel) {
+@Composable fun GroupsScreen(vm: GroupsViewModel,initialCode: String?=null) {
     val state by vm.state.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
     val hidden by vm.hidden.collectAsStateWithLifecycle()
@@ -30,8 +30,8 @@ import java.time.format.DateTimeFormatter
     var selectedGroup by rememberSaveable {mutableStateOf<String?>(null)}
     var creating by rememberSaveable {mutableStateOf(false)}
     var editing by rememberSaveable {mutableStateOf(false)}
-    var joining by rememberSaveable {mutableStateOf(false)}
-    var code by rememberSaveable {mutableStateOf("")}
+    var joining by rememberSaveable(initialCode) {mutableStateOf(initialCode!=null)}
+    var code by rememberSaveable(initialCode) {mutableStateOf(initialCode.orEmpty())}
     var selecting by remember {mutableStateOf(false)}
     var selected by remember {mutableStateOf(emptySet<String>())}
     var inviting by remember {mutableStateOf(false)}
@@ -74,7 +74,10 @@ import java.time.format.DateTimeFormatter
         } else {
             item {
                 TextButton(onClick={selectedGroup=null}) {Text(Strings.text(R.string.ui_022))}
-                GroupIdentity(group.emoji,group.name);Text(date.format(group.createdAt),style=MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment=Alignment.Top) {
+                    Column(Modifier.weight(1f)) {GroupIdentity(group.emoji,group.name);Text(Strings.text(R.string.created_at,date.format(group.createdAt)),style=MaterialTheme.typography.bodySmall)}
+                    if(group.creator==vm.userId) TextButton(onClick={editing=true},enabled=!operation.busy) {Text(Strings.text(R.string.ui_026))}
+                }
                 val enabled=state.members.any {it.groupId==group.id && it.userId==vm.userId && it.sharingEnabled}
                 TextButton(onClick={vm.groupSharing(group.id,!enabled)},enabled=!operation.busy) {Text(Strings.text(if(enabled) R.string.ui_009 else R.string.can_see_me))}
                 Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerHighest)) {
@@ -84,9 +87,8 @@ import java.time.format.DateTimeFormatter
                         Row {
                             TextButton(onClick={context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(Strings.text(R.string.ui_023),group.code))}) {Text(Strings.text(R.string.ui_080))}
                             TextButton(onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                                .putExtra(Intent.EXTRA_TEXT,Strings.text(R.string.ui_024,group.emoji,group.name,group.code)),null))}) {Text(Strings.text(R.string.ui_081))}
+                                .putExtra(Intent.EXTRA_TEXT,Strings.text(R.string.ui_024,group.emoji,group.name,inviteLink("group",group.code))),null))}) {Text(Strings.text(R.string.ui_081))}
                         }
-                        if(group.creator==vm.userId) TextButton(onClick={editing=true},enabled=!operation.busy) {Text(Strings.text(R.string.ui_026))}
                     }
                 }
             }

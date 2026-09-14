@@ -56,17 +56,9 @@ class AvatarTakePictureContract : ActivityResultContracts.TakePicture() {
     fun load(file: File) { if(loading || loadedPath==file.path) return
       scope.launch {
         loading=true
-        try { image=withContext(Dispatchers.IO) {
-            val uri=Uri.fromFile(file)
-            val resolver=context.contentResolver
-            val options=BitmapFactory.Options().apply {inJustDecodeBounds=true}
-            resolver.openInputStream(uri)?.use {BitmapFactory.decodeStream(it,null,options)}
-            var sample=1; while(max(options.outWidth,options.outHeight)/sample>2048) sample*=2
-            val bitmap=resolver.openInputStream(uri)?.use {BitmapFactory.decodeStream(it,null,BitmapFactory.Options().apply {inSampleSize=sample})} ?: error("invalid_image")
-            val exif=resolver.openInputStream(uri)?.use {ExifInterface(it)}
-            val matrix=Matrix().apply { if(exif?.isFlipped==true) postScale(-1f,1f); postRotate((exif?.rotationDegrees ?: 0).toFloat()) }
-            Bitmap.createBitmap(bitmap,0,0,bitmap.width,bitmap.height,matrix,true)
-        };loadedPath=file.path } catch(e: CancellationException) {throw e} catch(_: Exception) {drafts.clear(user);onError()} finally {loading=false}
+        try { image=withContext(Dispatchers.IO) {com.whereweare.app.data.SafeAvatar.decode(file)}
+            if(image==null) {drafts.clear(user);onError()} else loadedPath=file.path
+        } catch(e: CancellationException) {throw e} catch(_: Exception) {drafts.clear(user);onError()} finally {loading=false}
     } }
     val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri -> if(uri!=null) scope.launch {
         loading=true

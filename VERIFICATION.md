@@ -1,5 +1,19 @@
 # WhereWeAre — verifiche
 
+## v0.32 — build 7
+
+Build completa riuscita (`:app:build`): debug/release, test JVM e lint. 31 test superati, 0 errori/fallimenti; lint 0 errori. Suite SQL `node supabase/tests/run-v03.mjs --v032` superata con migrazione 006 e regressione precedente. APK debug: `app/build/outputs/apk/debug/WhereWeAre-v0.32-build7-debug.apk`, SHA-256 `31644E507D034A3F77BE9578766A3B452D7DF4272740A5B06EBBFB6F86A8F10E`.
+
+Realtime: il messaggio precedente nasceva dal riuso di `offline` per `!SUBSCRIBED`, anche dopo REST riuscito. Ora `offline` indica solo fallimenti REST; CONNECTING/RECONNECTING non mostra errore, mentre errori persistenti impostano `syncFailed`. Gli status e gli errori vengono registrati senza dati sensibili. Il bootstrap remoto verificato prima della 006 annuncia ancora 0.31: applicare la migrazione 006 per 0.32.
+
+Deep link: formato tipizzato `whereweare://person/<codice>` e `whereweare://group/<codice>`; HTTPS predisposto come `/join/person/` e `/join/group/`. Persona apre Aggiungi persona precompilato, gruppo Entra con codice; l'azione resta manuale. Il dominio e `assetlinks.json` non esistono nel repository, quindi gli App Links HTTPS verificati richiedono pubblicazione esterna.
+
+Stato GPS: la UI distingue processo locale attivo, sessione remota attiva e sessione remota da interrompere; non combina più OFF con Interrompi. La riconciliazione usa lo stop persistente e WorkManager già presenti.
+
+Gruppi: Modifica gruppo è stata spostata nella testata, accanto a nome/icona e data di creazione; la card grigia resta dedicata al codice.
+
+Limiti: nessun telefono/AVD collegato; audio reale, fotocamera, background e test con due account fisici restano da eseguire. Firebase e la migrazione 006 remota richiedono configurazione/applicazione esterna.
+
 ## v0.31 — build 6
 
 `versionName=0.31`, `versionCode=6`, branch `codex/v0.31`.
