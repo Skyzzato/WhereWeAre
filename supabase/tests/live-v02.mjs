@@ -74,6 +74,8 @@ try {
   }
   const [a, b, c] = users;
   pass('three disposable accounts created');
+  assert.ok(Number.isFinite(Date.parse((await api('/auth/v1/user', users[0])).created_at)));
+  pass('registration date available in Supabase Auth without a profile column');
   // Exercise the original client-to-client workflow as a separate process.
   await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['supabase/tests/live-clients.mjs'], { stdio: 'inherit', env: {
@@ -103,6 +105,13 @@ try {
   await rpc(c, 'remove_group_member', { gid, member: c.id });
   pass('owner visibility timeout and own fix retention');
   await start(b);
+  const original = (await rows(b, 'sharing_status')).find(r => r.user_id === b.id);
+  await rpc(b, 'set_sharing', { active: true, session: b.session, expected_revision: original.revision - 1 });
+  assert.equal((await rows(b, 'sharing_status')).find(r => r.user_id === b.id).revision, original.revision);
+  await rpc(b, 'set_sharing', { active: false, session: b.session });
+  assert.notEqual((await request('/rest/v1/rpc/set_sharing', b, { active: true, session: b.session, expected_revision: original.revision - 1 })).status, 200);
+  await start(b);
+  pass('sticky restart reuses session idempotently and cannot undo a later stop');
   assert.ok((await rows(a, 'latest_locations')).some(r => r.user_id === b.id));
   assert.equal((await rpc(c, 'contact_profiles')).length, 1);
   const path = `${b.id}/${randomUUID()}.webp`;
@@ -114,6 +123,18 @@ try {
   assert.notEqual((await request('/storage/v1/object/authenticated/avatars/' + path, c)).status, 200);
   assert.notEqual((await request('/storage/v1/object/public/avatars/' + path, null)).status, 200);
   pass('real Storage upload, authorized avatar read, private and third-party denial');
+  const replacement = `${b.id}/${randomUUID()}.webp`;
+  assert.ok((await request('/storage/v1/object/avatars/' + replacement, b, pixel, 'POST', true)).ok);
+  await rpc(b, 'set_avatar', { path: replacement });
+  assert.equal((await rpc(a, 'contact_profiles')).find(p => p.user_id === b.id).avatar_path, replacement);
+  await rpc(b, 'set_avatar', { path: null });
+  assert.equal((await rows(b, 'profiles'))[0].avatar_path, null);
+  assert.equal((await rpc(a, 'contact_profiles')).find(p => p.user_id === b.id).avatar_path, null);
+  await api('/storage/v1/object/avatars', b, { prefixes: [replacement] }, 'DELETE');
+  assert.notEqual((await request('/storage/v1/object/authenticated/avatars/' + replacement, b)).status, 200);
+  // Restore the first owned image for the existing revocation/deletion regression below.
+  await rpc(b, 'set_avatar', { path });
+  pass('avatar replacement and removal propagate to the authorized second account; file removed');
   a.events = [];
   await rpc(a, 'remove_group_member', { gid, member: b.id });
   assert.ok(!(await rpc(a, 'contact_profiles')).some(r => r.user_id === b.id));
@@ -137,7 +158,7 @@ try {
   assert.equal((await rows(c, 'groups')).length, 0);
   assert.equal((await rows(c, 'group_members')).length, 0);
   pass('creator deletion cascades group and memberships');
-  console.log('ALL LIVE V0.2 TESTS PASSED');
+  console.log('ALL LIVE V0.2 / V0.21 TESTS PASSED');
 } finally {
   for (const socket of sockets) socket.close();
   for (const user of users.filter(u => !u.deleted)) {

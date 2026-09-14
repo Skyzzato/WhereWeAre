@@ -44,13 +44,23 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> "$seconds secondi"; seconds
         Text("Profilo",style=MaterialTheme.typography.titleLarge)
         state.profile?.let { Avatar(it.id,it.displayName,it.avatarPath,false,vm.avatars,64.dp) }
         AvatarEditor(onSave=vm::avatar,onError={vm.message(com.whereweare.app.R.string.error_generic)})
+        if(state.profile?.avatarPath!=null) TextButton(onClick=vm::removeAvatar,enabled=!operation.busy) { Text("Elimina foto",color=MaterialTheme.colorScheme.error) }
         OutlinedTextField(name,{name=it},label={Text("Nome visualizzato")},singleLine=true,modifier=Modifier.fillMaxWidth())
         TextButton(onClick={vm.rename(name)},enabled=!operation.busy){Text("Salva nome")}
         val code=state.profile?.inviteCode.orEmpty()
-        Text("Codice personale: $code")
-        Row {
-            TextButton(onClick={context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Codice personale",code))}){Text("Copia")}
-            TextButton(onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,"WhereWeAre: $code"),null))}){Text("Condividi")}
+        Card(modifier=Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=androidx.compose.ui.graphics.Color(0xFFEAEAEA))) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Codice personale",style=MaterialTheme.typography.titleSmall)
+                Text(code,style=MaterialTheme.typography.headlineSmall)
+                Row {
+                    TextButton(enabled=code.isNotBlank(),onClick={
+                        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Codice personale",code))
+                        android.widget.Toast.makeText(context,com.whereweare.app.R.string.code_copied,android.widget.Toast.LENGTH_SHORT).show()
+                    }) { Text("Copia") }
+                    TextButton(enabled=code.isNotBlank(),onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT,"Aggiungimi su WhereWeAre con il mio codice personale: $code"),"Condividi codice personale"))}) { Text("Condividi") }
+                }
+            }
         }
         HorizontalDivider(); Text("Localizzazione",style=MaterialTheme.typography.titleLarge)
         Row { FilterChip(!high || !precise,{vm.accuracy(false)},label={Text("Bilanciata")}); Spacer(Modifier.width(8.dp)); FilterChip(high && precise,{vm.accuracy(true)},enabled=precise,label={Text("Alta precisione")}) }
@@ -60,11 +70,13 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> "$seconds secondi"; seconds
         Choice("Soglia avviso precisione GPS",threshold,accuracyThresholds,{"$it m"},vm::threshold)
         Choice("Mostra la mia ultima posizione per",state.profile?.visibilitySeconds ?: 86400,visibilityTimeouts,::durationLabel,vm::visibility)
         HorizontalDivider(); Text("Mappa",style=MaterialTheme.typography.titleLarge)
-        Choice("Tipo di mappa",style,if(BuildConfig.TOPO_STYLE_URL.isNotBlank()) listOf("standard","topo") else listOf("standard"),{if(it=="topo") "Topografica / Escursionismo" else "Standard"},vm::mapStyle)
-        TextButton(onClick=onPrivacy){Text("Privacy, informazioni e copyright >")}
-        OutlinedButton(onClick=vm::logout,enabled=!operation.busy,modifier=Modifier.fillMaxWidth()){Text("Logout")}
-        HorizontalDivider(Modifier.padding(top=20.dp))
+        Choice("Tipo di mappa",MapStyle.fromId(style).id,MapStyle.entries.map { it.id },{MapStyle.fromId(it).label},vm::mapStyle)
+        HorizontalDivider(); Text("Account",style=MaterialTheme.typography.titleLarge)
+        Text(vm.registeredSince?.let { "Registrato dal: $it" } ?: "Data registrazione non disponibile")
+        OutlinedButton(onClick=vm::logout,enabled=!operation.busy,modifier=Modifier.fillMaxWidth()){Text("Esci")}
         TextButton(onClick={delete=true},enabled=!operation.busy){Text("Elimina account",color=MaterialTheme.colorScheme.error)}
+        HorizontalDivider()
+        TextButton(onClick=onPrivacy){Text("Privacy, informazioni e copyright >")}
     }
     if(delete) ConfirmDestructive("Elimina account","L'operazione è definitiva: saranno cancellati account, foto, posizione, relazioni e gruppi creati da te. Confermi?",{delete=false}) {delete=false;vm.deleteAccount()}
 }
@@ -80,6 +92,8 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> "$seconds secondi"; seconds
         TextButton(onClick={uri.openUri("https://www.openstreetmap.org/copyright")}){Text("© OpenStreetMap contributors")}
         TextButton(onClick={uri.openUri("https://openfreemap.org/")}){Text("OpenFreeMap · OpenMapTiles")}
         TextButton(onClick={uri.openUri("https://maplibre.org/")}){Text("MapLibre Compose / Native")}
+        TextButton(onClick={uri.openUri("https://opentopomap.org/about")}){Text("OpenTopoMap · SRTM · CC-BY-SA")}
+        TextButton(onClick={uri.openUri("https://www.cyclosm.org/")}){Text("CyclOSM · OpenStreetMap France")}
         Text("Gli ulteriori provider conservano le attribuzioni indicate nello stile e nel controllo di attribuzione della mappa.")
     }
 }

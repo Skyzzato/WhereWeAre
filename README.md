@@ -1,5 +1,8 @@
 # WhereWeAre
 
+Versione corrente **0.21**, `versionCode=3`, basata sul tag GitHub `v0.2`.
+Modifiche, file interessati e limiti del collaudo: [report v0.21](RELEASE_NOTES_v0.21.md).
+
 Applicazione Android nativa, in italiano, per condividere volontariamente l’ultima posizione fra persone collegate tramite codice personale. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre Compose e Supabase (Auth, PostgREST, Realtime). Nessuna cronologia GPS.
 
 ## Prerequisiti
@@ -74,14 +77,16 @@ Nell’ambiente in cui è stato generato il progetto, gli strumenti scaricati si
 - Stop/revoche diventano effettivi nel momento del commit server. Gli eventi sulle autorizzazioni e sullo stato invalidano subito i marker e provocano una nuova lettura RLS. Una query partita prima dell’invalidazione non può ripubblicare lo snapshot precedente.
 - Un numero di revisione server impedisce a un avvio ritardato dalla rete di riaccendere la condivisione dopo uno stop. Un identificatore di sessione impedisce a un upload della vecchia sessione di proseguire dopo un riavvio.
 - **Stop senza rete:** il GPS si ferma subito; nessun sistema può comunicare istantaneamente lo stop al server offline. L’app mostra esplicitamente “stop remoto in attesa”, salva soltanto l’intenzione di stop (ID utente, nessuna coordinata) e usa WorkManager per ritentare con rete disponibile. Fino alla conferma, gli autorizzati possono ancora vedere l’ultima posizione, al massimo fino alla scadenza. Nuovi avvii e logout sono bloccati finché lo stop non è confermato. Una revoca offline mostra errore e va ritentata; il selettore conserva il valore server.
-- Il servizio è `START_NOT_STICKY`, non viene riavviato al boot e non richiede background location. Una terminazione di Android non equivale a uno stop esplicito: l’ultima posizione resta valida fino a due ore. La UI distingue un servizio terminato da una condivisione ancora visibile sul server.
+- Il servizio location è `START_STICKY`, con `stopWithTask=false`: rimane indipendente dall’Activity e Android può ripristinarlo dopo una terminazione per memoria. Il ripristino attende Supabase Auth e bootstrap, recupera da DataStore utente/sessione/revisione e non può annullare uno stop successivo. Non parte al boot, non usa allarmi di riavvio e non richiede background location. Forza arresto e Stop di sistema interrompono il tracking; tempi e disponibilità del ripristino dipendono da Android/OEM. L’ultima posizione resta visibile secondo il timeout scelto dal proprietario.
 - Realtime si collega durante l’utilizzo delle schermate, recupera uno snapshot dopo le riconnessioni e chiude i canali al logout o dopo l’uscita dalla UI. In assenza di rete conserva i dati in memoria fino alla scadenza e segnala che potrebbero essere superati. I tentativi di riconnessione non sono polling ordinario delle posizioni.
 - I canali sottoscrivono soltanto INSERT e UPDATE: gli eventi DELETE di Supabase non applicano la stessa RLS di riga. Il cleanup viene riflesso dalla scadenza locale; stop e revoche sono UPDATE osservabili in sicurezza.
 - I token sono gestiti dalla persistenza di Supabase Auth; backup Android disabilitato. Nessun log di password, chiavi, token o coordinate. Dati già ricevuti da una persona non possono essere cancellati dal suo dispositivo tramite RLS.
 
 ## Mappa e attribuzione
 
-Motore **MapLibre Compose/Native**; dati **OpenStreetMap**, con stile OpenFreeMap sostituibile tramite `MAP_STYLE_URL`. Il componente mantiene i controlli di attribuzione del provider e il logo MapLibre; nelle impostazioni è presente il link al copyright OSM. Non usa Google Maps.
+Motore **MapLibre Compose/Native**; dati **OpenStreetMap**, con stile standard OpenFreeMap sostituibile tramite `MAP_STYLE_URL`. La v0.21 aggiunge OpenTopoMap (raster, zoom sorgente massimo 17) e CyclOSM (raster, massimo 20), senza credenziali. `domain/MapStyle.kt` centralizza ID, nome, tile, attribuzione e zoom. DataStore conserva la scelta nella chiave esistente `map_style`; Compose aggiorna lo stile mantenendo la camera. Il componente mantiene i controlli di attribuzione e una riga di crediti sempre visibile, anche con il popup aperto. I link alle licenze sono nelle attribuzioni e in Impostazioni. Non usa Google Maps.
+
+Il runtime identifica le richieste con `WhereWeAre/0.21` e il repository GitHub; usa la cache nativa su disco (64 MiB), rispettando gli header HTTP, senza prefetch di regioni né bypass della cache. Lo standard predefinito usa OpenFreeMap, non i tile raster pubblici OSM. Il popup mostra coordinate decimali e apre il sito OpenStreetMap con un Intent Android; i valori non validi non producono link.
 
 I server pubblici standard OpenStreetMap non sono un’infrastruttura gratuita illimitata per applicazioni distribuite su larga scala. Verifica termini, attribuzione e capacità del provider scelto. Sostituire lo style URL non richiede riscrivere `MapScreen`. Il primo caricamento e le aree non presenti nella cache richiedono rete; l’app non scarica regioni offline.
 
@@ -121,7 +126,7 @@ I test SQL controllano profili, non enumerabilità, ricerca esatta, richieste in
 6. Riabilita B → A; premi Stop sulla notifica B: la posizione sparisce da A subito dopo l’evento server. Ripeti lo stop dalla UI.
 7. Prova Stop senza rete e riapertura app: controlla l’avviso e il completamento automatico al ritorno della rete.
 8. Nega permessi, disattiva GPS, passa alla posizione approssimativa, cambia precisione, ruota lo schermo e prova logout/login con un altro account.
-9. Termina realmente il processo B: nessun riavvio occulto del servizio; A vede l’ultima posizione fino a scadenza.
+9. Distingui rimozione dai recenti, terminazione per memoria e Forza arresto: nei primi due casi il foreground service continua o Android può ripristinarlo; Forza arresto lo interrompe. A vede l’ultima posizione secondo il timeout del proprietario.
 10. Con account C non collegato verifica che una SELECT manuale PostgREST non restituisca le posizioni A/B, anche conoscendo gli UUID.
 
 ## Riferimenti tecnici

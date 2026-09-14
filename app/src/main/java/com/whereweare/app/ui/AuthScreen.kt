@@ -40,6 +40,7 @@ import com.whereweare.app.R
         Button(onClick={ if(registering) vm.register(name,email,password,confirm) else vm.login(email,password) },enabled=!operation.busy,modifier=Modifier.fillMaxWidth()) {
             Text(stringResource(if(registering) R.string.register else R.string.login))
         }
+        if(!registering) TextButton(onClick=vm::recoverPassword) { Text("Password dimenticata?") }
         TextButton(onClick={ registering=!registering; vm.message(null) }) { Text(stringResource(if(registering) R.string.have_account else R.string.new_account)) }
     }
 }

@@ -45,32 +45,55 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
         ContextCompat.startForegroundService(context,Intent(context,LocationForegroundService::class.java))
     }
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun attach(serviceScope: CoroutineScope, stopService: () -> Unit) {
+    fun attach(serviceScope: CoroutineScope,restarting: Boolean=false,stopService: () -> Unit) {
         if(tracking?.isActive==true) return
         tracking=serviceScope.launch {
             try {
+                auth.awaitSession()
+                var saved: TrackingSession
                 mutex.withLock {
                     check(preferences.pendingStop.first()==null) { "stop_pending" }
-                    check(auth.userId!=null)
+                    val user=requireNotNull(auth.userId)
+                    val previous=preferences.trackingSession.first()
+                    if(restarting) check(previous?.userId==user) { "sharing_stopped" }
+                    saved=if(restarting) requireNotNull(previous) else TrackingSession(user,UUID.randomUUID().toString())
+                    preferences.trackingSession(saved)
                     mutableState.value=TrackingState(active=true,waiting=true)
                 }
-                val session=UUID.randomUUID().toString()
+                // A system restart has no Activity/BootstrapViewModel to initialize these repositories.
+                bootstrap.refresh()
+                bootstrap.state.first { it.gate!=BootstrapGate.LOADING }
+                check(bootstrap.state.value.gate==BootstrapGate.READY) { "bootstrap_blocked" }
+                val session=saved.sessionId
                 val latest=MutableStateFlow<UserLocation?>(null)
                 val signals=kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
                 val updates=launch {
                     combine(preferences.highAccuracy,preferences.interval) { high,seconds -> high to seconds }
-                        .flatMapLatest { (high,seconds) -> location.fixes(high,seconds) }
+                        .flatMapLatest { (high,seconds) -> location.fixes(high,seconds).retryWhen { cause,_ ->
+                            if(cause is SecurityException || !location.hasPermission()) false
+                            else { mutableState.value=state.value.copy(waiting=true); delay(30_000); true }
+                        } }
+                        .catch { cause ->
+                            if(cause is CancellationException) throw cause
+                            // A revoked permission must terminate sharing, not escape a child job and crash.
+                            requestStop()
+                        }
                         .collect { latest.value=it; signals.trySend(Unit) }
                 }
                 try {
                     var started=false
-                    var revision: Long?=null
+                    var revision: Long?=saved.revision
                     var sent: UserLocation?=null
                     while(isActive) {
                         try {
                             if(bootstrap.state.value.gate!=BootstrapGate.READY) break
                             if(!started) {
-                                if(revision==null) revision=repository.sharingRevision()
+                                if(revision==null) {
+                                    revision=repository.sharingRevision()
+                                    saved=saved.copy(revision=revision)
+                                    // Persist before the RPC, so a retry cannot undo a later server stop.
+                                    preferences.trackingSession(saved)
+                                }
                                 repository.sharing(true,session,revision); started=true
                             }
                             latest.value?.takeIf { it!=sent }?.let {
@@ -89,7 +112,12 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                 } finally { updates.cancel() }
             } catch(e: CancellationException) { throw e
             } catch(_: Exception) { mutableState.value=state.value.copy(waiting=true)
-            } finally { mutableState.value=state.value.copy(active=false); stopService() }
+            } finally {
+                // Destruction cancels the scope: preserve the session for Android's sticky restart.
+                // A normal termination (remote stop, revoked permission, blocked bootstrap) clears it.
+                if(currentCoroutineContext().isActive) preferences.trackingSession(null)
+                mutableState.value=state.value.copy(active=false); stopService()
+            }
         }
     }
     fun requestStop() { scope.launch { stop() } }

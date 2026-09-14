@@ -56,7 +56,9 @@ import java.time.format.DateTimeFormatter
         permission.launch(permissions.toTypedArray())
     }
     LifecycleResumeEffect(Unit) { vm.permissionsChanged(); vm.refresh(); onPauseOrDispose { } }
-    val camera=rememberMapState(baseStyle=BaseStyle.Uri(if(style=="topo" && BuildConfig.TOPO_STYLE_URL.isNotBlank()) BuildConfig.TOPO_STYLE_URL else BuildConfig.MAP_STYLE_URL),
+    val provider=MapStyle.fromId(style)
+    val baseStyle=remember(provider) { provider.tileUrl?.let { BaseStyle.Json(provider.rasterJson()) } ?: BaseStyle.Uri(BuildConfig.MAP_STYLE_URL) }
+    val camera=rememberMapState(baseStyle=baseStyle,
         initialCameraPosition=local?.let { CameraPosition(target=Position(it.longitude,it.latitude),zoom=14.0) } ?: CameraPosition(zoom=1.0))
     var centered by remember { mutableStateOf(false) }
     var selectedId by remember { mutableStateOf<String?>(null) }
@@ -127,8 +129,16 @@ import java.time.format.DateTimeFormatter
                 Text(freshnessText(person.freshness,person.location.recordedAt,state.now))
                 Text("Precisione ±${person.location.accuracy.toLong()} m")
                 Text(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(person.location.recordedAt))
+                Text(coordinateLabel(person.location.latitude,person.location.longitude)?.let { "Coordinate: $it" } ?: "Posizione non disponibile")
+                openStreetMapUrl(person.location.latitude,person.location.longitude)?.let { url ->
+                    TextButton(onClick={
+                        try { context.startActivity(Intent(Intent.ACTION_VIEW,url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE)) }
+                        catch(_: android.content.ActivityNotFoundException) { vm.message(R.string.error_generic) }
+                    }) { Text("Apri in OpenStreetMap") }
+                }
             } } }
         }
+        Surface { Text(provider.attribution,Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=4.dp),style=MaterialTheme.typography.labelSmall) }
         Surface(tonalElevation=3.dp) {
             Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 val serverSharing=state.snapshot.statuses.any { it.userId==state.snapshot.profile?.id && it.sharing }

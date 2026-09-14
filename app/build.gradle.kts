@@ -19,14 +19,13 @@ android {
         applicationId = "com.whereweare.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2"
+        versionCode = 3
+        versionName = "0.21"
         buildConfigField("String", "SUPABASE_URL", "\"${setting("SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${setting("SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "MAP_STYLE_URL", "\"${setting("MAP_STYLE_URL", "https://tiles.openfreemap.org/styles/liberty")}\"")
     }
     buildFeatures { compose = true; buildConfig = true }
-    defaultConfig { buildConfigField("String", "TOPO_STYLE_URL", "\"${setting("TOPO_STYLE_URL")}\"") }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }

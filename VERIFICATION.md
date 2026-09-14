@@ -1,5 +1,16 @@
 # Verifiche WhereWeAre
 
+## Collaudo v0.21 — 11 settembre 2026
+
+- Verifica finale ripetuta il 12 settembre: `:app:build` **BUILD SUCCESSFUL**, varianti debug e release. Lint: 0 errori, 44 avvisi su risorse inutilizzate. Firma debug APK v2 verificata; report e hash nell’elenco release notes. Corretto il blocco AccessDenied su directory temporanee Lint di sola lettura.
+
+- 17 test JVM debug superati: regressioni v0.1/v0.2 e nuove verifiche coordinate, link, stili raster, data/timezone e sessione persistita.
+- Suite SQL locale completa: `ALL SQL TESTS PASSED`; nessuna migration aggiunta o applicata al progetto remoto.
+- `live-v02.mjs`, esteso per v0.21: `ALL LIVE V0.2 / V0.21 TESTS PASSED`. Tre account temporanei creati e rimossi, due client HTTPS/WebSocket; test di registrazione, accesso, scambio posizioni, revoca/Stop, Realtime, gruppi, RLS, upload/sostituzione/rimozione avatar e cancellazione account. Verificati `created_at` Auth e riuso idempotente della sessione: una vecchia revisione non può riattivare lo sharing dopo Stop.
+- HEAD HTTPS: stile OpenFreeMap e un tile ciascuno OpenTopoMap/CyclOSM restituiscono HTTP 200 e MIME previsto. Questo verifica la raggiungibilità, non il rendering su dispositivo.
+- `adb devices` non mostra dispositivi; nessun AVD né system image Android disponibile. Non eseguiti test UI strumentati, layout su schermi diversi o prove GPS fisiche/Doze/recenti/ricreazione processo. I due client backend non sostituiscono due emulatori.
+- Esito finale build e checklist dettagliata: [report v0.21](RELEASE_NOTES_v0.21.md).
+
 ## Collaudo APK v0.2 — 11 settembre 2026
 
 - Build debug con URL e chiave publishable del progetto reale in `local.properties` (escluso da Git). Nessuna chiave amministrativa nell'APK.

@@ -18,12 +18,18 @@ import javax.inject.Singleton
 @Singleton class SharingRepository @Inject constructor(private val client: SupabaseClient, private val auth: AuthRepository,private val preferences: PreferencesRepository) {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
     private val refreshes=MutableSharedFlow<Unit>(extraBufferCapacity=1)
+    private data class AvatarChange(val user: String,val path: String?)
+    private val avatarChange=MutableStateFlow<AvatarChange?>(null)
     private data class ClockAnchor(val server: Instant,val elapsed: Long)
     @Volatile private var clock=ClockAnchor(Instant.now(),SystemClock.elapsedRealtime())
     fun now(): Instant = clock.let { it.server.plusMillis(SystemClock.elapsedRealtime()-it.elapsed) }
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: StateFlow<Snapshot> = auth.session.map { auth.userId }.distinctUntilChanged().flatMapLatest { id ->
         if(id==null) flowOf(Snapshot(loading=false)) else observe(id)
+    }.combine(avatarChange) { snapshot,change ->
+        if(change==null || snapshot.profile?.id!=change.user) snapshot
+        else if(snapshot.profile.avatarPath==change.path) { avatarChange.compareAndSet(change,null); snapshot }
+        else snapshot.copy(profile=snapshot.profile.copy(avatarPath=change.path))
     }.stateIn(scope,SharingStarted.WhileSubscribed(5_000,0),Snapshot())
 
     private fun observe(id: String): Flow<Snapshot> = channelFlow {
@@ -109,6 +115,12 @@ import javax.inject.Singleton
         }
     }.flowOn(Dispatchers.IO.limitedParallelism(1))
     fun refresh() { refreshes.tryEmit(Unit) }
+    suspend fun setAvatar(path: String?) {
+        val user=requireNotNull(auth.userId)
+        client.postgrest.rpc("set_avatar",buildJsonObject { put("path",path?.let(::JsonPrimitive) ?: JsonNull) })
+        avatarChange.value=AvatarChange(user,path)
+        refresh()
+    }
     suspend fun saveOwn(fix: UserLocation) { preferences.lastFix(fix.userId,Json.encodeToString(LocationDto.serializer(),LocationDto(fix.userId,fix.latitude,fix.longitude,fix.accuracy,fix.speed,fix.bearing,fix.recordedAt.toString()))) }
     suspend fun rpc(name: String,params: JsonObject=buildJsonObject {}) { client.postgrest.rpc(name,params); refresh() }
     suspend fun visibility(seconds: Int) = rpc("set_visibility",buildJsonObject { put("seconds",seconds) })

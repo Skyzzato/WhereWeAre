@@ -2,5 +2,4 @@ sdk.dir=C\:/Users/YOUR_USER/AppData/Local/Android/Sdk
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
 MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
-# Optional. Supply a style URL only for a provider whose terms and capacity you have approved.
-TOPO_STYLE_URL=
+# OpenTopoMap and CyclOSM are built in; no additional key or URL is required.

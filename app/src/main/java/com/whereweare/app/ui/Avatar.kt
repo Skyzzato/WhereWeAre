@@ -27,7 +27,7 @@ import kotlinx.coroutines.CancellationException
     val colors=listOf(0xFF147D73,0xFF52618C,0xFF9C4866,0xFF95601B,0xFF596B36)
     Box(Modifier.size(size)) {
         Box(Modifier.fillMaxSize().clip(CircleShape).background(Color(colors[(id.hashCode().toLong() and 0x7fffffff).rem(colors.size).toInt()])),contentAlignment=Alignment.Center) {
-            if(bitmap!=null) Image(bitmap!!.asImageBitmap(),name,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+            if(path!=null && bitmap!=null) Image(bitmap!!.asImageBitmap(),name,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
             else Text(name.trim().let { if(it.isEmpty()) "?" else String(Character.toChars(it.codePointAt(0))).uppercase() },color=Color.White,style=MaterialTheme.typography.titleMedium)
         }
         if(star) Icon(Icons.Default.Star,"Gruppo in comune",tint=Color(0xFFFFC107),modifier=Modifier.size(14.dp).align(Alignment.TopEnd))

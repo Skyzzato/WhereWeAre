@@ -85,4 +85,6 @@
     <string name="about_text">Motore MapLibre, dati OpenStreetMap. Gli intervalli GPS dipendono da Android, ricezione e batteria.</string>
     <string name="osm">© OpenStreetMap contributors · OpenFreeMap / provider dello stile</string>
     <string name="logout">Logout</string>
+    <string name="password_recovery_unavailable">Il recupero della password non è ancora disponibile.</string>
+    <string name="code_copied">Codice copiato negli appunti.</string>
 </resources>

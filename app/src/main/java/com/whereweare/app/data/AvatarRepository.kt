@@ -50,9 +50,22 @@ import javax.inject.Singleton
         require(bytes.size<=1_048_576)
         val path=requireNotNull(client.auth.currentUserOrNull()).id+"/"+UUID.randomUUID()+".webp"
         request("/storage/v1/object/avatars/$path","POST",bytes,"image/webp")
-        sharing.rpc("set_avatar",buildJsonObject { put("path",path) })
-        if(previous!=null) removeFile(previous)
+        sharing.setAvatar(path)
         cache.evictAll()
+        if(previous!=null) removeOwnedFile(previous)
+    }
+    suspend fun remove(previous: String) {
+        sharing.setAvatar(null)
+        cache.evictAll()
+        removeOwnedFile(previous)
+    }
+    private suspend fun removeOwnedFile(path: String) {
+        val owner=client.auth.currentUserOrNull()?.id ?: return
+        // Profile RPC only accepts paths owned by that profile; never delete another user's file.
+        if(!path.startsWith("$owner/") || path.removePrefix("$owner/").contains('/')) return
+        try { removeFile(path) }
+        catch(e: kotlinx.coroutines.CancellationException) { throw e }
+        catch(_: Exception) { /* Profile already updated. Private orphan is removed by account cleanup. */ }
     }
     private suspend fun removeFile(path: String) { request("/storage/v1/object/avatars","DELETE",buildJsonObject { put("prefixes",buildJsonArray { add(path) }) }.toString().toByteArray()) }
     suspend fun deleteAccount() { request("/functions/v1/delete-account","POST","{}".toByteArray()); cache.evictAll() }

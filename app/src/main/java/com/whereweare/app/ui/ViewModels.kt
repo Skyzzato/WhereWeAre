@@ -45,6 +45,7 @@ open class OperationViewModel: ViewModel() {
 @HiltViewModel class AuthViewModel @Inject constructor(private val auth: AuthRepository): OperationViewModel() {
     val accountDeleted=auth.accountDeleted
     val session=auth.session
+    fun recoverPassword() { message(R.string.password_recovery_unavailable) }
     fun login(email: String,password: String) {
         if(!validEmail(email)||password.isEmpty()) { message(R.string.invalid_form); return }
         perform { auth.login(email,password) }
@@ -107,6 +108,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     private val preferences: PreferencesRepository,private val controller: SharingController,val avatars: AvatarRepository,val location: LocationRepository): OperationViewModel() {
     val state=sharing.state
     val email get()=auth.email
+    val registeredSince get()=registrationDate(auth.createdAt)
     val highAccuracy=preferences.highAccuracy.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),false)
     val interval=preferences.interval.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),60)
     val threshold=preferences.threshold.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),100)
@@ -116,6 +118,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun visibility(value: Int) { perform { sharing.visibility(value) } }
     fun mapStyle(value: String) { perform { preferences.mapStyle(value) } }
     fun avatar(bytes: ByteArray) { perform(R.string.saved) { avatars.upload(bytes,state.value.profile?.avatarPath) } }
+    fun removeAvatar() { state.value.profile?.avatarPath?.let { path -> perform(R.string.saved) { avatars.remove(path) } } }
     fun deleteAccount() { perform {
         controller.stop(); check(preferences.pendingStop.first()==null) { "stop_pending" }
         val id=requireNotNull(auth.userId); avatars.deleteAccount(); preferences.clearUser(id)

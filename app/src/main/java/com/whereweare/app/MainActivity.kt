@@ -8,6 +8,9 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -41,8 +44,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
     val boot by bootstrap.repository.state.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) { bootstrap.refresh(); onPauseOrDispose {} }
     if(boot.gate!=BootstrapGate.READY || session is SessionStatus.Initializing) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-            Image(painterResource(R.drawable.ic_location),null,Modifier.size(80.dp))
+        Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
+            Image(painterResource(R.drawable.ic_location),null,Modifier.padding(vertical=12.dp).sizeIn(maxWidth=160.dp,maxHeight=160.dp).size(96.dp),contentScale=ContentScale.Fit)
             Text("WhereWeAre",style=MaterialTheme.typography.headlineLarge)
             Text("v${BuildConfig.VERSION_NAME}")
             Spacer(Modifier.height(24.dp))

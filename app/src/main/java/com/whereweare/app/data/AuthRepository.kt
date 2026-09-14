@@ -16,6 +16,8 @@ import javax.inject.Singleton
     val session = client.auth.sessionStatus
     val userId get() = client.auth.currentUserOrNull()?.id
     val email get() = client.auth.currentUserOrNull()?.email.orEmpty()
+    val createdAt get() = client.auth.currentUserOrNull()?.createdAt?.toString()
+    suspend fun awaitSession() { session.first { it !is SessionStatus.Initializing } }
     fun checkConfiguration() { check(BuildConfig.SUPABASE_URL.startsWith("https://") && BuildConfig.SUPABASE_ANON_KEY.isNotBlank()) { "configuration" } }
     suspend fun login(email: String, password: String) {
         accountDeleted.value=false
