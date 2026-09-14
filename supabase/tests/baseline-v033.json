@@ -1,0 +1,9 @@
+{
+  "supabase/migrations/001_initial_schema.sql": "3d4a2e8bddcf9d16790f35e92db6f2d82422b15fdc76b0748394ea894c1c53dc",
+  "supabase/migrations/002_v0_2.sql": "34ab3a0276ce27bad3955a2bde9f4b5bd1ff51f97b063d0bc67dccd088a6fbbe",
+  "supabase/migrations/003_storage_upload_guard.sql": "595fe0c6ca71b6857b5c3dd53addd75db2a499698742bc65acf180189120e0df",
+  "supabase/migrations/004_v0_3.sql": "a32d9b4098ca92a409f57309deac46271dd6033f3de93a436d874f46e008cb39",
+  "supabase/migrations/005_v0_31.sql": "7025551d357c4d0268eb090a011ed38e7d12676de38ef106ae395e18b99b3ea5",
+  "supabase/migrations/006_v0_32.sql": "3af48d26c9e9b4320ba6b133d053d63257d99af31924f81a068319ce93757ca1",
+  "supabase/migrations/007_v0_33.sql": "176557c11ce0b8b1c8fc8a3181858e703dcbef1365166af31095340fbaecea70"
+}
