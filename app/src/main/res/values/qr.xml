@@ -1,0 +1,17 @@
+<resources>
+    <string name="qr_person">Personal QR code</string>
+    <string name="qr_group">Group QR code</string>
+    <string name="qr_image_description">Scannable invitation QR code</string>
+    <string name="qr_show_hint">Scan with WhereWeAre to open the invitation.</string>
+    <string name="qr_scan">Scan QR</string>
+    <string name="qr_scan_hint">Point the camera at a WhereWeAre person or group QR code.</string>
+    <string name="qr_camera_permission">Allow camera access to scan QR codes or take a profile photo.</string>
+    <string name="qr_allow_camera">Allow camera</string>
+    <string name="qr_open_settings">Open app settings</string>
+    <string name="qr_offline">Scanning works offline. Connecting or joining requires a connection and your confirmation.</string>
+    <string name="qr_invalid">This is not a valid WhereWeAre invitation.</string>
+    <string name="qr_save_failed">Could not save the invitation. Please try again.</string>
+    <string name="qr_camera_unavailable">Camera unavailable. Close the scanner and try again, or enter the code.</string>
+    <string name="qr_enter_code">Enter code</string>
+    <string name="qr_show">Show QR</string>
+</resources>

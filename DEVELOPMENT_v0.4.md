@@ -152,3 +152,27 @@ La 008 è stata verificata solo localmente, **non applicata al server remoto**.
 Da verificare su due telefoni: lettura percentuale reale, servizi disattivati,
 scadenza metadati, cambio telefono, popup con font grandi e apertura dei due
 provider esterni. Nuove dipendenze e permessi Android: nessuno.
+
+## Blocco 05 — QR persone e gruppi
+
+Mostra QR nelle card codice personale e gruppo. Finestra chiara con codice,
+X/Back, luminosità massima e schermo acceso solo mentre visibile; ripristino
+su pausa e uscita. Scanner da Persone e Gruppi, con instradamento per tipo
+tramite InviteStore e conferma nel normale flusso inviti. Nessun consenso GPS
+automatico. Codici manuali, copia e condivisione restano disponibili.
+
+CameraX 1.6.2 + ZXing core 3.5.4: decoding interamente locale, senza modelli
+da scaricare. CAMERA richiesto contestualmente; negazione e impostazioni
+gestite anche nella foto avatar. Hardware fotocamera/autofocus opzionale.
+Valutazione alternative e misura dimensione in ADR_QR.md: +4,04 MiB circa
+per APK debug (+6,2%). Nessuna migrazione per questo blocco.
+
+Build Android debug/release, test e lint: PASS, 60 test senza fallimenti,
+nessun errore lint. Quattro test QR coprono bitmap realmente decodificate,
+rotazione, codici attuali/legacy, payload estranei o tecnici, buffer camera
+con padding/stride e luminosità/flag ripristinati ripetutamente.
+SQL 001–008 e regressioni: PASS; hash 001–007 invariati. Risorse IT/EN allineate.
+
+Restano prove manuali su telefono: fotocamera, luce scarsa, permesso
+negato/revocato, cambio app, luminosità automatica, cross-navigation e foto
+profilo. Nessun dispositivo collegato disponibile per eseguirle qui.

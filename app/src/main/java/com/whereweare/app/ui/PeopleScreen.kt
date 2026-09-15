@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whereweare.app.domain.normalizeInviteCode
 
-@Composable fun PeopleScreen(vm: PeopleViewModel,onShow: (String)->Unit={},initialCode: String?=null,inviteId: String?=null,inviteHandled: ()->Unit={}) {
+@Composable fun PeopleScreen(vm: PeopleViewModel,onShow: (String)->Unit={},initialCode: String?=null,inviteId: String?=null,inviteHandled: ()->Unit={},onScan: ()->Unit={}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val online by vm.online.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
@@ -43,7 +43,8 @@ import com.whereweare.app.domain.normalizeInviteCode
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         item {if(!adding) Busy(operation); if(!online) Notice(R.string.connection_absent) else if(state.syncFailed) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)
             SearchHeader(Strings.text(R.string.people),query,searching,{searching=it},{query=it})
-            Button(onClick={ adding=true; vm.clearLookup() }) { Text(Strings.text(R.string.add_person)) } }
+            Button(onClick={ adding=true; vm.clearLookup() }) { Text(Strings.text(R.string.qr_enter_code)) }
+            OutlinedButton(onClick=onScan) {Text(Strings.text(R.string.qr_scan))} }
         item { Row(verticalAlignment=Alignment.CenterVertically) { Text(Strings.text(R.string.connected_people),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge); TextButton(onClick={ selecting=!selecting; selected=emptySet() }) { Text(if(selecting) Strings.text(R.string.ui_010) else Strings.text(R.string.ui_063)) } } }
         if(selecting) item { TextButton(onClick={ selected=if(selected.size==connections.size) emptySet() else connections.toSet() }) { Text(if(selected.size==connections.size) Strings.text(R.string.ui_064) else Strings.text(R.string.ui_065)) } }
         if(selected.isNotEmpty()) item { SelectionActions(selected.size,

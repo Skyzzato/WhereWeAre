@@ -70,18 +70,29 @@ class AvatarTakePictureContract : ActivityResultContracts.TakePicture() {
         val file=drafts.pending(user)
         if(ok && file!=null && file.length()>0) load(file) else drafts.clear(user)
     }
+    var cameraDenied by remember {mutableStateOf(false)}
+    fun takePhoto() {try {
+        val file=drafts.cameraFile(user)
+        camera.launch(FileProvider.getUriForFile(context,context.packageName+".files",file))
+    } catch(_: Exception) {drafts.clear(user);onError()}}
+    val cameraPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {granted ->
+        cameraDenied=!granted
+        if(granted) takePhoto()
+    }
     LifecycleResumeEffect(user) {
         drafts.pending(user)?.takeIf {it.length()>0}?.let(::load)
         onPauseOrDispose {}
     }
     Row(Modifier.fillMaxWidth()) {
-        TextButton(modifier=Modifier.weight(1f).heightIn(min=48.dp),contentPadding=PaddingValues(2.dp),enabled=!loading && !busy,onClick={try {
-            val file=drafts.cameraFile(user)
-            val uri=FileProvider.getUriForFile(context,context.packageName+".files",file)
-            camera.launch(uri)
-        } catch(_: Exception) {drafts.clear(user);onError()}}){Text(Strings.text(R.string.ui_004),textAlign=TextAlign.Center)}
+        TextButton(modifier=Modifier.weight(1f).heightIn(min=48.dp),contentPadding=PaddingValues(2.dp),enabled=!loading && !busy,onClick={
+            if(cameraAccessGranted(context)) takePhoto() else cameraPermission.launch(android.Manifest.permission.CAMERA)
+        }){Text(Strings.text(R.string.ui_004),textAlign=TextAlign.Center)}
         TextButton(modifier=Modifier.weight(1f).heightIn(min=48.dp),contentPadding=PaddingValues(2.dp),enabled=!loading && !busy,onClick={try {picker.launch(arrayOf("image/*"))} catch(_: Exception) {onError()}}){Text(Strings.text(R.string.ui_005),textAlign=TextAlign.Center)}
         TextButton(modifier=Modifier.weight(1f).heightIn(min=48.dp),contentPadding=PaddingValues(2.dp),enabled=hasPhoto && !loading && !busy,onClick=onRemove){Text(Strings.text(R.string.ui_079),textAlign=TextAlign.Center)}
+    }
+    if(cameraDenied) {
+        Text(Strings.text(R.string.qr_camera_permission))
+        TextButton(onClick={context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri()))}) {Text(Strings.text(R.string.qr_open_settings))}
     }
     if(loading) LinearProgressIndicator(Modifier.fillMaxWidth())
     image?.let { bitmap -> CropAvatar(bitmap,busy,error,onDismiss={if(!busy) {image=null;loadedPath=null;drafts.clear(user)}},onSave={bytes -> onSave(bytes) {image=null;loadedPath=null}}) }

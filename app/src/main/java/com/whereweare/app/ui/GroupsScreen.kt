@@ -21,7 +21,7 @@ import com.whereweare.app.domain.normalizeInviteCode
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@Composable fun GroupsScreen(vm: GroupsViewModel,initialCode: String?=null,inviteId: String?=null,inviteHandled: ()->Unit={}) {
+@Composable fun GroupsScreen(vm: GroupsViewModel,initialCode: String?=null,inviteId: String?=null,inviteHandled: ()->Unit={},onScan: ()->Unit={}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val online by vm.online.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
@@ -29,6 +29,7 @@ import java.time.format.DateTimeFormatter
     val hiddenGroups by vm.hiddenGroups.collectAsStateWithLifecycle()
     val context=LocalContext.current
     var selectedGroup by rememberSaveable {mutableStateOf<String?>(null)}
+    var showQr by rememberSaveable(selectedGroup) {mutableStateOf(false)}
     var creating by rememberSaveable {mutableStateOf(false)}
     var editing by rememberSaveable {mutableStateOf(false)}
     var joining by rememberSaveable(inviteId) {mutableStateOf(initialCode!=null)}
@@ -63,8 +64,9 @@ import java.time.format.DateTimeFormatter
             }
             item {Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 Button(onClick={creating=true}) {Text(Strings.text(R.string.ui_017))}
-                OutlinedButton(onClick={vm.message(null);joining=true}) {Text(Strings.text(R.string.ui_018))}
+                OutlinedButton(onClick={vm.message(null);joining=true}) {Text(Strings.text(R.string.qr_enter_code))}
             }}
+            item {OutlinedButton(onClick=onScan) {Text(Strings.text(R.string.qr_scan))}}
             if(state.groups.isEmpty()) item {Text(Strings.text(R.string.ui_019))}
             items(state.groups.filter {it.name.contains(query,ignoreCase=true)},key={it.id}) {g -> ElevatedCard(onClick={selectedGroup=g.id;selecting=false;selected=emptySet()},modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
@@ -89,6 +91,7 @@ import java.time.format.DateTimeFormatter
                     Column(Modifier.padding(16.dp)) {
                         Text(Strings.text(R.string.ui_023),style=MaterialTheme.typography.titleSmall)
                         Text(normalizeInviteCode(group.code),style=MaterialTheme.typography.headlineSmall)
+                        TextButton(onClick={showQr=true},enabled=com.whereweare.app.domain.validInviteCode(group.code)) {Text(Strings.text(R.string.qr_show))}
                         Row {
                             TextButton(onClick={vm.message(if(copyInviteCode(context,group.code)) R.string.code_copied else R.string.error_generic)}) {Text(Strings.text(R.string.ui_080))}
                             TextButton(onClick={if(!shareInviteText(context,Strings.text(if(inviteLink("group",group.code).startsWith("https://")) R.string.ui_024 else R.string.share_group_code,group.emoji,group.name,inviteLink("group",group.code)))) vm.message(R.string.error_generic)}) {Text(Strings.text(R.string.ui_081))}
@@ -133,6 +136,7 @@ import java.time.format.DateTimeFormatter
             }}
         }
     }
+    if(showQr && group!=null) QrDisplay("group",group.code) {showQr=false}
     if(creating) GroupEditor(false,busy=operation.busy,dismiss={creating=false}) {name,emoji -> vm.create(name,emoji);creating=false}
     if(editing && group!=null) GroupEditor(true,group.name,group.emoji,operation.busy,{editing=false}) {name,emoji -> vm.edit(group.id,name,emoji);editing=false}
     if(joining) AlertDialog(onDismissRequest={joining=false;vm.message(null);inviteHandled()},title={Text(Strings.text(R.string.ui_018))},text={Column {

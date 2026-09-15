@@ -5,6 +5,7 @@ hilt = "2.60.1"
 ksp = "2.3.11"
 supabase = "3.8.0"
 ktor = "3.5.2"
+camerax = "1.6.2"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -43,6 +44,10 @@ junit = { module = "junit:junit", version = "4.13.2" }
 robolectric = { module = "org.robolectric:robolectric", version = "4.16.1" }
 mockito = { module = "org.mockito:mockito-core", version = "5.23.0" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = "1.11.0" }
+zxing = { module = "com.google.zxing:core", version = "3.5.4" }
+camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 
 firebase-bom = { module = "com.google.firebase:firebase-bom", version = "34.19.0" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }

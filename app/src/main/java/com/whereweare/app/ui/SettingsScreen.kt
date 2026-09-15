@@ -45,6 +45,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     var name by remember(state.profile?.displayName) {mutableStateOf(state.profile?.displayName.orEmpty())}
     var precise by remember {mutableStateOf(vm.location.permission()==LocationPermission.PRECISE)}
     var delete by remember {mutableStateOf(false)}
+    var showQr by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
     var diagnostic by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf<String?>(null)}
     LifecycleResumeEffect(Unit) {precise=vm.location.permission()==LocationPermission.PRECISE;onPauseOrDispose {}}
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -60,6 +61,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
             Column(Modifier.padding(16.dp)) {
                 Text(Strings.text(R.string.invite_code),style=MaterialTheme.typography.titleSmall)
                 Text(code,style=MaterialTheme.typography.headlineSmall)
+                TextButton(onClick={showQr=true},enabled=validInviteCode(code)) {Text(Strings.text(R.string.qr_show))}
                 Row {
                     TextButton(enabled=code.isNotBlank(),onClick={
                         vm.message(if(copyInviteCode(context,code)) R.string.code_copied else R.string.error_generic)
@@ -102,6 +104,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     }
     if(delete) ConfirmDestructive(Strings.text(R.string.ui_106),Strings.text(R.string.ui_109),{delete=false}) {delete=false;vm.deleteAccount()}
     diagnostic?.let {DiagnosticScreen(vm,it=="location",close={diagnostic=null})}
+    state.profile?.inviteCode?.takeIf {showQr && validInviteCode(it)}?.let {QrDisplay("person",it) {showQr=false}}
 }
 @Composable fun PrivacyScreen(back: ()->Unit) {
     val uri=LocalUriHandler.current
