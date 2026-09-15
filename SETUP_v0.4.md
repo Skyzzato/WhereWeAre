@@ -24,6 +24,8 @@ Applicare in ordine, dopo le migrazioni 001–007 immutate:
 * 015_sos.sql: SOS privati, risposte/chiusura e registrazione accettazione push.
   Applicare prima di distribuire il dispatcher con delivery.ts e payload.ts.
 
+* 016_finite_group_expiry.sql: rifiuta date infinite che non sono date client valide.
+
 Le migrazioni sono state provate localmente; non sono state applicate al server
 remoto da questo sviluppo. Le capability vengono abilitate dalle migrazioni.
 

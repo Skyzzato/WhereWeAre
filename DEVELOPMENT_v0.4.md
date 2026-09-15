@@ -420,3 +420,22 @@ Build debug/release, 83 test Android e lint PASS (.tools/v04-block17-final.log).
 466 stringhe IT/EN allineate, nessun duplicato; nessuna migrazione, dipendenza
 o permesso. ADB non rileva dispositivi: prove visive interattive, font grandi,
 TalkBack e interazioni mappa/QR restano manuali e non vengono dichiarate passate.
+
+## Blocco 18 — Verifica finale locale e stato del rilascio
+
+Migrazione 016: scadenze gruppo finite, con vincolo idempotente e regressione
+che esclude creazioni parziali dopo il rifiuto di timestamp infiniti. SQL
+001–016 e riapplicazioni PASS; hash delle migrazioni 001–007 invariati.
+
+Build debug/release PASS (.tools/v04-final-build.log), 83 test Android senza
+fallimenti, errori o skip; lint senza errori e con 57 warning residui. Tre test
+Deno del dispatcher PASS. Le 466 stringhe IT/EN restano allineate.
+
+README, setup e configurazione di esempio aggiornati. RELEASE_NOTES_v0.4.md
+riporta commit, migrazioni, dipendenze, permessi e limiti; VERIFICATION_v0.4.md
+distingue verifiche automatiche da prove remote e su dispositivo ancora aperte.
+
+Rilascio v0.4 non completato: scheduler del mancato arrivo non verificato,
+routing di produzione assente, rilevatore di arrivo e SOS vicini disattivati.
+Nessun dispositivo collegato per il collaudo reale. Versione conservata 0.33 (8),
+branch codex/v0.4, nessun push, tag o deploy backend.

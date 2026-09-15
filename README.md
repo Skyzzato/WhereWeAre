@@ -1,8 +1,8 @@
-# WhereWeAre v0.33
+# WhereWeAre — Troviamoci.
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-Versione `0.33`, `versionCode=8`, sviluppata sulla v0.32. Per installazione, migrazione 007, inviti tramite solo codice senza hosting e limitazioni background vedi [SETUP v0.33](SETUP_v0.33.md).
+**Sviluppo v0.4 in corso su `codex/v0.4`, non ancora rilasciabile.** La versione resta `0.33`, `versionCode=8`. Lo scheduler per gli avvisi di mancato arrivo non è verificato; routing reale e rilevamento sperimentale non sono attivi. Vedi [stato e note v0.4](RELEASE_NOTES_v0.4.md), [distribuzione incrementale](SETUP_v0.4.md) e [verifiche](VERIFICATION_v0.4.md). La baseline rimane documentata in [SETUP v0.33](SETUP_v0.33.md).
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
@@ -10,9 +10,9 @@ La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiv
 
 1. Installa Android Studio, JDK 21, SDK API 37 e Build Tools 36.0.0. Minimo Android 8/API 26; serve Google Play Services per Fused Location e FCM.
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
-3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Su un progetto già aggiornato alla v0.32 applica soltanto la 007.
+3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Per le funzioni incrementali di questo branch applica poi 008–016 secondo [SETUP v0.4](SETUP_v0.4.md). Le nuove migrazioni non sono state distribuite da questo sviluppo.
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. Installa `WhereWeAre-v0.33-build8-debug.apk` oppure `app/build/outputs/apk/debug/app-debug.apk`. È una build con firma debug.
+5. La build corrente è `app/build/outputs/apk/debug/app-debug.apk`, con firma debug e versione di sviluppo ancora 0.33 (8). Non è una release v0.4.
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
@@ -27,7 +27,19 @@ La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene c
 - Visibilità locale di persone/gruppi indipendente dall’autorizzazione a condividere.
 - Punto di ritrovo persistente, destinatari deduplicati, banner, linee animate, bengala Canvas e apertura della mappa da notifica.
 - Notifiche push predisposte con Firebase, da configurare; link HTTPS predisposti per il futuro dominio, senza associazione verificata attiva.
-- Eliminazione account tramite Edge Function esistente, logout, pulizia immagini e cache; solo l’ultima posizione viene conservata.
+- Eliminazione account tramite Edge Function esistente, logout, pulizia immagini e cache; la condivisione continua conserva l’ultima posizione; Check-in e SOS sono eventi volontari separati.
+
+## Funzioni incrementali v0.4
+
+Diagnostica e recupero condivisione, dettagli dispositivo, QR Persona/Gruppo,
+precisione condivisa applicata sul server, chi può vedermi, richieste posizione,
+Check-in, gruppi temporanei, convergenza Bengala, luoghi/regole consensuali,
+SOS ai destinatari selezionati, onboarding e Impostazioni riorganizzate.
+Le funzioni server vengono mostrate solo quando la relativa migrazione è disponibile.
+
+Il routing Valhalla è configurabile e disabilitato senza endpoint; “Sta arrivando”
+resta sperimentale disattivato. Mancato arrivo bloccato dallo scheduler non verificato;
+SOS verso sconosciuti vicini non disponibile. Non è una protezione d’emergenza garantita.
 
 ## GPS e riservatezza
 
@@ -35,7 +47,7 @@ Gli intervalli lunghi usano acquisizioni singole con timeout di 30 secondi, rila
 
 La RLS verifica relazione/gruppo, consenso, sharing attivo, sessione e timeout del proprietario. Un punto di ritrovo non concede ulteriori diritti sul GPS dei partecipanti. Nascondere localmente un gruppo non revoca la condivisione.
 
-La migrazione 002 disattiva il vecchio cleanup fisso a due ore: non reintrodurlo, perché il timeout personale può arrivare a 24 ore. Le autorizzazioni applicano la scadenza anche senza cancellare la riga; non esiste uno storico.
+La migrazione 002 disattiva il vecchio cleanup fisso a due ore: non reintrodurlo, perché il timeout personale può arrivare a 24 ore. Le autorizzazioni applicano la scadenza anche senza cancellare la riga; non esiste una cronologia GPS automatica. Le istantanee Check-in e SOS hanno visibilità e consenso separati, descritti nelle note v0.4.
 
 ## Cartografia
 
@@ -45,7 +57,8 @@ Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereW
 
 - Android/JVM/lint: `.\gradlew.bat :app:build`.
 - SQL completo v0.33: `node supabase/tests/run-v03.mjs --v033`, con PGlite 0.5.8 e pgcrypto nella cartella `.tools/pglite/package` (vedi SETUP).
-- Edge: `deno check supabase/functions/send-meeting-push/index.ts`.
+- SQL incrementale: `node supabase/tests/run-v03.mjs --v04`; baseline immutabile: `node tools/verify-v033-migrations.mjs`.
+- Edge: `deno test --allow-env supabase/functions/send-meeting-push/index_test.ts supabase/functions/send-meeting-push/payload_test.ts supabase/functions/send-meeting-push/delivery_test.ts`.
 - Test su dispositivo e checklist Firebase: [VERIFICATION.md](VERIFICATION.md).
 
 I report delle versioni precedenti restano come documentazione storica. Le configurazioni locali, i segreti e gli artefatti di build non sono versionati.

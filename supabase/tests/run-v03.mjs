@@ -45,6 +45,9 @@ try {
      for(const file of ['supabase/migrations/015_sos.sql','supabase/migrations/015_sos.sql','supabase/tests/sos.sql','supabase/tests/places_rules.sql','supabase/tests/checkins.sql','supabase/tests/flare_convergence.sql','supabase/tests/security_v033.sql','supabase/tests/security_v03.sql']) {
        console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
      }
+     for(const file of ['supabase/migrations/016_finite_group_expiry.sql','supabase/migrations/016_finite_group_expiry.sql','supabase/tests/finite_group_expiry.sql','supabase/tests/temporary_groups.sql','supabase/tests/sos.sql','supabase/tests/location_requests.sql','supabase/tests/shared_precision.sql']) {
+       console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
+     }
      console.log('ALL v0.4 IMPLEMENTED MIGRATION TESTS PASSED');
    }
  }

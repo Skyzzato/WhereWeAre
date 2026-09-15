@@ -11,3 +11,8 @@ FIREBASE_SENDER_ID=
 # Optional real HTTPS origin/path; blank means invitations share only the code.
 # Requires a published fallback page and /.well-known/assetlinks.json before enabling.
 INVITE_BASE_URL=
+
+# Approved production Valhalla route endpoint only. Empty disables routing.
+# Do not place provider secrets in this client configuration. See ADR_ROUTING.md.
+ROUTING_PROVIDER=
+ROUTING_ENDPOINT=
