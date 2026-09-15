@@ -1,0 +1,22 @@
+<resources>
+    <string name="map_actions">Map actions</string>
+    <string name="checkin_title">Check-in</string>
+    <string name="checkin_here">I am here</string>
+    <string name="checkin_arrived">I have arrived</string>
+    <string name="checkin_okay">All good</string>
+    <string name="checkin_hint">Send a one-time snapshot of your location to the selected recipients. This does not start continuous sharing. Your shared precision settings apply.</string>
+    <string name="checkin_message">Message (optional, up to 160 characters)</string>
+    <string name="checkin_meeting">Participants in %1$s’s flare</string>
+    <string name="checkin_send">Send check-in</string>
+    <string name="checkin_allow_location">Allow location</string>
+    <string name="checkin_inbox">Check-ins</string>
+    <string name="checkin_retention">Snapshots remain visible for 24 hours. They are not live locations.</string>
+    <string name="checkin_empty">No current check-ins.</string>
+    <string name="checkin_recipients">Recipients: %1$d</string>
+    <string name="checkin_remove">Remove check-in</string>
+    <string name="checkin_sent">Check-in sent</string>
+    <string name="checkin_received">%1$s sent a check-in</string>
+    <string name="checkin_channel">Coordination events</string>
+    <string name="checkin_location_timeout">Could not get a current location. Please try again.</string>
+    <string name="checkin_unavailable">This check-in has expired or is no longer available.</string>
+</resources>

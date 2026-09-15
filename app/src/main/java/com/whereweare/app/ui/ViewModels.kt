@@ -31,6 +31,7 @@ open class OperationViewModel: ViewModel() {
                     "stop_pending" in key -> R.string.stop_pending
                     "location_permission" in key -> R.string.location_permission
                     "location_disabled" in key -> R.string.location_disabled
+                    "location_timeout" in key -> R.string.checkin_location_timeout
                     "request_cooldown" in key -> R.string.location_request_cooldown
                     "request_expired" in key -> R.string.location_request_expired
                     "already_connected" in key -> R.string.error_connected
@@ -95,6 +96,12 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
         sharing.createMeeting(id,lat,lon,all,people,groups,style)
     } }
     fun removeMeeting(id: String) {perform {sharing.removeMeeting(id)}}
+    fun checkin(id: String,type: String,message: String,people: Set<String>,groups: Set<String>,meeting: String?,completed: ()->Unit) {perform(R.string.checkin_sent) {
+        val fix=try {location.snapshot(preferences.highAccuracy.first())} catch(_: TimeoutCancellationException) {error("location_timeout")}
+        sharing.checkin(id,type,message,fix,people,groups,meeting)
+        completed()
+    }}
+    fun removeEvent(id: String) {perform {sharing.removeEvent(id)}}
     val mapStyle=preferences.mapStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"standard")
     val permission=permissionEpoch.map { location.permission() }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),location.permission())
     val pendingStop=controller.pendingStop.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)
@@ -226,21 +233,26 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     val language=preferences.language.stateIn(viewModelScope,SharingStarted.Eagerly,"system")
     val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     val notification=MutableStateFlow<MeetingPoint?>(null)
+    val eventNotice=MutableStateFlow<AppEvent?>(null)
     val flare=combine(feedback.events,auth.session) {events,_ -> events.firstOrNull {it.user==auth.userId}}
         .stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)
     fun finishFlare(event: FlareEvent?) {if(event!=null) auth.userId?.let {feedback.finish(it,event.id)}}
     val invite=MutableStateFlow<kotlinx.serialization.json.JsonObject?>(null)
     init {
         viewModelScope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collect {
-            notification.value=null;feedback.clear();invite.value=null
+            notification.value=null;eventNotice.value=null;feedback.clear();invite.value=null
             val manager=context.getSystemService(android.app.NotificationManager::class.java)
-            manager.activeNotifications.filter {it.notification.channelId in setOf("meetings","meetings-v032","location-requests")}.forEach {manager.cancel(it.tag,it.id)}
+            manager.activeNotifications.filter {it.notification.channelId in setOf("meetings","meetings-v032","location-requests","app-events")}.forEach {manager.cancel(it.tag,it.id)}
         }}
         viewModelScope.launch {combine(auth.session,preferences.language) {_,lang -> auth.userId to lang}.distinctUntilChanged().collect {(id,_) -> if(id!=null) com.whereweare.app.service.PushRegistration.enqueue(context)}}
     }
     suspend fun observeMeetings() {sharing.state.collect { snapshot ->
         val user=auth.userId ?: return@collect
         if(snapshot.profile?.id!=user) return@collect
+        if(snapshot.events.none {it.id==eventNotice.value?.id && it.active(sharing.now())}) eventNotice.value=null
+        snapshot.events.filter {it.sender_id!=user && it.active(sharing.now())}.sortedBy {it.created_at}.forEach {event ->
+            if(preferences.markMeetingSeen(user,"event:${event.id}") && auth.userId==user) eventNotice.value=event
+        }
         snapshot.meetings.sortedBy {it.created_at}.forEach { point ->
             val event=point.id+if(point.active) ":created" else ":removed"
             val fresh=if(point.active) feedback.created(user,point.id,point.flare_style_id) else preferences.markMeetingSeen(user,event)

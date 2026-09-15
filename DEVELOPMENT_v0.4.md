@@ -228,3 +228,29 @@ Hash 001–007 invariati. Nessuna nuova dipendenza o autorizzazione Android.
 Istruzioni incrementalmente aggiornate in SETUP_v0.4.md. Migrazione e dispatcher
 non distribuiti da questo sviluppo; restano da verificare FCM reale e UX su
 due dispositivi. Le credenziali/scheduler non sono stati inventati o modificati.
+
+## Blocco 08 — Check-in e infrastruttura eventi
+
+Check-in Sono qui / Sono arrivato / Tutto bene, messaggio facoltativo e selezione
+Persone, Gruppi o partecipanti a un Bengala. Menu compatto delle azioni Mappa,
+inbox senza nuova tab, apertura/centratura dello snapshot e rimozione da parte
+del mittente. Acquisizione singola GPS con timeout: non avvia né ferma il servizio
+continuo e non scrive latest_locations.
+
+Migrazione 011: eventi e consegne in schema privato, payload autorizzato per
+destinatario, scadenza di visibilità 24 ore, idempotenza e tombstone senza
+coordinate dopo rimozione. Le letture non aumentano mai la precisione rispetto
+all'invio e applicano restrizioni successive; i gruppi vengono ricontrollati.
+Il trasporto riutilizza outbox/lease/dispatcher, con un payload FCM senza
+coordinate e un worker che verifica l'inbox autenticata. Notifica e richiamo
+in primo piano aprono la mappa; le aree approssimate non diventano pin esatti.
+
+Build debug/release, 68 test Android e lint: PASS. Nuovi test per parsing,
+scadenza, precisione snapshot, mancato avvio/stop tracking, GPS non disponibile
+senza pubblicazioni. SQL 001–011 e regressioni: PASS, incluse riapplicazione,
+destinatari, assenza accesso raw, upgrade/downgrade precisione, gruppi/Bengala,
+scadenza, rimozione e retry. Due test Deno aggiornati: PASS. IT/EN allineate,
+hash 001–007 invariati. Nessuna dipendenza o autorizzazione Android aggiunta.
+
+Restano test fisici GPS/permessi e FCM remoto; SETUP_v0.4.md distingue visibilità
+da retention fisica. Migrazione e dispatcher non sono stati distribuiti.

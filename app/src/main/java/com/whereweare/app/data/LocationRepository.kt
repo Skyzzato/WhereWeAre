@@ -38,6 +38,10 @@ data class SatelliteDetails(val visible: Int,val used: Int,val observedAt: Insta
     fun deviceStatus()=DeviceStatus(validBatteryLevel(context.getSystemService(android.os.BatteryManager::class.java)
         .getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)),enabled())
     private fun priority(high: Boolean)=if(high && permission()==LocationPermission.PRECISE) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY
+    suspend fun snapshot(high: Boolean): UserLocation {
+        check(hasPermission()) {"location_permission"};check(enabled()) {"location_disabled"}
+        return withTimeout(35_000) {fixes(high,300).first()}
+    }
     private fun domain(fix: Location): UserLocation? {
         val age=((SystemClock.elapsedRealtimeNanos()-fix.elapsedRealtimeNanos)/1_000_000).coerceAtLeast(0)
         if(!fix.hasAccuracy() || age>30_000) return null

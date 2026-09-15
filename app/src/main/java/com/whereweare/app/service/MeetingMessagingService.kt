@@ -25,6 +25,15 @@ import javax.inject.*
 class MeetingMessagingService: FirebaseMessagingService() {
     override fun onNewToken(token: String) {PushRegistration.enqueue(this)}
     override fun onMessageReceived(message: RemoteMessage) {
+        if(message.data["kind"]=="checkin") {
+            val id=message.data["event_id"] ?: return
+            if(!id.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))) return
+            WorkManager.getInstance(this).enqueueUniqueWork("app-event-$id",ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<EventNotificationWorker>().setInputData(workDataOf("event_id" to id,"recipient" to message.data["recipient"]))
+                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST).build())
+            return
+        }
         if(message.data["kind"]=="location_request") {
             val id=message.data["request_id"] ?: return
             if(!id.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))) return

@@ -9,6 +9,8 @@ Applicare in ordine, dopo le migrazioni 001–007 immutate:
 * 009_shared_precision.sql: protezione raw, posizioni approssimate e destinatari.
 * 010_location_requests.sql: richieste posizione nella tabella share_requests,
   distinte dai collegamenti reciproci, e ampliamento della coda push esistente.
+* 011_checkins_events.sql: snapshot Check-in, consegne autorizzate per
+  destinatario e inbox eventi riutilizzabile.
 
 Le migrazioni sono state provate localmente; non sono state applicate al server
 remoto da questo sviluppo. Le capability vengono abilitate dalle migrazioni.
@@ -24,6 +26,21 @@ I messaggi FCM contengono solo tipo, destinatario e identificatore. Il worker
 ricontrolla sessione/account e legge la inbox autorizzata prima di notificare;
 non espone richieste rifiutate, scadute o ricevute da un altro account.
 La notifica apre Persone e richiede l'azione dell'utente; non avvia GPS in background.
+
+Con la 011 ridistribuire anche il dispatcher: gestisce il tipo Check-in con
+event_id e apre lo snapshot autorizzato sulla mappa. Coordinate e messaggi non
+sono nel payload FCM. Lo schema privato conserva evento e consegne; la inbox
+autenticata applica scadenza 24 ore e visibilità. La scadenza è di visibilità,
+non una promessa di cancellazione fisica automatica: configurare la retention
+server secondo la propria politica operativa.
+
+La precisione massima di un Check-in è fissata alla creazione; nuovi permessi
+più precisi non svelano il raw del vecchio snapshot. Restrizioni successive
+rendono più grossolana anche la rilettura degli snapshot passati. I permessi
+dei gruppi selezionati vengono ricontrollati. Un invio personale volontario è
+un consenso allo snapshot separato dal toggle continuo; il mittente può
+rimuoverlo. La rimozione cancella contenuto/consegne e conserva un identificatore
+senza coordinate per impedire che retry tardivi ricreino il Check-in.
 
 Per una richiesta posizione: una richiesta pendente per direzione, riuso dello
 stesso identificatore sui retry, una voce outbox per richiesta, scadenza 24 ore,

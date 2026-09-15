@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -76,6 +78,12 @@ import java.time.format.DateTimeFormatter
     var creatingMeeting by rememberSaveable {mutableStateOf(false)}
     var choosingRecipients by remember {mutableStateOf(false)}
     var selectedId by remember { mutableStateOf<String?>(null) }
+    var selectedEvent by remember {mutableStateOf<String?>(null)}
+    var actions by remember {mutableStateOf(false)}
+    var checkinEditor by rememberSaveable {mutableStateOf(false)}
+    var checkinInbox by rememberSaveable {mutableStateOf(false)}
+    val events=state.snapshot.events.filter {it.active(state.now) && it.checkin()!=null}
+    LaunchedEffect(events) {if(events.none {it.id==selectedEvent}) selectedEvent=null}
     var mapError by remember { mutableStateOf(false) }
     LaunchedEffect(camera) {
         camera.events.collect { event ->
@@ -90,10 +98,15 @@ import java.time.format.DateTimeFormatter
     LaunchedEffect(local) {
         if(local!=null && (follow || !centered)) { camera.setCameraPosition(camera.cameraPosition.copy(target=Position(local!!.longitude,local!!.latitude),zoom=if(!centered) 14.0 else camera.cameraPosition.zoom)); centered=true }
     }
-    LaunchedEffect(focus,state.snapshot.meetings,state.visible) {
+    LaunchedEffect(focus,state.snapshot.meetings,state.visible,events) {
+        val event=events.firstOrNull {it.id==focus?.event}
+        event?.checkin()?.let {payload ->
+            selectedEvent=event.id;selectedId=null;follow=false
+            camera.setCameraPosition(CameraPosition(target=Position(payload.longitude,payload.latitude),zoom=if(payload.precision_m>0) 12.0 else 16.0));focused()
+        }
         val point=state.snapshot.meetings.firstOrNull {it.id==focus?.meeting && it.active}
         val person=state.visible.firstOrNull {it.location.userId==focus?.person}
-        if(point!=null || person!=null) {follow=false;selectedId=person?.location?.userId
+        if(point!=null || person!=null) {follow=false;selectedEvent=null;selectedId=person?.location?.userId
             camera.setCameraPosition(CameraPosition(target=point?.let {Position(it.longitude,it.latitude)} ?: Position(person!!.location.longitude,person.location.latitude),zoom=if((person?.location?.precisionMeters ?: 0)>0) 12.0 else 16.0));focused()}
     }
     Column(Modifier.fillMaxSize()) {
@@ -117,8 +130,14 @@ import java.time.format.DateTimeFormatter
                 uiOptions=MapUiOptions { renderMode=AndroidRenderMode.Texture },
                 overlay={
                     include(MapOverlay.Default)
+                    events.forEach {event -> event.checkin()?.let {payload ->
+                        Surface(onClick={selectedId=null;selectedEvent=event.id},modifier=Modifier.placedAt(Position(payload.longitude,payload.latitude)),shape=MaterialTheme.shapes.small) {
+                            if(payload.precision_m>0) Text("${Strings.text(R.string.checkin_title)} · ${event.sender_name}\n${precisionLabel(payload.precision_m)}",Modifier.padding(6.dp),style=MaterialTheme.typography.labelSmall)
+                            else Icon(Icons.Default.CheckCircle,"${event.sender_name}: ${checkinLabel(payload.checkin_type)}",Modifier.size(40.dp).padding(6.dp),tint=MaterialTheme.colorScheme.tertiary)
+                        }
+                    }}
                     state.visible.filter {it.location.precisionMeters>0}.forEach {person ->
-                        OutlinedButton(onClick={selectedId=person.location.userId},modifier=Modifier.placedAt(Position(person.location.longitude,person.location.latitude))) {
+                        OutlinedButton(onClick={selectedEvent=null;selectedId=person.location.userId},modifier=Modifier.placedAt(Position(person.location.longitude,person.location.latitude))) {
                             Text("${person.name}\n${precisionLabel(person.location.precisionMeters)}")
                         }
                     }
@@ -135,11 +154,11 @@ import java.time.format.DateTimeFormatter
                                 FilledTonalButton(onClick={expanded=true},modifier=Modifier.sizeIn(minWidth=48.dp,minHeight=48.dp)) {Text(cluster.size.toString())}
                                 DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}) {
                                     cluster.forEach {index -> val member=markers[index]
-                                        DropdownMenuItem(text={Text(member.name)},onClick={selectedId=member.location.userId;expanded=false})
+                                        DropdownMenuItem(text={Text(member.name)},onClick={selectedEvent=null;selectedId=member.location.userId;expanded=false})
                                     }
                                 }
                             } else {
-                                Box(Modifier.clickable {selectedId=if(selectedId==person.location.userId) null else person.location.userId}) {
+                                Box(Modifier.clickable {selectedEvent=null;selectedId=if(selectedId==person.location.userId) null else person.location.userId}) {
                                     Box(Modifier.sizeIn(minWidth=48.dp,minHeight=48.dp).padding(5.dp),contentAlignment=Alignment.Center) {
                                         val own=person.location.userId==state.snapshot.profile?.id
                                         val contact=state.snapshot.contacts[person.location.userId]
@@ -154,7 +173,7 @@ import java.time.format.DateTimeFormatter
                             modifier=Modifier.placedAt(Position(point.longitude,point.latitude))) {Icon(Icons.Default.Flag,point.creator_name,Modifier.size(48.dp).padding(4.dp),tint=MaterialTheme.colorScheme.primary)}
                     }
                 })
-            ApproximateAreas(camera,state.visible.map {it.location})
+            ApproximateAreas(camera,state.visible.map {it.location}+events.mapNotNull {it.checkin()?.location(it.id)})
             MeetingConnections(camera,state.snapshot.meetings,state.visible.map {it.location}.filter {it.precisionMeters==0}+listOfNotNull(local))
             Column(Modifier.align(Alignment.TopStart).padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 FilledTonalButton(enabled=local!=null,colors=ButtonDefaults.filledTonalButtonColors(containerColor=if(follow) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer),onClick={ if(local!=null) { follow=true; scope.launch { camera.animateCameraPosition(CameraPosition(target=Position(local!!.longitude,local!!.latitude),zoom=15.0)) } } }) {
@@ -170,7 +189,16 @@ import java.time.format.DateTimeFormatter
                     }
                 }) { Text(stringResource(R.string.fit_all)) }
             }
-            if(config.config?.features?.meeting_points!=false && !creatingMeeting) FloatingActionButton(onClick={follow=false;creatingMeeting=true},modifier=Modifier.align(Alignment.TopEnd).padding(12.dp)) {Icon(Icons.Default.Flag,Strings.text(R.string.ui_046))}
+            if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                FloatingActionButton(onClick={actions=true}) {Icon(Icons.Default.MoreVert,Strings.text(R.string.map_actions))}
+                DropdownMenu(actions,{actions=false}) {
+                    if(config.config?.features?.meeting_points!=false) DropdownMenuItem(text={Text(Strings.text(R.string.ui_046))},onClick={actions=false;follow=false;creatingMeeting=true})
+                    if(state.snapshot.eventsAvailable) {
+                        DropdownMenuItem(text={Text(Strings.text(R.string.checkin_title))},onClick={actions=false;vm.message(null);checkinEditor=true})
+                        DropdownMenuItem(text={Text(Strings.text(R.string.checkin_inbox))},onClick={actions=false;checkinInbox=true})
+                    }
+                }
+            }
             if(creatingMeeting) {
                 Icon(Icons.Default.Flag,Strings.text(R.string.ui_047),Modifier.align(Alignment.Center).size(48.dp),tint=MaterialTheme.colorScheme.primary)
                 Surface(Modifier.align(Alignment.BottomCenter)) {Column {Text(Strings.text(R.string.ui_048));Row {
@@ -178,11 +206,11 @@ import java.time.format.DateTimeFormatter
                     Button(onClick={choosingRecipients=true}) {Text(Strings.text(R.string.ui_049))}
                 }}}
             }
-            if(state.visible.isEmpty() && !creatingMeeting) Surface(modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=48.dp),shape=MaterialTheme.shapes.medium) {
+            if(state.visible.isEmpty() && events.isEmpty() && !creatingMeeting) Surface(modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=48.dp),shape=MaterialTheme.shapes.medium) {
                 Text(stringResource(R.string.empty_map),Modifier.padding(8.dp),style=MaterialTheme.typography.labelMedium)
             }
             val selected=(state.visible+listOfNotNull(local?.let { VisiblePerson(Strings.text(R.string.you),it,freshness(it.recordedAt,state.now)) })).firstOrNull { it.location.userId==selectedId }
-            selected?.takeUnless {creatingMeeting}?.let { person -> ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp).heightIn(max=360.dp)) { Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
+            selected?.takeUnless {creatingMeeting || selectedEvent!=null}?.let { person -> ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp).heightIn(max=360.dp)) { Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) { Text(person.name,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium); TextButton(onClick={selectedId=null}) { Text(Strings.text(R.string.close)) } }
                 val own=person.location.userId==state.snapshot.profile?.id
                 val stale=if(own) person.location.recordedAt.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))
@@ -215,6 +243,15 @@ import java.time.format.DateTimeFormatter
                 }
                 }
             } } }
+            events.firstOrNull {it.id==selectedEvent}?.let {event -> event.checkin()?.let {payload ->
+                ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp).heightIn(max=300.dp)) {Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
+                    Row(verticalAlignment=Alignment.CenterVertically) {Text(event.sender_name,Modifier.weight(1f));TextButton(onClick={selectedEvent=null}) {Text(Strings.text(R.string.close))}}
+                    Text(checkinLabel(payload.checkin_type),style=MaterialTheme.typography.titleMedium)
+                    Text(eventTime(payload.recorded_at));Text(precisionLabel(payload.precision_m))
+                    if(payload.message.isNotBlank()) Text(payload.message)
+                    if(event.sender_id==state.snapshot.profile?.id) TextButton(onClick={vm.removeEvent(event.id);selectedEvent=null},enabled=!operation.busy) {Text(Strings.text(R.string.checkin_remove))}
+                }}
+            }}
         }
         Surface { Text(provider.attribution,Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=4.dp),style=MaterialTheme.typography.labelSmall) }
         state.snapshot.meetings.firstOrNull {it.active && it.creator_id==state.snapshot.profile?.id}?.let {point -> TextButton(onClick={vm.removeMeeting(point.id)},enabled=!operation.busy) {Text(Strings.text(R.string.ui_054))} }
@@ -249,4 +286,9 @@ import java.time.format.DateTimeFormatter
         val point=camera.cameraPosition.target
         vm.meeting(point.latitude,((point.longitude+180)%360+360)%360-180,all,people,groups);choosingRecipients=false;creatingMeeting=false
     },cancel={choosingRecipients=false})
+    if(checkinEditor) CheckinEditor(state.snapshot,operation,permissionState!=LocationPermission.NONE,{requestPermission(false)},
+        send={id,type,message,people,groups,meeting -> vm.checkin(id,type,message,people,groups,meeting) {checkinEditor=false}},close={checkinEditor=false})
+    if(checkinInbox) CheckinInbox(events,state.snapshot,open={event -> checkinInbox=false;selectedId=null;selectedEvent=event.id;event.checkin()?.let {payload -> scope.launch {
+        follow=false;camera.setCameraPosition(CameraPosition(target=Position(payload.longitude,payload.latitude),zoom=if(payload.precision_m>0) 12.0 else 16.0))
+    }}},close={checkinInbox=false})
 }
