@@ -8,6 +8,10 @@ Deno.test('meeting payload remains compatible and location request has no meetin
   if(event.event_id!=='event' || 'meeting_id' in event || Object.keys(event).length!==3) throw Error('Invalid event payload');
   const place=pushData({recipient:'user',kind:'place',event_id:'event'});
   if(place.event_id!=='event' || Object.keys(place).length!==3) throw Error('Invalid place payload');
+  for(const kind of ['sos','sos_closed']) {
+    const sos=pushData({recipient:'user',kind,event_id:'event'});
+    if(sos.event_id!=='event' || Object.keys(sos).length!==3) throw Error('Unsafe SOS payload');
+  }
   let rejected=false;
   try {pushData({recipient:'user',kind:'unknown'});} catch {rejected=true;}
   if(!rejected) throw Error('Unknown notification kind accepted');

@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="sos_emergency">In a real emergency contact emergency services. WhereWeAre does not replace 112.</string>
+  <string name="sos_dial">CALL 112</string>
+  <string name="sos_position_consent">For this SOS, the best available position will be shared temporarily with the selected recipients, even if normal sharing is approximate. You can send without GPS.</string>
+  <string name="sos_lifetime">Visible until you close it, for up to 6 hours. Server confirmation does not mean someone has received or read it.</string>
+  <string name="sos_help">I need help</string>
+  <string name="sos_injured">Injured / physical problem</string>
+  <string name="sos_lost">Lost / disoriented</string>
+  <string name="sos_vehicle">Vehicle stuck</string>
+  <string name="sos_accident">Accident</string>
+  <string name="sos_countdown">Sending in %1$s seconds</string>
+  <string name="sos_cancel">CANCEL</string>
+  <string name="sos_send">SEND SOS</string>
+  <string name="sos_sending">Registering SOS…</string>
+  <string name="sos_confirmed">SOS registered and confirmed by the server. It has not been sent to 112 or emergency services.</string>
+  <string name="sos_unknown">Unable to confirm registration. Retry or contact your recipients directly.</string>
+  <string name="sos_retry">Retry same SOS</string>
+  <string name="sos_nearby_disabled">Receive nearby SOS: OFF. Experimental service not available.</string>
+  <string name="sos_received">SOS from %1$s</string>
+  <string name="sos_closed_received">%1$s closed the SOS</string>
+  <string name="sos_active">Active SOS</string>
+  <string name="sos_no_position">Position unavailable</string>
+  <string name="sos_accuracy">Available accuracy: about %1$s m</string>
+  <string name="sos_delivery_hint">Recipients below. Push service acceptance is not proof of delivery. Viewed means the event was opened in the app.</string>
+  <string name="sos_viewed">Viewed in the app</string>
+  <string name="sos_push_accepted">Accepted by push service · receipt not confirmed</string>
+  <string name="sos_registered_recipient">Recipient registered · receipt not confirmed</string>
+  <string name="sos_can_help">I CAN HELP</string>
+  <string name="sos_cannot_help">I CANNOT HELP</string>
+  <string name="sos_resolved">Problem resolved</string>
+  <string name="sos_okay">I am okay</string>
+  <string name="sos_accidental">Sent by mistake</string>
+  <string name="sos_response_confirmed">Response recorded</string>
+  <string name="sos_channel">SOS alerts</string>
+</resources>

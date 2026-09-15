@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="sos_emergency">In caso di emergenza reale contatta i servizi di emergenza. WhereWeAre non sostituisce il 112.</string>
+  <string name="sos_dial">CHIAMA 112</string>
+  <string name="sos_position_consent">Per questo SOS verrà condivisa temporaneamente la migliore posizione disponibile con i destinatari selezionati, anche se la condivisione normale è approssimata. Puoi inviare anche senza GPS.</string>
+  <string name="sos_lifetime">Visibile fino alla chiusura, per un massimo di 6 ore. La conferma del server non significa che qualcuno lo abbia ricevuto o letto.</string>
+  <string name="sos_help">Ho bisogno di aiuto</string>
+  <string name="sos_injured">Ferito / problema fisico</string>
+  <string name="sos_lost">Perso / disorientato</string>
+  <string name="sos_vehicle">Veicolo bloccato</string>
+  <string name="sos_accident">Incidente</string>
+  <string name="sos_countdown">Invio tra %1$s secondi</string>
+  <string name="sos_cancel">ANNULLA</string>
+  <string name="sos_send">INVIA SOS</string>
+  <string name="sos_sending">Registrazione SOS in corso…</string>
+  <string name="sos_confirmed">SOS registrato e confermato dal server. Non è stato inviato al 112 o ai soccorsi.</string>
+  <string name="sos_unknown">Impossibile confermare la registrazione. Riprova o contatta direttamente i destinatari.</string>
+  <string name="sos_retry">Riprova lo stesso SOS</string>
+  <string name="sos_nearby_disabled">Ricevi SOS nelle vicinanze: OFF. Servizio sperimentale non disponibile.</string>
+  <string name="sos_received">SOS da %1$s</string>
+  <string name="sos_closed_received">%1$s ha concluso l’SOS</string>
+  <string name="sos_active">SOS attivo</string>
+  <string name="sos_no_position">Posizione non disponibile</string>
+  <string name="sos_accuracy">Precisione disponibile: circa %1$s m</string>
+  <string name="sos_delivery_hint">Destinatari sotto. La presa in carico del servizio push non prova la consegna. Visualizzato indica che l’evento è stato aperto nell’app.</string>
+  <string name="sos_viewed">Visualizzato nell’app</string>
+  <string name="sos_push_accepted">Preso in carico dal servizio push · ricezione non confermata</string>
+  <string name="sos_registered_recipient">Destinatario registrato · ricezione non confermata</string>
+  <string name="sos_can_help">POSSO INTERVENIRE</string>
+  <string name="sos_cannot_help">NON POSSO INTERVENIRE</string>
+  <string name="sos_resolved">Problema risolto</string>
+  <string name="sos_okay">Sto bene</string>
+  <string name="sos_accidental">Inviato per errore</string>
+  <string name="sos_response_confirmed">Risposta registrata</string>
+  <string name="sos_channel">Avvisi SOS</string>
+</resources>

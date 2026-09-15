@@ -68,6 +68,9 @@ fun eventTime(at: String)=runCatching {DateTimeFormatter.ofPattern("dd/MM HH:mm"
             LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 if(events.isEmpty()) item {Text(Strings.text(R.string.checkin_empty))}
                 items(events,key={it.id}) {event ->
+                    if(event.kind in setOf("sos","sos_closed")) OutlinedCard(onClick={open(event)},modifier=Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp)) {Text(eventReceivedText(event));Text(eventTime(event.created_at))}
+                    }
                     event.place()?.let {notice -> OutlinedCard(onClick={open(event)},modifier=Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp)) {Text(placeEventText(notice));Text(eventTime(notice.observed_at))}
                     }}

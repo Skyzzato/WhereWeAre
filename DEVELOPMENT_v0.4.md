@@ -363,3 +363,26 @@ nuova funzione attiva o promessa di protezione. BLOCKED_OVERDUE_ALERTS.md
 specifica prerequisiti, evidenza e test necessari. Nessuna migrazione abilitante,
 permesso o dipendenza. Si continua con i blocchi indipendenti; questo requisito
 fondamentale impedisce la finalizzazione della v0.4 e l’incremento versione.
+
+
+## Blocco 15 — SOS per destinatari autorizzati
+
+Pulsante rosso separato, schermata consenso, categorie, countdown annullabile
+5 s e dialer 112. Nessun CALL_PHONE o avvio tracking. Invio anche senza GPS,
+stati invio/confermato/non confermato, ID stabile e guardia cambio account.
+SOS in mappa/inbox, destinatari, visualizzazioni/risposte, chiusure notificate.
+
+Migrazione 015: migliore posizione per consenso esplicito limitato a 6 ore,
+scadenza gruppi ricontrollata, cooldown/audit, ACL e raw privati; chiusura cancella
+coordinate e retry non resuscita eventi. Il dispatcher registra accettazione
+FCM separatamente dal completamento coda; nessuna prova fittizia di consegna.
+Nessun destinatario 112/soccorsi. ADR_SOS.md documenta il limite delle notifiche.
+SOS sconosciuti vicini resta OFF/non disponibile: ricerca opt-in e antiabuso
+non verificati; segnale acustico locale opzionale non implementato.
+
+Build debug/release, 82 test Android e lint PASS (.tools/v04-block15-build.log).
+SQL 001–015/regressioni PASS; tre test Deno dispatcher/payload/accettazione PASS.
+Test countdown/cancel/ACK/errore/GPS assente, permessi SQL, precisione SOS,
+risposte, cooldown, chiusura/retry e scadenza gruppi. Hash 001–007 invariati.
+Nessuna dipendenza o autorizzazione Android aggiunta. Test remoti FCM/dispositivi
+ancora necessari; nessuna distribuzione backend effettuata.

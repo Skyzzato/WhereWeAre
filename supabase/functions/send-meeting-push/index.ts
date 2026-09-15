@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import {pushData} from './payload.ts';
+import {deliveryResult} from './delivery.ts';
 
 // Called by a trusted scheduler only. Never expose these credentials in the APK.
 const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
@@ -25,19 +26,21 @@ export async function handle(request: Request): Promise<Response> {
     const {data:jobs,error}=await admin.rpc('claim_push_batch');if(error) throw Error('Queue unavailable');
     let completed=0;
     for(const job of jobs ?? []) {
-      let success=true;
-      for(const device of job.tokens) {
+      const delivery=await deliveryResult(job.tokens,async device=> {
         const result=await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`,{
           method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(15000),
           body:JSON.stringify({message:{token:device,data:pushData(job),android:{priority:'HIGH',ttl:'86400s'}}})
         });
+        if(result.ok) return 'accepted';
         if(!result.ok) {
           const response=await result.json().catch(()=>({}));
           const invalid=response.error?.details?.some((detail:{errorCode?:string})=>detail.errorCode==='UNREGISTERED');
-          if(invalid) await admin.from('device_tokens').delete().eq('token',device);else success=false;
+          if(invalid) {await admin.from('device_tokens').delete().eq('token',device);return 'invalid';}
         }
-      }
-      if(success) {const {error}=await admin.rpc('complete_push',{job:job.id});if(error) throw Error('Queue acknowledgement failed');completed++;}
+        return 'retry';
+      });
+      if(delivery.accepted) {const {error}=await admin.rpc('record_push_acceptance',{job:job.id});if(error) throw Error('Acceptance acknowledgement failed');}
+      if(delivery.complete) {const {error}=await admin.rpc('complete_push',{job:job.id});if(error) throw Error('Queue acknowledgement failed');completed++;}
     }
     return Response.json({completed});
   } catch {return new Response('Dispatch failed; leased jobs will retry',{status:503});}

@@ -70,6 +70,22 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     val location: LocationRepository,private val preferences: PreferencesRepository,private val auth: AuthRepository,val avatars: AvatarRepository,
     network: NetworkMonitor,bootstrap: BootstrapRepository,private val feedback: MeetingFeedback,val routing: ConfiguredRoutingRepository=ConfiguredRoutingRepository()
 ): OperationViewModel() {
+    val sosSendState=MutableStateFlow(SosSendState.IDLE)
+    fun resetSos() {if(sosSendState.value!=SosSendState.SENDING) sosSendState.value=SosSendState.IDLE}
+    fun sendSos(id: String,category: String,people: Set<String>,groups: Set<String>) {
+        if(sosSendState.value==SosSendState.SENDING) return
+        val user=auth.userId ?: return
+        viewModelScope.launch {
+            dispatchSos(capture={
+                val fallback=sharing.state.value.locations.firstOrNull {it.userId==auth.userId && it.recordedAt>=sharing.now().minusSeconds(86400)}
+                try {withTimeout(8000) {location.snapshot(true)}} catch(e: TimeoutCancellationException) {fallback}
+                catch(e: CancellationException) {throw e} catch(_: Exception) {fallback}
+            },register={check(auth.userId==user);sharing.sendSos(id,category,people,groups,it?.takeIf {fix -> fix.userId==user});check(auth.userId==user)},report={sosSendState.value=it})
+        }
+    }
+    suspend fun sosStatus(id: String)=sharing.sosStatus(id)
+    fun respondSos(id: String,response: String?) {perform(if(response!=null) R.string.sos_response_confirmed else null) {sharing.respondSos(id,response)}}
+    fun closeSos(id: String,reason: String,done: ()->Unit) {perform {sharing.closeSos(id,reason);done()}}
     private val ticks=flow { while(true) { emit(sharing.now()); delay(1_000) } }
     val state=combine(sharing.state,ticks,preferences.hidden(auth.userId.orEmpty()),preferences.hiddenGroups(auth.userId.orEmpty())) { snapshot,now,hidden,hiddenGroups ->
         val groupHidden=snapshot.members.filter { it.groupId in hiddenGroups }.map {it.userId}.toSet()
