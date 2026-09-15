@@ -6,7 +6,9 @@ import java.util.Locale
 
 data class UserProfile(val id: String, val displayName: String, val inviteCode: String, val avatarPath: String?=null, val visibilitySeconds: Int=86400,val sharedPrecision: Int=0)
 data class ContactProfile(val id: String,val name: String,val avatarPath: String?,val visibilitySeconds: Int,val commonGroup: Boolean,val canView: Boolean=true,val updateInterval: Int=60)
-data class Group(val id: String,val name: String,val emoji: String,val code: String,val creator: String,val createdAt: Instant)
+data class Group(val id: String,val name: String,val emoji: String,val code: String,val creator: String,val createdAt: Instant,val expiresAt: Instant?=null) {
+    fun active(now: Instant)=expiresAt?.isAfter(now) ?: true
+}
 data class GroupMember(val groupId: String,val userId: String,val sharingEnabled: Boolean=true,val sharedPrecision: Int?=null)
 enum class LocationPermission { NONE, APPROXIMATE, PRECISE }
 fun locationPermission(coarse: Boolean,fine: Boolean) = when { fine -> LocationPermission.PRECISE; coarse -> LocationPermission.APPROXIMATE; else -> LocationPermission.NONE }
@@ -58,7 +60,7 @@ data class Snapshot(val profile: UserProfile? = null, val names: Map<String,Stri
     val statuses: List<SharingStatus> = emptyList(), val locations: List<UserLocation> = emptyList(),
     val loading: Boolean = true, val offline: Boolean = false,
     val contacts: Map<String,ContactProfile> = emptyMap(),val groups: List<Group> = emptyList(),val members: List<GroupMember> = emptyList(),
-    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false,val realtimeUnavailable: Boolean=false,val savedPeople: Set<String> = emptySet(),val sharedPrecisionAvailable: Boolean=false,val locationRequestsAvailable: Boolean=false,val locationRequests: List<LocationRequest> = emptyList(),val eventsAvailable: Boolean=false,val events: List<AppEvent> = emptyList())
+    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false,val realtimeUnavailable: Boolean=false,val savedPeople: Set<String> = emptySet(),val sharedPrecisionAvailable: Boolean=false,val locationRequestsAvailable: Boolean=false,val locationRequests: List<LocationRequest> = emptyList(),val eventsAvailable: Boolean=false,val events: List<AppEvent> = emptyList(),val temporaryGroupsAvailable: Boolean=false)
 
 @kotlinx.serialization.Serializable data class LocationRequest(val id: String,val sender_id: String,val receiver_id: String,val sender_name: String,val created_at: String)
 

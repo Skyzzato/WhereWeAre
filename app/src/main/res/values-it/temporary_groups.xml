@@ -1,0 +1,9 @@
+<resources>
+    <string name="group_permanent">Gruppo permanente</string>
+    <string name="group_temporary">Gruppo temporaneo</string>
+    <string name="group_ends">Temporaneo · termina %1$s</string>
+    <string name="group_end_date">Data di scadenza: %1$s</string>
+    <string name="group_end_time">Ora di scadenza: %1$s</string>
+    <string name="group_invalid_expiry">Scegli una data e un orario futuri. Evita gli orari saltati o ripetuti al cambio tra ora solare e legale.</string>
+    <string name="group_expired">Questo gruppo è scaduto.</string>
+</resources>

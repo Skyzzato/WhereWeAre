@@ -34,6 +34,8 @@ open class OperationViewModel: ViewModel() {
                     "location_timeout" in key -> R.string.checkin_location_timeout
                     "request_cooldown" in key -> R.string.location_request_cooldown
                     "request_expired" in key -> R.string.location_request_expired
+                    "group_expired" in key -> R.string.group_expired
+                    "invalid_expiry" in key -> R.string.group_invalid_expiry
                     "already_connected" in key -> R.string.error_connected
                     "self_invite" in key -> R.string.self_invite
                     "not_authorized" in key -> R.string.error_forbidden
@@ -74,6 +76,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
         val visible=snapshot.locations.filter { fix ->
             fix.userId!=auth.userId && fix.userId !in hidden && fix.userId !in groupHidden &&
                 snapshot.contacts[fix.userId]?.canView==true &&
+                activeLocationGrant(snapshot,fix.userId,auth.userId,now) &&
                 snapshot.statuses.any { it.userId==fix.userId && it.sharing } &&
                 withinVisibility(fix.recordedAt,now,snapshot.contacts[fix.userId]?.visibilitySeconds ?: 600)
         }.map { VisiblePerson(snapshot.names[it.userId].orEmpty(),it,freshness(it.recordedAt,now)) }
@@ -203,6 +206,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun logout() { perform { val id=auth.userId; push.unregister(); controller.logout(); avatars.clear(); if(id!=null) {preferences.clearUser(id);avatarDrafts.clear(id)} } }
 }
 @HiltViewModel class GroupsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor): OperationViewModel() {
+    val now=flow {while(true) {emit(sharing.now());delay(1_000)}}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),sharing.now())
     val online=network.online
     fun savePerson(id: String) {perform(R.string.saved) {sharing.savePerson(id)}}
     val state=sharing.state
@@ -213,13 +217,13 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun groupSharing(gid: String,enabled: Boolean) {perform {sharing.groupSharing(gid,enabled)}}
     fun precision(gid: String,value: Int?) {perform {sharing.sharedPrecision("group",gid,value)}}
     fun rename(gid: String,name: String) {perform {sharing.renameGroup(gid,name)}}
-    fun edit(gid: String,name: String,emoji: String) {perform {sharing.editGroup(gid,name,emoji)}}
+    fun edit(gid: String,name: String,emoji: String,expiry: Instant?,completed: ()->Unit={}) {perform {sharing.editGroup(gid,name,emoji,expiry);completed()}}
     fun cancelInvitation(id: String) {perform {sharing.cancelGroupInvitation(id)}}
     fun invite(gid: String,person: String) {perform(R.string.request_sent) {sharing.inviteMember(gid,person)}}
     fun inviteMany(gid: String,people: Set<String>) {perform(R.string.request_sent) {people.forEach {sharing.inviteMember(gid,it)}}}
     fun respond(request: String,accept: Boolean) {perform {sharing.respondGroup(request,accept)}}
     fun hide(ids: Set<String>,value: Boolean) { perform { preferences.hide(requireNotNull(userId),ids,value) } }
-    fun create(name: String,emoji: String) { perform { sharing.createGroup(name,emoji) } }
+    fun create(name: String,emoji: String,expiry: Instant?=null,completed: ()->Unit={}) { perform { sharing.createGroup(name,emoji,expiry);completed() } }
     fun join(code: String,completed: ()->Unit={}) {
         if(state.value.groups.any {normalizeInviteCode(it.code)==normalizeInviteCode(code)}) {message(R.string.already_group_member);return}
         if(!validInviteCode(code)) {message(R.string.group_not_found);return}

@@ -89,7 +89,7 @@ import android.util.Log
                     if(readingGeneration!=generation.get()) { signals.trySend(Unit); continue }
                     if(readMetadata) metadataDirty=false
                     // REST success means data is current enough to display; Realtime status is tracked separately.
-                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable,locationRequestsAvailable=metadata?.location_requests_available ?: last.locationRequestsAvailable,locationRequests=metadata?.location_requests ?: last.locationRequests,eventsAvailable=metadata?.events_available ?: last.eventsAvailable,events=metadata?.events ?: last.events)
+                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable,locationRequestsAvailable=metadata?.location_requests_available ?: last.locationRequestsAvailable,locationRequests=metadata?.location_requests ?: last.locationRequests,eventsAvailable=metadata?.events_available ?: last.eventsAvailable,events=metadata?.events ?: last.events,temporaryGroupsAvailable=metadata?.temporary_groups_available ?: last.temporaryGroupsAvailable)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
                     send(last)
                 } catch(e: CancellationException) { throw e
@@ -175,16 +175,22 @@ import android.util.Log
     suspend fun remove(person: String)=mutate({ s -> s.copy(shares=s.shares.filter { it.owner!=person && it.viewer!=person },savedPeople=s.savedPeople-person) },{ s -> person !in s.savedPeople && s.shares.none { it.owner==person || it.viewer==person } }) { rpc("remove_connection",buildJsonObject { put("other_user_id",person) }) }
     suspend fun savePerson(person: String)=mutate({it.copy(savedPeople=it.savedPeople+person)},{person in it.savedPeople}) {rpc("save_group_person",buildJsonObject {put("person",person)})}
     suspend fun dismiss(id: String)=rpc("dismiss_request",buildJsonObject { put("request_id",id) })
-    suspend fun createGroup(name: String,emoji: String) { require(validGroupName(name)); rpc("create_group",buildJsonObject { put("group_name",name.trim()); put("group_emoji",emoji) }) }
+    suspend fun createGroup(name: String,emoji: String,expiry: Instant?=null) { require(validGroupName(name))
+        val timed=state.value.temporaryGroupsAvailable
+        check(timed || expiry==null)
+        rpc(if(timed) "create_group_timed" else "create_group",buildJsonObject {put("group_name",name.trim());put("group_emoji",emoji);if(timed) put("end_at",expiry?.toString()?.let(::JsonPrimitive) ?: JsonNull)})
+    }
     suspend fun joinGroup(code: String) { check(serverRpc("join_group",buildJsonObject { put("code",code) }).data!="null") { "group_not_found" }; refresh() }
     suspend fun removeMember(group: String,member: String)=mutate({ s -> s.copy(members=s.members.filterNot { it.groupId==group && it.userId==member }) },{ s -> s.members.none { it.groupId==group && it.userId==member } }) { rpc("remove_group_member",buildJsonObject { put("gid",group); put("member",member) }) }
     suspend fun deleteGroup(group: String)=mutate({s -> s.copy(groups=s.groups.filterNot { it.id==group }) },{s -> s.groups.none {it.id==group} }) { rpc("delete_group",buildJsonObject { put("gid",group) }) }
     suspend fun renameGroup(group: String,name: String)=mutate({ s -> s.copy(groups=s.groups.map { if(it.id==group) it.copy(name=name) else it }) },{s -> s.groups.any {it.id==group && it.name==name} }) { rpc("rename_group",buildJsonObject { put("gid",group); put("group_name",name) }) }
-    suspend fun editGroup(group: String,name: String,emoji: String)=mutate({s -> s.copy(
-        groups=s.groups.map {if(it.id==group) it.copy(name=name.trim(),emoji=emoji) else it},
+    suspend fun editGroup(group: String,name: String,emoji: String,expiry: Instant?)=mutate({s -> s.copy(
+        groups=s.groups.map {if(it.id==group) it.copy(name=name.trim(),emoji=emoji,expiresAt=expiry) else it},
         groupRequests=s.groupRequests.map {if(it.group_id==group) it.copy(group_name=name.trim(),group_emoji=emoji) else it})},
-        {s -> s.groups.any {it.id==group && it.name==name.trim() && it.emoji==emoji}}) {
-        rpc("edit_group",buildJsonObject {put("gid",group);put("group_name",name.trim());put("group_emoji",emoji)})
+        {s -> s.groups.any {it.id==group && it.name==name.trim() && it.emoji==emoji && it.expiresAt==expiry}}) {
+        val timed=state.value.temporaryGroupsAvailable
+        check(timed || expiry==null)
+        rpc(if(timed) "edit_group_timed" else "edit_group",buildJsonObject {put("gid",group);put("group_name",name.trim());put("group_emoji",emoji);if(timed) put("end_at",expiry?.toString()?.let(::JsonPrimitive) ?: JsonNull)})
     }
     suspend fun cancelGroupInvitation(id: String)=mutate({s -> s.copy(groupRequests=s.groupRequests.filterNot {it.id==id})},
         {s -> s.groupRequests.none {it.id==id && it.status=="pending"}}) {

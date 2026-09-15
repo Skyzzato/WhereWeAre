@@ -23,6 +23,8 @@ import java.time.format.DateTimeFormatter
 
 @Composable fun GroupsScreen(vm: GroupsViewModel,initialCode: String?=null,inviteId: String?=null,inviteHandled: ()->Unit={},onScan: ()->Unit={}) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val now by vm.now.collectAsStateWithLifecycle()
+    val groups=state.groups.filter {it.active(now)}
     val online by vm.online.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
     val hidden by vm.hidden.collectAsStateWithLifecycle()
@@ -43,10 +45,11 @@ import java.time.format.DateTimeFormatter
     var invitees by remember {mutableStateOf(emptySet<String>())}
     var deletion by remember {mutableStateOf(false)}
     var removing by remember {mutableStateOf<Set<String>?>(null)}
-    val group=state.groups.find {it.id==selectedGroup}
+    val group=groups.find {it.id==selectedGroup}
     val members=state.members.filter {it.groupId==selectedGroup}.map {it.userId}
     val invitations=state.groupRequests.filter {it.group_id==selectedGroup && it.kind=="invite" && it.status=="pending" && it.user_id !in members}
     val date=DateTimeFormatter.ofPattern(Strings.text(R.string.ui_013)).withZone(ZoneId.systemDefault())
+    LaunchedEffect(group?.id) {if(group==null) editing=false}
     LaunchedEffect(members) {selected=selected.intersect(members.toSet())}
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item {if(!joining) Busy(operation);if(!online) Notice(R.string.connection_absent) else if(state.syncFailed) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)}
@@ -63,12 +66,12 @@ import java.time.format.DateTimeFormatter
                 }}
             }
             item {Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                Button(onClick={creating=true}) {Text(Strings.text(R.string.ui_017))}
+                Button(onClick={vm.message(null);creating=true}) {Text(Strings.text(R.string.ui_017))}
                 OutlinedButton(onClick={vm.message(null);joining=true}) {Text(Strings.text(R.string.qr_enter_code))}
             }}
             item {OutlinedButton(onClick=onScan) {Text(Strings.text(R.string.qr_scan))}}
-            if(state.groups.isEmpty()) item {Text(Strings.text(R.string.ui_019))}
-            items(state.groups.filter {it.name.contains(query,ignoreCase=true)},key={it.id}) {g -> ElevatedCard(onClick={selectedGroup=g.id;selecting=false;selected=emptySet()},modifier=Modifier.fillMaxWidth()) {
+            if(groups.isEmpty()) item {Text(Strings.text(R.string.ui_019))}
+            items(groups.filter {it.name.contains(query,ignoreCase=true)},key={it.id}) {g -> ElevatedCard(onClick={selectedGroup=g.id;selecting=false;selected=emptySet()},modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         GroupIdentity(g.emoji,g.name,Modifier.weight(1f))
@@ -76,6 +79,7 @@ import java.time.format.DateTimeFormatter
                     }
                     Text(Strings.text(R.string.ui_021,state.members.count {it.groupId==g.id}.toString()))
                     Text(date.format(g.createdAt),style=MaterialTheme.typography.bodySmall)
+                    Text(g.expiresAt?.let {Strings.text(R.string.group_ends,date.format(it))}?:Strings.text(R.string.group_permanent),style=MaterialTheme.typography.bodySmall)
                 }
             }}
         } else {
@@ -83,8 +87,9 @@ import java.time.format.DateTimeFormatter
                 TextButton(onClick={selectedGroup=null}) {Text(Strings.text(R.string.ui_022))}
                 Row(verticalAlignment=Alignment.Top) {
                     Column(Modifier.weight(1f)) {GroupIdentity(group.emoji,group.name);Text(Strings.text(R.string.created_at,date.format(group.createdAt)),style=MaterialTheme.typography.bodySmall)}
-                    if(group.creator==vm.userId) TextButton(onClick={editing=true},enabled=!operation.busy) {Text(Strings.text(R.string.ui_026))}
+                    if(group.creator==vm.userId) TextButton(onClick={vm.message(null);editing=true},enabled=!operation.busy) {Text(Strings.text(R.string.ui_026))}
                 }
+                Text(group.expiresAt?.let {Strings.text(R.string.group_ends,date.format(it))}?:Strings.text(R.string.group_permanent))
                 val enabled=state.members.any {it.groupId==group.id && it.userId==vm.userId && it.sharingEnabled}
                 TextButton(onClick={vm.groupSharing(group.id,!enabled)},enabled=!operation.busy) {Text(Strings.text(if(enabled) R.string.ui_009 else R.string.can_see_me))}
                 if(state.sharedPrecisionAvailable) PrecisionChoice(state.members.firstOrNull {it.groupId==group.id && it.userId==vm.userId}?.sharedPrecision,true,!operation.busy) {vm.precision(group.id,it)}
@@ -138,8 +143,11 @@ import java.time.format.DateTimeFormatter
         }
     }
     if(showQr && group!=null) QrDisplay("group",group.code) {showQr=false}
-    if(creating) GroupEditor(false,busy=operation.busy,dismiss={creating=false}) {name,emoji -> vm.create(name,emoji);creating=false}
-    if(editing && group!=null) GroupEditor(true,group.name,group.emoji,operation.busy,{editing=false}) {name,emoji -> vm.edit(group.id,name,emoji);editing=false}
+    if(creating) GroupEditor(editing=false,busy=operation.busy,temporaryAvailable=state.temporaryGroupsAvailable,error=operation.message,
+        dismiss={creating=false;vm.message(null)}) {name,emoji,expiry -> vm.create(name,emoji,expiry) {creating=false}}
+    if(editing && group!=null) GroupEditor(editing=true,initialName=group.name,initialEmoji=group.emoji,busy=operation.busy,
+        temporaryAvailable=state.temporaryGroupsAvailable,initialExpiry=group.expiresAt,error=operation.message,
+        dismiss={editing=false;vm.message(null)}) {name,emoji,expiry -> vm.edit(group.id,name,emoji,expiry) {editing=false}}
     if(joining) AlertDialog(onDismissRequest={joining=false;vm.message(null);inviteHandled()},title={Text(Strings.text(R.string.ui_018))},text={Column {
         OutlinedTextField(code,{code=it;vm.message(null)},label={Text(Strings.text(R.string.ui_023))},trailingIcon={IconButton(onClick={code=context.getSystemService(ClipboardManager::class.java).primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()}) {Icon(Icons.Default.ContentPaste,Strings.text(R.string.ui_012))}})
         Text(Strings.text(R.string.ui_037));Busy(operation,inline=true)

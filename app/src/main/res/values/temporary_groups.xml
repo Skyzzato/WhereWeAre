@@ -1,0 +1,9 @@
+<resources>
+    <string name="group_permanent">Permanent group</string>
+    <string name="group_temporary">Temporary group</string>
+    <string name="group_ends">Temporary · ends %1$s</string>
+    <string name="group_end_date">End date: %1$s</string>
+    <string name="group_end_time">End time: %1$s</string>
+    <string name="group_invalid_expiry">Choose a future date and time. Avoid times skipped or repeated by daylight saving changes.</string>
+    <string name="group_expired">This group has expired.</string>
+</resources>

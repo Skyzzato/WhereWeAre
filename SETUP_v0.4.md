@@ -12,6 +12,9 @@ Applicare in ordine, dopo le migrazioni 001–007 immutate:
 * 011_checkins_events.sql: snapshot Check-in, consegne autorizzate per
   destinatario e inbox eventi riutilizzabile.
 
+* 012_temporary_groups.sql: scadenza opzionale dei gruppi, controllata nelle
+  autorizzazioni anche senza job di pulizia.
+
 Le migrazioni sono state provate localmente; non sono state applicate al server
 remoto da questo sviluppo. Le capability vengono abilitate dalle migrazioni.
 

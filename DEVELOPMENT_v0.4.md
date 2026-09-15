@@ -254,3 +254,21 @@ hash 001–007 invariati. Nessuna dipendenza o autorizzazione Android aggiunta.
 
 Restano test fisici GPS/permessi e FCM remoto; SETUP_v0.4.md distingue visibilità
 da retention fisica. Migrazione e dispatcher non sono stati distribuiti.
+
+
+## Blocco 09 — Gruppi temporanei
+
+Scadenza opzionale in creazione/modifica, selettori data/ora locali, indicazione
+permanente/temporaneo nella pagina Gruppi. Conferma dopo ACK, errori nel dialogo,
+controlli date future e orari DST inesistenti/ambigui. Compatibilità con server
+precedenti tramite capability; nessuna nuova tab, dipendenza o autorizzazione.
+
+Migrazione 012: controlli di scadenza in appartenenza, visibilità, precisione,
+inbox/inviti e snapshot riservati ai gruppi. Nessuna dipendenza da cron o pulizia.
+I gruppi scaduti non sono riattivabili; permessi personali indipendenti restano
+validi. La mappa esclude localmente i fix privi di un consenso ancora attivo.
+
+Build debug/release, 70 test Android e lint PASS (.tools/v04-block09-build.log).
+SQL 001–012, riapplicazione 012, revoca raw/RPC/check-in/inviti e regressioni PASS;
+hash 001–007 invariati. Restano prove fisiche dei selettori e della scadenza
+su due telefoni. Nessuna migrazione applicata al server remoto.
