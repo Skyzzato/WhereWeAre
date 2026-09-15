@@ -304,4 +304,12 @@
     <string name="diag_test_auth">The server requires you to sign in again.</string>
     <string name="diag_test_server">The server responded but could not complete the test. Try again later.</string>
     <string name="diag_connection_note">These are the latest observations of location and sharing requests, not a guarantee of continuous availability. The test reads your sharing status without sending a location.</string>
+    <string name="person_position_stale">Location is not recent</string>
+    <string name="person_battery">Battery: %1$d%%</string>
+    <string name="person_battery_unknown">Battery: not available</string>
+    <string name="person_location_on">Location services enabled</string>
+    <string name="person_location_off">Location services disabled</string>
+    <string name="person_location_unknown">Location services: not available</string>
+    <string name="person_device_updated">Device status updated: %1$s</string>
+    <string name="person_open_google">Open in Google Maps</string>
 </resources>

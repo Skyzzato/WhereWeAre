@@ -40,5 +40,7 @@ fun coordinateLabel(latitude: Double,longitude: Double): String? =
     if(validCoordinates(latitude,longitude)) String.format(Locale.ROOT,"%.5f, %.5f",latitude,longitude) else null
 fun openStreetMapUrl(latitude: Double,longitude: Double): String? =
     if(validCoordinates(latitude,longitude)) "https://www.openstreetmap.org/?mlat=$latitude&mlon=$longitude#map=17/$latitude/$longitude" else null
+fun googleMapsUrl(latitude: Double,longitude: Double): String? =
+    if(validCoordinates(latitude,longitude)) "https://www.google.com/maps/search/?api=1&query=$latitude%2C$longitude" else null
 fun registrationDate(createdAt: String?,zone: ZoneId=ZoneId.systemDefault()): String? =
     createdAt?.let { runCatching { DateTimeFormatter.ofPattern("dd/MM/yyyy",Locale.ITALIAN).withZone(zone).format(Instant.parse(it)) }.getOrNull() }

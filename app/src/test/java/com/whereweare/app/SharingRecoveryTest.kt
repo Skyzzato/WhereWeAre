@@ -42,6 +42,7 @@ class SharingRecoveryTest {
             `when`(auth.userId).thenReturn("owner")
             `when`(location.hasPermission()).thenReturn(true)
             `when`(location.enabled()).thenReturn(true)
+            `when`(location.deviceStatus()).thenReturn(com.whereweare.app.domain.DeviceStatus(50,true))
             `when`(location.fixes(true,60)).thenReturn(emptyFlow())
             `when`(boot.state).thenReturn(MutableStateFlow(BootstrapState(BootstrapGate.READY)))
             `when`(repo.sharingRevision()).thenReturn(7L)

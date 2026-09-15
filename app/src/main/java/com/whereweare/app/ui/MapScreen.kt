@@ -18,6 +18,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -174,10 +176,21 @@ import java.time.format.DateTimeFormatter
                 Text(stringResource(R.string.empty_map),Modifier.padding(8.dp),style=MaterialTheme.typography.labelMedium)
             }
             val selected=(state.visible+listOfNotNull(local?.let { VisiblePerson(Strings.text(R.string.you),it,freshness(it.recordedAt,state.now)) })).firstOrNull { it.location.userId==selectedId }
-            selected?.takeUnless {creatingMeeting}?.let { person -> ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp)) { Column(Modifier.padding(12.dp)) {
+            selected?.takeUnless {creatingMeeting}?.let { person -> ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp).heightIn(max=360.dp)) { Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) { Text(person.name,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium); TextButton(onClick={selectedId=null}) { Text(Strings.text(R.string.close)) } }
+                val own=person.location.userId==state.snapshot.profile?.id
+                val stale=if(own) person.location.recordedAt.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))
+                    else stalePosition(person.location,state.snapshot.contacts[person.location.userId],state.now,config.config?.defaults?.stale_grace_seconds ?: 180)
+                if(stale) Text(stringResource(R.string.person_position_stale),color=MaterialTheme.colorScheme.error)
                 Text(freshnessText(person.freshness,person.location.recordedAt,state.now))
                 Text(Strings.text(R.string.ui_050, (person.location.accuracy.toLong()).toString()))
+                val deviceAt=if(own) tracking.deviceStatus?.observedAt else person.location.deviceStatusAt
+                val deviceRecent=deviceStatusRecent(deviceAt,if(own) java.time.Instant.now() else state.now)
+                val battery=(if(own) tracking.deviceStatus?.status?.batteryLevel else person.location.batteryLevel).takeIf {deviceRecent}
+                val services=(if(own) tracking.deviceStatus?.status?.locationEnabled else person.location.locationEnabled).takeIf {deviceRecent}
+                Text(battery?.let {stringResource(R.string.person_battery,it)} ?: stringResource(R.string.person_battery_unknown))
+                Text(stringResource(when(services) {true->R.string.person_location_on;false->R.string.person_location_off;null->R.string.person_location_unknown}))
+                deviceAt?.let {Text(stringResource(R.string.person_device_updated,DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(it)),style=MaterialTheme.typography.bodySmall)}
                 Text(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(person.location.recordedAt))
                 Text(coordinateLabel(person.location.latitude,person.location.longitude)?.let { Strings.text(R.string.ui_051, (it).toString()) } ?: Strings.text(R.string.ui_052))
                 openStreetMapUrl(person.location.latitude,person.location.longitude)?.let { url ->
@@ -185,6 +198,12 @@ import java.time.format.DateTimeFormatter
                         try { context.startActivity(Intent(Intent.ACTION_VIEW,url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE)) }
                         catch(_: android.content.ActivityNotFoundException) { vm.message(R.string.error_generic) }
                     }) { Text(Strings.text(R.string.ui_053)) }
+                }
+                googleMapsUrl(person.location.latitude,person.location.longitude)?.let {url ->
+                    TextButton(onClick={
+                        try {context.startActivity(Intent(Intent.ACTION_VIEW,url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))}
+                        catch(_: android.content.ActivityNotFoundException) {vm.message(R.string.error_generic)}
+                    }) {Text(stringResource(R.string.person_open_google))}
                 }
             } } }
         }

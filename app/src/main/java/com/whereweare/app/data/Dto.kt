@@ -30,6 +30,8 @@ import java.time.Instant
     fun domain() = SharingStatus(user_id, is_sharing)
 }
 @Serializable data class LocationDto(val user_id: String, val latitude: Double, val longitude: Double,
-    val accuracy: Double, val speed: Double? = null, val bearing: Double? = null, val recorded_at: String) {
-    fun domain() = UserLocation(user_id,latitude,longitude,accuracy,speed,bearing,Instant.parse(recorded_at))
+    val accuracy: Double, val speed: Double? = null, val bearing: Double? = null, val recorded_at: String,
+    val battery_level: Int?=null,val location_enabled: Boolean?=null,val device_status_at: String?=null) {
+    fun domain() = UserLocation(user_id,latitude,longitude,accuracy,speed,bearing,Instant.parse(recorded_at),
+        battery_level?.let(::validBatteryLevel),location_enabled,device_status_at?.let {runCatching {Instant.parse(it)}.getOrNull()})
 }

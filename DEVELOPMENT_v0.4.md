@@ -39,7 +39,7 @@ Verifiche baseline:
 ## Progressione
 
 Versione e bootstrap rimangono 0.33/8 fino alla verifica della release completa.
-Blocchi 01–03 completati nelle verifiche automatiche; blocchi 04–18 ancora da completare. Questo documento è
+Blocchi 01–04 completati nelle verifiche automatiche; blocchi 05–18 ancora da completare. Questo documento è
 un registro di sviluppo, non una dichiarazione di disponibilità della v0.4.
 
 Rischi da risolvere nel Blocco 02: la riconciliazione avviene nella Mappa e può
@@ -120,3 +120,35 @@ Da provare su telefono: entrambi i pannelli in IT/EN e font ingranditi, chiusura
 X/Indietro, GNSS all'aperto durante condivisione, permessi negati/revocati,
 servizi posizione spenti, connessione assente/server non disponibile e callback
 rilasciati dopo uscita dal pannello. La UI non richiede nuove tab principali.
+
+## Blocco 04 — dettagli posizione e dispositivo
+
+Il popup avatar mostra anche batteria, servizi posizione e timestamp separato
+dello stato dispositivo. Il dato scade dopo 10 minuti; una posizione vecchia è
+etichettata esplicitamente e conserva data/ora. Card scorrevole per contenere i
+nuovi dettagli. Aggiunto Apri su Google Maps come intent esterno con
+[Maps URL](https://developers.google.com/maps/documentation/urls/get-started),
+senza SDK o API key; OpenStreetMap preservato.
+
+Migrazione nuova `008_device_status.sql`: colonne opzionali in latest_locations,
+RPC update_device_status autenticata e vincolata alla sessione attiva, timestamp
+server, batteria 0–100 e nessun accesso più ampio rispetto alla RLS posizione.
+Il cambio sessione azzera i vecchi dettagli, evitando di attribuire la batteria
+di un dispositivo al successivo. Nessuna riscrittura delle migrazioni 001–007.
+
+Capability `features.device_status`: false sul client per server pre-008, true
+solo dopo la migrazione. I client precedenti restano compatibili; la versione
+bootstrap non viene ancora promossa a v0.4. Campionamento al massimo ogni minuto;
+invio se varia o dopo cinque minuti, soltanto durante la condivisione. Nessun
+permesso batteria aggiunto. Dati mancanti o scaduti non sono stimati.
+
+`node supabase/tests/run-v03.mjs --v04`: PASS (001–008, riapplicazione 008,
+test dispositivo e regressioni). Test: autorizzati/estranei, revoca, stop,
+sessione sostituita, input invalido, privilegi anon e scrittura diretta.
+`gradlew.bat :app:build`: PASS, debug/release, **56 test**, lint senza errori.
+Log locale `.tools/v04-block04-build.log`. Hash 001–007 invariati.
+La 008 è stata verificata solo localmente, **non applicata al server remoto**.
+
+Da verificare su due telefoni: lettura percentuale reale, servizi disattivati,
+scadenza metadati, cambio telefono, popup con font grandi e apertura dei due
+provider esterni. Nuove dipendenze e permessi Android: nessuno.

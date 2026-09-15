@@ -5,7 +5,7 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 import androidx.work.*
 import com.whereweare.app.data.*
-import com.whereweare.app.domain.UserLocation
+import com.whereweare.app.domain.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -15,7 +15,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val recovering: Boolean=false)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
@@ -95,6 +95,9 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                     var revision: Long?=saved.revision
                     var sent: UserLocation?=null
                     var lastStatusCheck=0L
+                    var lastDeviceSample: Long?=null
+                    var lastDeviceReport=0L
+                    var reportedDevice: DeviceStatus?=null
                     while(isActive) {
                         try {
                             if(!location.hasPermission()) break
@@ -125,6 +128,15 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                                     withTimeout(12_000) { repository.publish(session,it) }; sent=it; repository.saveOwn(it)
                                     mutableState.value=state.value.copy(active=true,waiting=false,lastSent=it.recordedAt,
                                         lastAcknowledged=java.time.Instant.now(),pendingUpload=latest.value!=sent)
+                                }
+                            }
+                            if(lastDeviceSample==null || elapsed-lastDeviceSample>=60_000) {
+                                lastDeviceSample=elapsed
+                                val device=location.deviceStatus()
+                                mutableState.value=state.value.copy(deviceStatus=DeviceStatusObservation(device,java.time.Instant.now()))
+                                if(bootstrap.state.value.config?.features?.device_status==true && (sent!=null || restarting) &&
+                                    shouldPublishDeviceStatus(reportedDevice,device,elapsed-lastDeviceReport)) {
+                                    if(withTimeout(12_000) {repository.deviceStatus(session,device)}) {reportedDevice=device;lastDeviceReport=elapsed}
                                 }
                             }
                         } catch(_: TimeoutCancellationException) {

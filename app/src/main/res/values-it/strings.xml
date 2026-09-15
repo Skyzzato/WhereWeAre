@@ -304,4 +304,12 @@
     <string name="diag_test_auth">Il server richiede un nuovo accesso.</string>
     <string name="diag_test_server">Il server ha risposto ma non ha completato il test. Riprova più tardi.</string>
     <string name="diag_connection_note">Sono le ultime osservazioni delle richieste di posizione e condivisione, non una garanzia di disponibilità continua. Il test legge il tuo stato di condivisione senza inviare una posizione.</string>
+    <string name="person_position_stale">Posizione non recente</string>
+    <string name="person_battery">Batteria: %1$d%%</string>
+    <string name="person_battery_unknown">Batteria: non disponibile</string>
+    <string name="person_location_on">Servizi posizione attivi</string>
+    <string name="person_location_off">Servizi posizione disattivati</string>
+    <string name="person_location_unknown">Servizi posizione: non disponibile</string>
+    <string name="person_device_updated">Stato dispositivo aggiornato: %1$s</string>
+    <string name="person_open_google">Apri su Google Maps</string>
 </resources>

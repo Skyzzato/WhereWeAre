@@ -20,7 +20,15 @@ data class ShareRequest(val id: String, val sender: String, val receiver: String
 data class LocationShare(val owner: String, val viewer: String, val enabled: Boolean)
 data class SharingStatus(val userId: String, val sharing: Boolean)
 data class UserLocation(val userId: String, val latitude: Double, val longitude: Double,
-    val accuracy: Double, val speed: Double?, val bearing: Double?, val recordedAt: Instant)
+    val accuracy: Double, val speed: Double?, val bearing: Double?, val recordedAt: Instant,
+    val batteryLevel: Int?=null,val locationEnabled: Boolean?=null,val deviceStatusAt: Instant?=null)
+
+data class DeviceStatus(val batteryLevel: Int?,val locationEnabled: Boolean)
+data class DeviceStatusObservation(val status: DeviceStatus,val observedAt: Instant)
+fun validBatteryLevel(value: Int)=value.takeIf {it in 0..100}
+fun deviceStatusRecent(at: Instant?,now: Instant)=at!=null && Duration.between(at,now).seconds in 0..600
+fun shouldPublishDeviceStatus(previous: DeviceStatus?,next: DeviceStatus,elapsedMillis: Long)=
+    previous==null || (elapsedMillis>=60_000 && (previous!=next || elapsedMillis>=300_000))
 data class VisiblePerson(val name: String, val location: UserLocation, val freshness: LocationFreshness)
 enum class LocationFreshness { LIVE, RECENT, OLD, EXPIRED }
 fun freshness(recordedAt: Instant, now: Instant): LocationFreshness {
