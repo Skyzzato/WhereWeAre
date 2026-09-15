@@ -90,7 +90,9 @@
     <string name="group_not_found">Group not found</string>
     <string name="connection_absent">No connection</string>
     <string name="positions_stale">Locations are out of date</string>
-    <string name="sync_waiting">Waiting to synchronize: retrying automatically</string>
+    <string name="sync_waiting">Reconnecting to the server</string>
+    <string name="local_position_stale">Your location is not recent</string>
+    <string name="location_upload_pending">Location update waiting to be sent to the server</string>
     <string name="meeting_created">%1$s set a meeting point.</string>
     <string name="meeting_removed">%1$s removed the meeting point.</string>
     <string name="meeting_channel">Meeting points</string>

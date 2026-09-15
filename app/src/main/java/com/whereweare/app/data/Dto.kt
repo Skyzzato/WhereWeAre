@@ -26,7 +26,7 @@ import java.time.Instant
 @Serializable data class ShareDto(val owner_id: String, val viewer_id: String, val enabled: Boolean) {
     fun domain() = LocationShare(owner_id, viewer_id, enabled)
 }
-@Serializable data class StatusDto(val user_id: String, val is_sharing: Boolean, val revision: Long=0) {
+@Serializable data class StatusDto(val user_id: String, val is_sharing: Boolean, val revision: Long=0,val session_id: String?=null) {
     fun domain() = SharingStatus(user_id, is_sharing)
 }
 @Serializable data class LocationDto(val user_id: String, val latitude: Double, val longitude: Double,

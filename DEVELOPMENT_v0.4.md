@@ -39,7 +39,7 @@ Verifiche baseline:
 ## Progressione
 
 Versione e bootstrap rimangono 0.33/8 fino alla verifica della release completa.
-Blocco 01 completato; blocchi 02–18 ancora da completare. Questo documento è
+Blocchi 01–02 completati nelle verifiche automatiche; blocchi 03–18 ancora da completare. Questo documento è
 un registro di sviluppo, non una dichiarazione di disponibilità della v0.4.
 
 Rischi da risolvere nel Blocco 02: la riconciliazione avviene nella Mappa e può
@@ -47,3 +47,47 @@ ordinare uno stop prima del recovery; lo stato locale diventa ON prima dell'ACK;
 lo stop remoto viene osservato dal publisher soltanto al successivo fix; occorre
 verificare la cancellazione fra vecchio servizio e nuova sessione. Non costruire
 diagnostica o funzioni di sicurezza su stati ambigui.
+
+## Blocco 02 — affidabilità della condivisione
+
+- Eliminato lo stop implicito dalla Mappa. Il recovery da Activity visibile è
+  indipendente dalla tab e riusa esclusivamente sessione/revisione persistite.
+- Stato ON soltanto dopo conferma dell'avvio; avvio annullabile e notifica
+  coerente. I timeout RPC lasciano il servizio in attesa di riconnessione.
+- Controllo dello stato/sessione server ogni 30 secondi circa anche senza fix;
+  sessione sostituita o stop remoto terminano il vecchio servizio.
+- La cancellazione del vecchio servizio non richiama lo stop della nuova
+  istanza e conserva la sessione per START_STICKY.
+- Stop automatici persistiti con sessione: non possono fermare una sessione
+  successiva di un altro dispositivo. I vecchi stop user-only e lo stop
+  esplicito dell'utente restano compatibili. DataStore aggiunge soltanto una
+  chiave opzionale; nessuna migrazione distruttiva.
+- Separati assenza Internet, errore REST, realtime indisponibile, fix locale
+  vecchio, fix remoto vecchio e pubblicazione pendente. Una conferma relativa
+  al fix precedente non sovrascrive un fix locale più recente.
+- Intervalli FLP, 50 stili Bengala, permessi e migrazioni 001–007 preservati.
+
+Test SQL aggiunti in `supabase/tests/sharing_recovery.sql`, eseguibili con
+`node supabase/tests/run-v03.mjs --v033 --sharing-recovery`: PASS.
+I test Android del controller sono in `SharingRecoveryTest.kt` (rete, ACK,
+ricreazione, sessione sostituita, stop persistiti e avvio foreground rifiutato).
+Verifica finale del 15 settembre 2026: `gradlew.bat :app:build` riuscito,
+debug e release, **45 test superati**, zero fallimenti/errori, lint senza errori.
+Log locale: `.tools/v04-block02-final.log`. Le prove su dispositivo sono ancora
+da eseguire con la checklist; non equivalgono ai test Robolectric SDK34.
+
+Nuove dipendenze esclusivamente di test: Mockito core 5.23.0 e
+kotlinx-coroutines-test 1.11.0. Nessun nuovo permesso Android, provider esterno,
+feature flag o migrazione SQL. Decisioni Android e prove manuali:
+`VERIFICATION_v0.4_BACKGROUND.md`.
+
+## Dipendenze esterne dei blocchi successivi
+
+Il repository contiene un dispatcher meeting che richiede uno scheduler esterno
+e configurazione Firebase. `SETUP_v0.3.md` descrive come configurarli, ma non
+dimostra che siano operativi. Non dichiarare Check-in/SOS/notifiche di scadenza
+collaudati end-to-end senza verificarli. Per il Blocco 14 occorre un deadline
+server affidabile indipendente dal telefono; lo scheduler non è verificato.
+Non è configurato un provider di routing: la scelta tecnica e l'hosting del
+Blocco 11 restano da affrontare. Questi limiti non certificano né completano
+alcuno dei blocchi 03–18.

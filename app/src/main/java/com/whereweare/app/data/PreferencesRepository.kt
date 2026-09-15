@@ -9,6 +9,8 @@ import javax.inject.Singleton
 @Singleton class PreferencesRepository @Inject constructor(private val store: DataStore<Preferences>,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context) {
     private val high = booleanPreferencesKey("high_accuracy")
     private val pending = stringPreferencesKey("pending_stop_user")
+    private val pendingSession = stringPreferencesKey("pending_stop_session")
+    val pendingStopSession=store.data.map {it[pendingSession]}
     private val intervalKey=intPreferencesKey("interval_seconds")
     private val thresholdKey=intPreferencesKey("accuracy_threshold")
     private val styleKey=stringPreferencesKey("map_style")
@@ -57,7 +59,10 @@ import javax.inject.Singleton
     val highAccuracy = store.data.map { it[high] ?: defaults(it).high_accuracy }
     val pendingStop = store.data.map { it[pending] }
     suspend fun accuracy(value: Boolean) { store.edit { it[high] = value } }
-    suspend fun pendingStop(userId: String?) { store.edit { if(userId == null) it.remove(pending) else { it[pending] = userId; it.remove(trackingKey) } } }
+    suspend fun pendingStop(userId: String?,sessionId: String?=null) { store.edit {
+        if(userId == null) it.remove(pending) else { it[pending] = userId; it.remove(trackingKey) }
+        if(userId!=null && sessionId!=null) it[pendingSession]=sessionId else it.remove(pendingSession)
+    } }
 }
 
 @kotlinx.serialization.Serializable

@@ -20,6 +20,7 @@ import com.whereweare.app.domain.normalizeInviteCode
 
 @Composable fun PeopleScreen(vm: PeopleViewModel,onShow: (String)->Unit={},initialCode: String?=null,inviteId: String?=null,inviteHandled: ()->Unit={}) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val online by vm.online.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
     val found by vm.found.collectAsStateWithLifecycle()
     val hidden by vm.hidden.collectAsStateWithLifecycle()
@@ -40,7 +41,7 @@ import com.whereweare.app.domain.normalizeInviteCode
     val connections=(state.shares.flatMap { listOf(it.owner,it.viewer) }+state.savedPeople).distinct().filter { it!=id }
     LaunchedEffect(connections) { selected=selected.intersect(connections.toSet()) }
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        item {if(!adding) Busy(operation); if(state.offline) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)
+        item {if(!adding) Busy(operation); if(!online) Notice(R.string.connection_absent) else if(state.syncFailed) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)
             SearchHeader(Strings.text(R.string.people),query,searching,{searching=it},{query=it})
             Button(onClick={ adding=true; vm.clearLookup() }) { Text(Strings.text(R.string.add_person)) } }
         item { Row(verticalAlignment=Alignment.CenterVertically) { Text(Strings.text(R.string.connected_people),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge); TextButton(onClick={ selecting=!selecting; selected=emptySet() }) { Text(if(selecting) Strings.text(R.string.ui_010) else Strings.text(R.string.ui_063)) } } }

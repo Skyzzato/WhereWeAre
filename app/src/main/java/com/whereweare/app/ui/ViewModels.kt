@@ -82,6 +82,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)
     val threshold=preferences.threshold.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),100)
     val online=network.online
+    val updateInterval=preferences.interval.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),60)
     val config=bootstrap.state
     val avatarScale=preferences.avatarScale.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1f)
     fun meeting(lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>) { perform {
@@ -100,7 +101,8 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun stop() { controller.requestStop() }
     fun refresh() { sharing.refresh() }
 }
-@HiltViewModel class PeopleViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository): OperationViewModel() {
+@HiltViewModel class PeopleViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor): OperationViewModel() {
+    val online=network.online
     val state=sharing.state
     val userId get()=auth.userId
     val hidden=preferences.hidden(auth.userId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),emptySet())
@@ -165,7 +167,8 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun rename(name: String) { if(!validName(name)) message(R.string.invalid_form) else perform(R.string.saved) { sharing.rename(name) } }
     fun logout() { perform { val id=auth.userId; push.unregister(); controller.logout(); avatars.clear(); if(id!=null) {preferences.clearUser(id);avatarDrafts.clear(id)} } }
 }
-@HiltViewModel class GroupsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository): OperationViewModel() {
+@HiltViewModel class GroupsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor): OperationViewModel() {
+    val online=network.online
     fun savePerson(id: String) {perform(R.string.saved) {sharing.savePerson(id)}}
     val state=sharing.state
     val userId get()=auth.userId
@@ -189,7 +192,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun remove(group: String,ids: Set<String>) { perform { ids.forEach { sharing.removeMember(group,it) } } }
     fun delete(group: String) { perform { sharing.deleteGroup(group) } }
 }
-@HiltViewModel class AppearanceViewModel @Inject constructor(val invites: InviteStore,val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context): OperationViewModel() {
+@HiltViewModel class AppearanceViewModel @Inject constructor(val invites: InviteStore,val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,val controller: SharingController,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context): OperationViewModel() {
     val theme=preferences.theme.stateIn(viewModelScope,SharingStarted.Eagerly,"default")
     val language=preferences.language.stateIn(viewModelScope,SharingStarted.Eagerly,"system")
     val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)

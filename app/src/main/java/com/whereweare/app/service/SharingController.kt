@@ -15,7 +15,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
@@ -26,6 +26,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private val mutex=Mutex()
     private var tracking: Job?=null
+    private var generation=0L
     private val mutableState=MutableStateFlow(TrackingState())
     val state=mutableState.asStateFlow()
     val pendingStop=preferences.pendingStop
@@ -50,8 +51,11 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
     @OptIn(ExperimentalCoroutinesApi::class)
     fun attach(serviceScope: CoroutineScope,restarting: Boolean=false,stopService: () -> Unit) {
         if(tracking?.isActive==true) return
+        val owner=++generation
         mutableState.value=state.value.copy(starting=true)
         tracking=serviceScope.launch {
+            var remoteEnded=false
+            var ownedSession: TrackingSession?=null
             try {
                 auth.awaitSession()
                 var saved: TrackingSession
@@ -62,7 +66,8 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                     if(restarting) check(previous?.userId==user) { "sharing_stopped" }
                     saved=if(restarting) requireNotNull(previous) else TrackingSession(user,UUID.randomUUID().toString())
                     preferences.trackingSession(saved)
-                    mutableState.value=TrackingState(active=true,waiting=true)
+                    ownedSession=saved
+                    mutableState.value=TrackingState(starting=true,waiting=true)
                 }
                 // A system restart has no Activity/BootstrapViewModel to initialize these repositories.
                 bootstrap.refresh()
@@ -75,41 +80,57 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                     combine(preferences.highAccuracy,preferences.interval) { high,seconds -> high to seconds }
                         .flatMapLatest { (high,seconds) -> location.fixes(high,seconds).retryWhen { cause,_ ->
                             if(cause is SecurityException || !location.hasPermission()) false
-                            else { mutableState.value=state.value.copy(waiting=true); delay(30_000); true }
+                            else { delay(30_000); true }
                         } }
                         .catch { cause ->
                             if(cause is CancellationException) throw cause
                             // A revoked permission must terminate sharing, not escape a child job and crash.
-                            requestStop()
+                            if(owner==generation) scope.launch { stopSessionAfterProviderFailure(owner) }
                         }
-                        .collect { latest.value=it; mutableState.value=state.value.copy(fix=it); signals.trySend(Unit) }
+                        .collect { latest.value=it; mutableState.value=state.value.copy(fix=it,pendingUpload=true); signals.trySend(Unit) }
                 }
                 try {
                     var started=false
                     var revision: Long?=saved.revision
                     var sent: UserLocation?=null
+                    var lastStatusCheck=0L
                     while(isActive) {
                         try {
+                            if(!location.hasPermission()) break
                             if(bootstrap.state.value.gate!=BootstrapGate.READY) break
                             if(!started) {
-                                repository.rpc("set_update_interval",kotlinx.serialization.json.buildJsonObject {put("seconds",kotlinx.serialization.json.JsonPrimitive(preferences.interval.first()))})
-                                if(revision==null) {
-                                    revision=repository.sharingRevision()
-                                    saved=saved.copy(revision=revision)
-                                    // Persist before the RPC, so a retry cannot undo a later server stop.
-                                    preferences.trackingSession(saved)
+                                withTimeout(12_000) {
+                                    repository.rpc("set_update_interval",kotlinx.serialization.json.buildJsonObject {put("seconds",kotlinx.serialization.json.JsonPrimitive(preferences.interval.first()))})
+                                    if(revision==null) {
+                                        revision=repository.sharingRevision()
+                                        saved=saved.copy(revision=revision)
+                                        // Persist before the RPC, so a retry cannot undo a later server stop.
+                                        preferences.trackingSession(saved)
+                                    }
+                                    repository.sharing(true,session,revision)
                                 }
-                                repository.sharing(true,session,revision); started=true
+                                started=true
+                                mutableState.value=state.value.copy(active=true,starting=false,waiting=false)
+                            }
+                            val elapsed=android.os.SystemClock.elapsedRealtime()
+                            if(lastStatusCheck==0L || elapsed-lastStatusCheck>=30_000) {
+                                val remote=withTimeout(12_000) { repository.ownSharingStatus() }
+                                if(!remote.is_sharing || remote.session_id!=session) { remoteEnded=true; break }
+                                lastStatusCheck=elapsed
+                                mutableState.value=state.value.copy(waiting=false)
                             }
                             latest.value?.takeIf { it!=sent }?.let {
                                 if(java.time.Duration.between(it.recordedAt,java.time.Instant.now()).toHours()<2) {
-                                    repository.publish(session,it); sent=it; repository.saveOwn(it)
-                                    mutableState.value=TrackingState(active=true,lastSent=it.recordedAt,fix=it)
+                                    withTimeout(12_000) { repository.publish(session,it) }; sent=it; repository.saveOwn(it)
+                                    mutableState.value=state.value.copy(active=true,waiting=false,lastSent=it.recordedAt,
+                                        lastAcknowledged=java.time.Instant.now(),pendingUpload=latest.value!=sent)
                                 }
                             }
+                        } catch(_: TimeoutCancellationException) {
+                            mutableState.value=state.value.copy(waiting=true)
                         } catch(e: CancellationException) { throw e
                         } catch(e: Exception) {
-                            if("sharing_stopped" in e.message.orEmpty()) break
+                            if("sharing_stopped" in e.message.orEmpty()) { remoteEnded=true; break }
                             mutableState.value=state.value.copy(waiting=true)
                         }
                         withTimeoutOrNull(3_000) { signals.receive() }
@@ -121,21 +142,48 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                 // Destruction cancels the scope: preserve the session for Android's sticky restart.
                 // A normal termination (remote stop, revoked permission, blocked bootstrap) clears it.
                 if(currentCoroutineContext().isActive) {
-                    preferences.trackingSession(null)
-                    auth.userId?.let {preferences.pendingStop(it);enqueueStop(it)}
+                    mutex.withLock {
+                        if(owner==generation) {
+                            // A remote stop or session replacement must not stop another device.
+                            val ended=ownedSession
+                            if(!remoteEnded && ended!=null) {
+                                // Persist stop and clear tracking in the same DataStore transaction.
+                                preferences.pendingStop(ended.userId,ended.sessionId)
+                                enqueueStop(ended.userId)
+                            } else preferences.trackingSession(null)
+                            mutableState.value=state.value.copy(active=false,starting=false)
+                            stopService()
+                        }
+                    }
+                } else if(owner==generation) {
+                    mutableState.value=state.value.copy(active=false,starting=false)
                 }
-                mutableState.value=state.value.copy(active=false,starting=false); stopService()
             }
         }
     }
     fun requestStop() { scope.launch { stop() } }
-    fun serviceStartFailed() {mutableState.value=TrackingState();requestStop()}
+    private suspend fun stopSessionAfterProviderFailure(owner: Long) = mutex.withLock {
+        if(owner!=generation) return@withLock
+        val saved=preferences.trackingSession.first() ?: return@withLock
+        preferences.pendingStop(saved.userId,saved.sessionId)
+        enqueueStop(saved.userId)
+        ++generation
+        tracking?.cancel(); tracking=null
+        context.stopService(Intent(context,LocationForegroundService::class.java))
+        mutableState.value=TrackingState()
+    }
+    fun serviceStartFailed() {
+        val failedGeneration=generation
+        mutableState.value=TrackingState()
+        scope.launch { stopSessionAfterProviderFailure(failedGeneration) }
+    }
     suspend fun stop() = mutex.withLock {
         val id=auth.userId ?: return@withLock
         // Persist intent before terminating the foreground service or making a network call.
         preferences.pendingStop(id)
         enqueueStop(id)
         // Cancel without holding a join on a job that may be awaiting this same mutex.
+        ++generation
         val stopped=tracking;tracking=null;stopped?.cancel()
         context.stopService(Intent(context,LocationForegroundService::class.java))
         mutableState.value=TrackingState()
@@ -146,12 +194,21 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
     suspend fun completePendingStop(expectedUser: String): Boolean = mutex.withLock {
         if(preferences.pendingStop.first()!=expectedUser) return@withLock true
         if(auth.userId!=expectedUser) return@withLock false
-        repository.sharing(false)
+        repository.sharing(false,preferences.pendingStopSession.first())
         preferences.pendingStop(null)
         true
     }
-    fun reconcileRemote(remote: Boolean) {
-        if(remote && !state.value.active && !state.value.starting && tracking?.isActive!=true) requestStop()
+    suspend fun resumeFromVisibleActivity() {
+        auth.awaitSession()
+        if(state.value.active || state.value.starting || tracking?.isActive==true) return
+        if(preferences.pendingStop.first()!=null) return
+        val saved=preferences.trackingSession.first() ?: return
+        if(saved.userId!=auth.userId || !location.hasPermission() || !location.enabled()) return
+        if(bootstrap.state.value.gate!=BootstrapGate.READY) return
+        if(!com.whereweare.app.MainActivity.visible) return
+        mutableState.value=state.value.copy(starting=true)
+        try { ContextCompat.startForegroundService(context,Intent(context,LocationForegroundService::class.java).setAction("RESUME")) }
+        catch(_: Exception) { mutableState.value=TrackingState() }
     }
     suspend fun logout() {
         stop()

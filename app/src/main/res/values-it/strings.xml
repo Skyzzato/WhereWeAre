@@ -90,7 +90,9 @@
     <string name="group_not_found">Gruppo non trovato</string>
     <string name="connection_absent">Connessione assente</string>
     <string name="positions_stale">Posizioni non aggiornate</string>
-    <string name="sync_waiting">Sincronizzazione in attesa: riprovo automaticamente</string>
+    <string name="sync_waiting">Riconnessione al server in corso</string>
+    <string name="local_position_stale">La tua posizione non è recente</string>
+    <string name="location_upload_pending">Invio della posizione al server in attesa</string>
     <string name="meeting_created">%1$s ha impostato un punto di ritrovo.</string>
     <string name="meeting_removed">%1$s ha rimosso il punto di ritrovo.</string>
     <string name="meeting_channel">Punti di ritrovo</string>

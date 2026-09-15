@@ -68,4 +68,6 @@ dependencies {
     runtimeOnly(libs.maplibre.runtime)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
+    testImplementation(libs.mockito)
+    testImplementation(libs.coroutines.test)
 }

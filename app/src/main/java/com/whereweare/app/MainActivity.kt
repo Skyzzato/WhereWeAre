@@ -74,6 +74,13 @@ import io.github.jan.supabase.auth.status.SessionStatus
     LaunchedEffect(lifecycle,appearance) { lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {appearance.observeMeetings()} }
     val session by auth.session.collectAsStateWithLifecycle()
     val boot by bootstrap.repository.state.collectAsStateWithLifecycle()
+    LaunchedEffect(lifecycle,boot.gate,session) {
+        if(boot.gate==BootstrapGate.READY && session is SessionStatus.Authenticated) {
+            lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                appearance.controller.resumeFromVisibleActivity()
+            }
+        }
+    }
     LifecycleResumeEffect(Unit) { bootstrap.refresh(); onPauseOrDispose {} }
     if(boot.gate!=BootstrapGate.READY || session is SessionStatus.Initializing) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {

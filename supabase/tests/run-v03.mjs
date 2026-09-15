@@ -16,6 +16,10 @@ try {
      console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
    }
    console.log('ALL v0.33 SQL AND REGRESSION TESTS PASSED');
+   if(process.argv.includes('--sharing-recovery')) {
+     await db.exec(readFileSync('supabase/tests/sharing_recovery.sql','utf8'));
+     console.log('ALL SHARING RECOVERY TESTS PASSED');
+   }
  }
 } catch(error) {console.error(error.message,error.where ?? '',error.detail ?? '');process.exitCode=1;}
 finally {await db.close();}

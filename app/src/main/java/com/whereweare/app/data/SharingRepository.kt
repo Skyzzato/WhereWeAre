@@ -183,7 +183,8 @@ import android.util.Log
     suspend fun respond(id: String,accept: Boolean) { client.postgrest.rpc("respond_to_share_request",buildJsonObject { put("request_id",id); put("accept",accept) }); refresh() }
     suspend fun cancel(id: String) { client.postgrest.rpc("cancel_share_request",buildJsonObject { put("request_id",id) }); refresh() }
     suspend fun permission(viewer: String,enabled: Boolean)=mutate({s -> s.copy(shares=s.shares.map {if(it.owner==auth.userId && it.viewer==viewer) it.copy(enabled=enabled) else it}) },{s -> s.shares.any {it.owner==auth.userId && it.viewer==viewer && it.enabled==enabled} }) { rpc("set_location_share",buildJsonObject { put("viewer",viewer); put("enabled",enabled) }) }
-    suspend fun sharingRevision(): Long = client.from("sharing_status").select { filter { eq("user_id",requireNotNull(auth.userId)) } }.decodeSingle<StatusDto>().revision
+    suspend fun ownSharingStatus(): StatusDto = client.from("sharing_status").select { filter { eq("user_id",requireNotNull(auth.userId)) } }.decodeSingle<StatusDto>()
+    suspend fun sharingRevision(): Long = ownSharingStatus().revision
     suspend fun sharing(active: Boolean,session: String?=null,revision: Long?=null) { client.postgrest.rpc("set_sharing",buildJsonObject {
         put("active",active); put("session",session?.let(::JsonPrimitive)?:JsonNull)
         put("expected_revision",revision?.let(::JsonPrimitive)?:JsonNull)

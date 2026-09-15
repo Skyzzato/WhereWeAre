@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter
 
 @Composable fun GroupsScreen(vm: GroupsViewModel,initialCode: String?=null,inviteId: String?=null,inviteHandled: ()->Unit={}) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val online by vm.online.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
     val hidden by vm.hidden.collectAsStateWithLifecycle()
     val hiddenGroups by vm.hiddenGroups.collectAsStateWithLifecycle()
@@ -47,7 +48,7 @@ import java.time.format.DateTimeFormatter
     val date=DateTimeFormatter.ofPattern(Strings.text(R.string.ui_013)).withZone(ZoneId.systemDefault())
     LaunchedEffect(members) {selected=selected.intersect(members.toSet())}
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item {if(!joining) Busy(operation);if(state.offline) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)}
+        item {if(!joining) Busy(operation);if(!online) Notice(R.string.connection_absent) else if(state.syncFailed) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)}
         if(group==null) {
             item {SearchHeader(Strings.text(R.string.ui_119),query,searching,{searching=it},{query=it})}
             items(state.groupRequests.filter {it.status=="pending" && (it.kind=="join" || it.user_id==vm.userId)},key={"request-${it.id}"}) {request ->

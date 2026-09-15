@@ -47,16 +47,11 @@ import java.time.format.DateTimeFormatter
     val permissionState by vm.permission.collectAsStateWithLifecycle()
     val style by vm.mapStyle.collectAsStateWithLifecycle()
     val online by vm.online.collectAsStateWithLifecycle()
+    val updateInterval by vm.updateInterval.collectAsStateWithLifecycle()
     val config by vm.config.collectAsStateWithLifecycle()
     val avatarScale by vm.avatarScale.collectAsStateWithLifecycle()
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
-    val remoteActive=state.snapshot.statuses.any {it.userId==state.snapshot.profile?.id && it.sharing}
-    LaunchedEffect(remoteActive,tracking.active,tracking.starting,state.snapshot.loading) {
-        if(remoteActive && !tracking.active && !tracking.starting && !state.snapshot.loading) {
-            kotlinx.coroutines.delay(2_000);vm.controller.reconcileRemote(true)
-        }
-    }
     var startAfterPermission by remember { mutableStateOf(false) }
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         vm.permissionsChanged()
@@ -101,9 +96,10 @@ import java.time.format.DateTimeFormatter
     }
     Column(Modifier.fillMaxSize()) {
         if(!online) Notice(R.string.connection_absent)
-        else if(state.visible.any {stalePosition(it.location,state.snapshot.contacts[it.location.userId],state.now,config.config?.defaults?.stale_grace_seconds?.coerceIn(30,3600) ?: 180)}) Notice(R.string.positions_stale)
         else if(state.snapshot.syncFailed && !state.snapshot.loading) Notice(R.string.sync_waiting)
         else if(state.snapshot.realtimeUnavailable) Notice(R.string.realtime_unavailable)
+        if(state.visible.any {stalePosition(it.location,state.snapshot.contacts[it.location.userId],state.now,config.config?.defaults?.stale_grace_seconds?.coerceIn(30,3600) ?: 180)}) Notice(R.string.positions_stale)
+        if(local?.recordedAt?.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))==true) Notice(R.string.local_position_stale)
         Busy(operation)
         if(!vm.location.enabled()) Notice(R.string.location_disabled)
         if(permissionState==LocationPermission.APPROXIMATE) Surface(color=MaterialTheme.colorScheme.errorContainer) {
@@ -210,9 +206,11 @@ import java.time.format.DateTimeFormatter
                 }
                 if(tracking.active) Text(if(tracking.waiting) Strings.text(R.string.ui_055) else Strings.text(R.string.ui_056, (tracking.fix?.accuracy?.toLong()).toString()),style=MaterialTheme.typography.bodySmall)
                 if(pending!=null) Notice(R.string.stop_pending)
+                if(tracking.pendingUpload) Notice(R.string.location_upload_pending)
+                if(tracking.waiting) Notice(R.string.sync_waiting)
                 if(sharingState==SharingUiState.REMOTE_ACTIVE) Notice(R.string.process_stopped)
-                Button(onClick={ if(sharingState==SharingUiState.OFF) requestPermission(true) else vm.stop() },enabled=sharingState in setOf(SharingUiState.OFF,SharingUiState.ON,SharingUiState.REMOTE_ACTIVE),modifier=Modifier.fillMaxWidth()) {
-                    Text(stringResource(when(sharingState) {SharingUiState.ON -> R.string.stop; SharingUiState.REMOTE_ACTIVE -> R.string.reconcile_stop; SharingUiState.STARTING -> R.string.sharing_starting; SharingUiState.STOPPING -> R.string.sharing_stopping; SharingUiState.OFF -> R.string.start}))
+                Button(onClick={ if(sharingState==SharingUiState.OFF) requestPermission(true) else vm.stop() },enabled=sharingState!=SharingUiState.STOPPING,modifier=Modifier.fillMaxWidth()) {
+                    Text(stringResource(when(sharingState) {SharingUiState.ON -> R.string.stop; SharingUiState.REMOTE_ACTIVE -> R.string.reconcile_stop; SharingUiState.STARTING -> R.string.ui_006; SharingUiState.STOPPING -> R.string.sharing_stopping; SharingUiState.OFF -> R.string.start}))
                 }
                 if(!vm.location.enabled()) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }) { Text(stringResource(R.string.open_location_settings)) }
                 if(permissionState!=LocationPermission.PRECISE) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri())) }) { Text(Strings.text(R.string.ui_057)) }
