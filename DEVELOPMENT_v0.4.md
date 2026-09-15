@@ -296,3 +296,23 @@ Check-in e completamento diretto su GPS, idempotenza migrazione. Hash 001–007
 immutati. Nessuna dipendenza o permesso aggiunto. Da provare su dispositivi:
 fluidità animazione, notifiche remote e comportamento con molti partecipanti.
 Migrazione non distribuita; nessuna garanzia di consegna FCM verificata.
+
+
+## Blocco 11 — Routing ed ETA
+
+RoutingRepository separa UI e provider. Adapter Valhalla HTTP/JSON, selezione
+piedi/auto/bici nel dettaglio Bengala, distanza percorso e tempo stimato solo
+da risposta valida. Configurazione compilazione ROUTING_PROVIDER/ENDPOINT;
+valori assenti per default, nessuna richiesta a servizi demo. Coordinate solo
+su azione esplicita, origine precisa recente con accuratezza <=100 m, HTTPS,
+nessun ID/token account, redirect negati, timeout/risposta limitati.
+
+ADR_ROUTING.md confronta Valhalla, GraphHopper e OSRM con fonti primarie,
+licenze, hosting, limiti, privacy e requisiti di verifica sui sentieri.
+L’endpoint di produzione rimane da scegliere e configurare: routing reale non
+attivato nella build corrente. Nessuna nuova dipendenza, permesso o migrazione.
+
+Build debug/release, 75 test Android e lint PASS (.tools/v04-block11-build.log).
+Test profili, conversione unità, risposta malformata/errore, assenza richieste
+per origine vecchia/approssimata e provider disabilitato. Hash 001–007 invariati.
+Restano collaudo endpoint reale e qualità ETA montagna; nessuna SLA dichiarata.

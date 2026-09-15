@@ -14,8 +14,16 @@ import androidx.compose.ui.unit.dp
 import com.whereweare.app.R
 import com.whereweare.app.domain.MeetingPoint
 import java.time.Instant
+import com.whereweare.app.domain.UserLocation
+import com.whereweare.app.data.*
+import kotlinx.coroutines.launch
 
-@Composable fun FlareProgressDialog(point: MeetingPoint,now: Instant,close: ()->Unit) {
+@Composable fun FlareProgressDialog(point: MeetingPoint,now: Instant,origins: List<UserLocation>,routing: RoutingRepository,close: ()->Unit) {
+    var routePerson by remember {mutableStateOf<String?>(null)}
+    if(routePerson!=null) {
+        FlareRouteDialog(point,origins.firstOrNull {it.userId==routePerson},routing,now) {routePerson=null}
+        return
+    }
     AlertDialog(onDismissRequest=close,title={Text(Strings.text(if(point.completed_at!=null) R.string.flare_reunited else R.string.ui_046))},
         text={Column(Modifier.heightIn(max=420.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text(Strings.text(R.string.flare_radius,point.radius_m.toString()))
@@ -28,9 +36,41 @@ import java.time.Instant
                     Text(Strings.text(R.string.flare_air_distance,person.distance_m.toLong().toString()))
                     if(person.precision_m>0) Text(precisionLabel(person.precision_m))
                 }
+                if(point.active && routing.available && status!="arrived") {
+                    val origin=origins.firstOrNull {it.userId==person.user_id}
+                    TextButton(enabled=origin!=null && validRouteOrigin(origin,now),onClick={routePerson=person.user_id}) {Text(Strings.text(R.string.route_calculate))}
+                }
             }}
-            Text(Strings.text(R.string.flare_eta_pending),style=MaterialTheme.typography.bodySmall)
+            Text(Strings.text(if(routing.available) R.string.route_hint else R.string.flare_eta_pending),style=MaterialTheme.typography.bodySmall)
         }},confirmButton={TextButton(onClick=close) {Text(Strings.text(R.string.close))}})
+}
+
+@Composable private fun FlareRouteDialog(point: MeetingPoint,origin: UserLocation?,routing: RoutingRepository,now: Instant,close: ()->Unit) {
+    var mode by remember {mutableStateOf(TravelMode.WALK)}
+    var busy by remember {mutableStateOf(false)}
+    var failed by remember(origin,mode) {mutableStateOf(false)}
+    var result by remember(origin,mode) {mutableStateOf<RouteEstimate?>(null)}
+    val scope=rememberCoroutineScope()
+    val current=rememberUpdatedState(origin to mode)
+    val valid=origin!=null && validRouteOrigin(origin,now)
+    AlertDialog(onDismissRequest=close,title={Text(Strings.text(R.string.route_title))},text={Column {
+        Row {TravelMode.entries.forEach {value ->
+            FilterChip(selected=mode==value,onClick={mode=value},enabled=!busy,label={Text(Strings.text(when(value) {TravelMode.WALK -> R.string.route_walk;TravelMode.CAR -> R.string.route_car;TravelMode.BICYCLE -> R.string.route_bike}))})
+        }}
+        Text(Strings.text(R.string.route_hint))
+        if(!valid || failed) Text(Strings.text(R.string.route_unavailable))
+        if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(valid) result?.let {Text(Strings.text(R.string.route_estimate,it.distanceMeters.toLong().toString(),kotlin.math.ceil(it.durationSeconds/60).toLong().toString()))}
+        TextButton(enabled=valid&&!busy,onClick={
+            val start=origin?:return@TextButton;val selectedMode=mode;busy=true;failed=false
+            scope.launch {
+                try {
+                    val estimate=routing.route(start,point.latitude,point.longitude,selectedMode,now)
+                    if(current.value==(start to selectedMode)) {result=estimate;failed=estimate==null}
+                } finally {busy=false}
+            }
+        }) {Text(Strings.text(R.string.route_calculate))}
+    }},confirmButton={TextButton(onClick=close) {Text(Strings.text(R.string.close))}})
 }
 
 /** Three friends around a circular platform lift a shared pin with curved ropes. */

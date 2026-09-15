@@ -68,7 +68,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
 @HiltViewModel class MapViewModel @Inject constructor(
     val controller: SharingController,private val sharing: SharingRepository,
     val location: LocationRepository,private val preferences: PreferencesRepository,private val auth: AuthRepository,val avatars: AvatarRepository,
-    network: NetworkMonitor,bootstrap: BootstrapRepository,private val feedback: MeetingFeedback
+    network: NetworkMonitor,bootstrap: BootstrapRepository,private val feedback: MeetingFeedback,val routing: ConfiguredRoutingRepository=ConfiguredRoutingRepository()
 ): OperationViewModel() {
     private val ticks=flow { while(true) { emit(sharing.now()); delay(1_000) } }
     val state=combine(sharing.state,ticks,preferences.hidden(auth.userId.orEmpty()),preferences.hiddenGroups(auth.userId.orEmpty())) { snapshot,now,hidden,hiddenGroups ->

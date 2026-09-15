@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="route_title">Percorso e tempo stimato</string>
+  <string name="route_calculate">Calcola percorso</string>
+  <string name="route_hint">Le stime usano posizioni precise recenti e il mezzo selezionato.</string>
+  <string name="route_walk">Piedi</string>
+  <string name="route_car">Auto</string>
+  <string name="route_bike">Bici</string>
+  <string name="route_unavailable">Percorso non disponibile. Rimane disponibile la distanza in linea d’aria.</string>
+  <string name="route_estimate">%1$s m lungo il percorso · circa %2$s min</string>
+</resources>

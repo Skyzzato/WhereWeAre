@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="route_title">Route and estimated time</string>
+  <string name="route_calculate">Calculate route</string>
+  <string name="route_hint">Route estimates use recent precise positions and the selected travel mode.</string>
+  <string name="route_walk">Walk</string>
+  <string name="route_car">Car</string>
+  <string name="route_bike">Bike</string>
+  <string name="route_unavailable">Route unavailable. The straight-line distance remains available.</string>
+  <string name="route_estimate">%1$s m along the route · about %2$s min</string>
+</resources>

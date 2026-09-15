@@ -23,6 +23,8 @@ android {
         versionCode = 8
         versionName = "0.33"
         buildConfigField("String", "INVITE_BASE_URL", "\"${setting("INVITE_BASE_URL")}\"")
+        buildConfigField("String", "ROUTING_PROVIDER", "\"${setting("ROUTING_PROVIDER")}\"")
+        buildConfigField("String", "ROUTING_ENDPOINT", "\"${setting("ROUTING_ENDPOINT")}\"")
         val inviteOrigin=config.getProperty("INVITE_BASE_URL", "").takeIf {it.startsWith("https://")}?.let {URI(it).host}
         manifestPlaceholders["inviteHost"] = inviteOrigin ?: "invites"
         manifestPlaceholders["inviteScheme"] = if(inviteOrigin!=null) "https" else "whereweare-inactive"

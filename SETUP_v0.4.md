@@ -59,3 +59,6 @@ Prima della distribuzione completa provare su due telefoni: permessi GPS e
 notifiche negati, accetta/rifiuta, doppio tocco/retry, cambi account, ricezione
 in background, deep link, stop e condivisione già attiva. Le prove locali SQL,
 ViewModel e dispatcher non sostituiscono una consegna FCM reale.
+
+Routing: configurazione disabilitata per default; vedere ADR_ROUTING.md per
+endpoint Valhalla approvato, hosting, privacy e collaudo prima dell’attivazione.

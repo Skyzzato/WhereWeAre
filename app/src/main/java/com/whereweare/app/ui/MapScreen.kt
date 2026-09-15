@@ -290,7 +290,7 @@ import java.time.format.DateTimeFormatter
             }
         }
     }
-    state.snapshot.meetings.firstOrNull {it.id==selectedMeeting}?.let {point -> FlareProgressDialog(point,state.now) {selectedMeeting=null}}
+    state.snapshot.meetings.firstOrNull {it.id==selectedMeeting}?.let {point -> FlareProgressDialog(point,state.now,state.visible.map {it.location}+listOfNotNull(local),vm.routing) {selectedMeeting=null}}
     if(celebration!=null) FlareReunion {celebration=null}
     if(choosingRecipients) MeetingEditor(state.snapshot,confirm={all,people,groups ->
         val point=camera.cameraPosition.target
