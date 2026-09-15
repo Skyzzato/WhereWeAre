@@ -33,6 +33,6 @@ nessuna dicitura suggerisce protezione mentre il telefono è spento.
    su un altro dispositivo. Distinguere registrazione server da ricezione.
 
 Servizio pubblico d’emergenza non coinvolto. Nessuna chiamata automatica.
-Questo blocco impedisce di dichiarare completata la v0.4; la versione resta
-0.33 (8) finché i requisiti fondamentali e la verifica finale non sono soddisfatti.
-I blocchi indipendenti possono proseguire.
+Questo blocco impedisce di dichiarare completati tutti i requisiti del prompt.
+Su successiva richiesta esplicita dell’utente viene pubblicata la versione 0.4 (9),
+con questa funzione non disponibile. Il cambio di versione non attiva uno scheduler.

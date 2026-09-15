@@ -2,17 +2,20 @@
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-**Sviluppo v0.4 in corso su `codex/v0.4`, non ancora rilasciabile.** La versione resta `0.33`, `versionCode=8`. Lo scheduler per gli avvisi di mancato arrivo non è verificato; routing reale e rilevamento sperimentale non sono attivi. Vedi [stato e note v0.4](RELEASE_NOTES_v0.4.md), [distribuzione incrementale](SETUP_v0.4.md) e [verifiche](VERIFICATION_v0.4.md). La baseline rimane documentata in [SETUP v0.33](SETUP_v0.33.md).
+**Versione v0.4 (versionCode=9), pubblicata su richiesta con limitazioni note.** Lo scheduler per gli avvisi di mancato arrivo non è verificato; routing reale e rilevamento sperimentale non sono attivi. Vedi [stato e note v0.4](RELEASE_NOTES_v0.4.md), [distribuzione incrementale](SETUP_v0.4.md) e [verifiche](VERIFICATION_v0.4.md). La baseline rimane documentata in [SETUP v0.33](SETUP_v0.33.md).
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
+
+Il backend verificato risponde ancora con bootstrap 0.33/8. Le nuove funzioni
+server richiedono deploy separato: [stato di scheduler e routing](INFRASTRUCTURE_v0.4.md).
 
 ## Avvio
 
 1. Installa Android Studio, JDK 21, SDK API 37 e Build Tools 36.0.0. Minimo Android 8/API 26; serve Google Play Services per Fused Location e FCM.
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
-3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Per le funzioni incrementali di questo branch applica poi 008–016 secondo [SETUP v0.4](SETUP_v0.4.md). Le nuove migrazioni non sono state distribuite da questo sviluppo.
+3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Per le funzioni incrementali di questo branch applica poi 008–017 secondo [SETUP v0.4](SETUP_v0.4.md). Le nuove migrazioni non sono state distribuite da questo sviluppo.
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. La build corrente è `app/build/outputs/apk/debug/app-debug.apk`, con firma debug e versione di sviluppo ancora 0.33 (8). Non è una release v0.4.
+5. APK installabile: [WhereWeAre-v0.4-debug.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.4/WhereWeAre-v0.4-debug.apk), con firma debug. Sorgente locale: `app/build/outputs/apk/debug/app-debug.apk`. Non è firmato con una chiave di produzione.
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
@@ -51,7 +54,7 @@ La migrazione 002 disattiva il vecchio cleanup fisso a due ore: non reintrodurlo
 
 ## Cartografia
 
-Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.33` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
+Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.4` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
 
 ## Test riproducibili
 

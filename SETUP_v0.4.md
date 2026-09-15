@@ -1,7 +1,7 @@
 # Distribuzione incrementale v0.4
 
-La versione Android resta 0.33 (8) finché tutti i blocchi richiesti non sono
-completati. Questo documento descrive soltanto i blocchi implementati.
+La versione Android è 0.4 (9), pubblicata su richiesta con limitazioni note.
+Questo documento descrive soltanto i blocchi implementati.
 
 Applicare in ordine, dopo le migrazioni 001–007 immutate:
 
@@ -25,6 +25,7 @@ Applicare in ordine, dopo le migrazioni 001–007 immutate:
   Applicare prima di distribuire il dispatcher con delivery.ts e payload.ts.
 
 * 016_finite_group_expiry.sql: rifiuta date infinite che non sono date client valide.
+* 017_v0_4.sql: versione bootstrap 0.4/9, minimo client 4 invariato; non abilita funzioni sperimentali.
 
 Le migrazioni sono state provate localmente; non sono state applicate al server
 remoto da questo sviluppo. Le capability vengono abilitate dalle migrazioni.

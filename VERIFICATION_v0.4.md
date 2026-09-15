@@ -1,8 +1,8 @@
 # Verifica dello sviluppo locale v0.4
 
 WhereWeAre — Troviamoci. · 16 settembre 2026.
-**Esito: controlli locali passati, rilascio v0.4 NON approvato/completato.**
-Versione conservata 0.33 (8). Il mancato arrivo è bloccato dallo scheduler non
+**Esito: controlli locali passati; pubblicazione v0.4 richiesta con limitazioni note.**
+Versione 0.4 (9). Il mancato arrivo è bloccato dallo scheduler non
 verificato; routing e funzioni sperimentali non sono operativi.
 
 ## Controlli automatici eseguiti
@@ -12,16 +12,17 @@ verificato; routing e funzioni sperimentali non sono operativi.
 | Build debug e release, test e lint | PASS, `.tools/v04-block17-final.log` e verifica finale `.tools/v04-final-build.log` |
 | Lint residuo | 57 warning, nessun errore bloccante; report XML/HTML in app/build/reports |
 | Test Android/JVM/Robolectric | 83, nessun fallimento |
-| SQL locale PGlite | PASS 001–016, `.tools/v04-final-sql.log` |
+| SQL locale PGlite | PASS 001–017, `.tools/v04-release-sql.log` |
 | Riapplicazione migrazioni nuove | PASS, ogni migrazione ripetuta nel runner |
 | Baseline 001–007 | Hash normalizzati LF invariati |
 | Deno dispatcher | 3 test passati: accesso, payload, accettazione distinta dalla coda |
 | Stringhe | 466 IT e 466 EN, nessun duplicato o chiave mancante |
-| Versionamento | 0.33 / 8, nessun aggiornamento server/bootstrap di release |
+| Versionamento | 0.4 / 9; bootstrap aggiornato dalla 017, nessun deploy remoto |
 | Struttura | 4 tab, portrait, 50 stili Bengala, START_STICKY conservati |
 | Nuovi permessi | Solo CAMERA; nessun background location o CALL_PHONE |
 | Routing nella build | Provider/endpoint vuoti, nessuna richiesta a demo |
 | Dispositivi | `adb devices -l`: nessun dispositivo collegato |
+| Backend remoto, sola lettura | app_bootstrap HTTP 200, versione 0.33/8; nessuna verifica amministrativa Cron |
 
 La verifica finale aggiunge la 016: PostgreSQL accetta timestamp infiniti, ma
 il client richiede date reali. Il vincolo rifiuta il valore e il test verifica
@@ -75,4 +76,6 @@ deno test --allow-env supabase/functions/send-meeting-push/index_test.ts supabas
 
 APK locali: `app/build/outputs/apk/debug/app-debug.apk` (firma debug) e
 `app/build/outputs/apk/release/app-release-unsigned.apk` (non firmato).
-Non sono una release v0.4. Nessun upload, tag, push o deploy è stato eseguito.
+APK v0.4 installabile con firma debug. Pubblicazione GitHub richiesta; nessun deploy backend.
+Verifica della build numerata: `.tools/v04-release-build.log`.
+Hash SHA-256 dell’APK allegato disponibile in `SHA256SUMS.txt` nella release.

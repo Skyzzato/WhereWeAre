@@ -1,16 +1,20 @@
-# WhereWeAre — Troviamoci. · v0.4 in sviluppo
+# WhereWeAre — Troviamoci. · v0.4
 
-**Non è una release completata.** Stato locale del 16 settembre 2026.
-Branch `codex/v0.4`, baseline `26fe0bc` (v0.33); versione Android ancora
-`versionName=0.33`, `versionCode=8`, minSdk 26, target/compileSdk 37.
-Nessun incremento a 0.4/9, tag di release, push GitHub o deploy backend eseguito.
+**Pubblicazione richiesta dall’utente, con limitazioni note.** 16 settembre 2026.
+Branch `codex/v0.4`, tag `v0.4`, baseline `26fe0bc` (v0.33). Android
+`versionName=0.4`, `versionCode=9`, minSdk 26, target/compileSdk 37.
+La pubblicazione non certifica il completamento di tutte le funzioni del prompt master.
+Nessun deploy backend eseguito. APK con firma debug, non chiave di produzione.
+
+[Scarica APK](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.4/WhereWeAre-v0.4-debug.apk).
+Se una versione installata usa un’altra firma Android rifiuta l’aggiornamento; non disinstallarla senza aver salvato quanto necessario.
 
 ## Risultato
 
 Implementati i blocchi 1–12, SOS per destinatari autorizzati, onboarding e
 consolidamento UX. Il rilevatore del blocco 13 è predisposto e disattivato.
 Il blocco 14 è fermo: non è stato verificato uno scheduler server affidabile;
-vedi [prerequisiti](BLOCKED_OVERDUE_ALERTS.md). La finalizzazione è quindi sospesa.
+vedi [prerequisiti](BLOCKED_OVERDUE_ALERTS.md). La funzione resta non disponibile nella pubblicazione v0.4.
 
 - Condivisione: recovery foreground/sessioni/ACK e diagnostica, senza nuovo
   tracking nascosto o cronologia automatica.
@@ -37,10 +41,16 @@ vedi [prerequisiti](BLOCKED_OVERDUE_ALERTS.md). La finalizzazione è quindi sosp
 | 014 | Luoghi privati e regole consensuali |
 | 015 | SOS, risposte, chiusura, accettazione push |
 | 016 | Date finite per la scadenza gruppi |
+| 017 | Bootstrap versione 0.4/9, minimo client 4 invariato |
 
 001–007 sono invariati rispetto alla baseline. Le nuove migrazioni sono provate
 localmente e vanno applicate in ordine; non sono state distribuite sul server.
 [Setup incrementale](SETUP_v0.4.md).
+
+Verifica remota in sola lettura: il bootstrap raggiungibile dichiara ancora
+0.33/8, senza la feature device_status. Il push GitHub non aggiorna il database:
+le nuove funzioni server richiedono distribuzione separata di migrazioni e
+dispatcher. [Scheduler e routing: cosa manca](INFRASTRUCTURE_v0.4.md).
 
 ## Dipendenze e permessi
 
@@ -67,7 +77,7 @@ di sicurezza viene dichiarata ricevuta dal 112 o dai soccorsi.
 
 ## Verifiche
 
-Build debug/release, 83 test Android/JVM/Robolectric e lint passati. SQL 001–016,
+Build debug/release, 83 test Android/JVM/Robolectric e lint passati. SQL 001–017,
 riapplicazione delle nuove migrazioni, regressioni di autorizzazione e hash
 baseline passati. Tre test Deno: accesso dispatcher, payload e accettazione.
 Nessun telefono/AVD operativo per questa verifica; non sono certificati UI reale,
@@ -94,6 +104,7 @@ GPS/OEM/background, scanner, notifiche FCM o routing sul territorio.
 - `0ee7399` — v0.4 block 16 - onboarding preserving pending invites
 - `4aa76ae` — v0.4 block 17 - consolidate settings and map actions
 
-Segue il commit di verifica/documentazione finale dello sviluppo locale, non
-un commit di rilascio. Lo SHA corrente è ottenibile con `git rev-parse HEAD` ed
-è indicato nel resoconto della task. Nessun push è stato effettuato.
+- `8c5e20b` — verifica locale e documentazione dei limiti
+
+Segue il commit di pubblicazione v0.4 richiesto dall’utente. Il tag `v0.4` identifica
+l’albero pubblicato; SHA e link GitHub sono nel resoconto della task.

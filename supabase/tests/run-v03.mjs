@@ -48,7 +48,11 @@ try {
      for(const file of ['supabase/migrations/016_finite_group_expiry.sql','supabase/migrations/016_finite_group_expiry.sql','supabase/tests/finite_group_expiry.sql','supabase/tests/temporary_groups.sql','supabase/tests/sos.sql','supabase/tests/location_requests.sql','supabase/tests/shared_precision.sql']) {
        console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
      }
-     console.log('ALL v0.4 IMPLEMENTED MIGRATION TESTS PASSED');
+     await db.exec(readFileSync('supabase/migrations/017_v0_4.sql','utf8'));
+     await db.exec(readFileSync('supabase/migrations/017_v0_4.sql','utf8'));
+     const release = await db.query('select latest_version_code,latest_version_name,minimum_supported_version_code from private.app_bootstrap');
+     if (!release.rows.length || release.rows.some(row => row.latest_version_code !== 9 || row.latest_version_name !== '0.4' || row.minimum_supported_version_code !== 4)) throw new Error('v0.4 release bootstrap mismatch');
+     console.log('ALL v0.4 IMPLEMENTED MIGRATION TESTS PASSED (001–017)');
    }
  }
 } catch(error) {console.error(error.message,error.where ?? '',error.detail ?? '');process.exitCode=1;}

@@ -439,3 +439,15 @@ Rilascio v0.4 non completato: scheduler del mancato arrivo non verificato,
 routing di produzione assente, rilevatore di arrivo e SOS vicini disattivati.
 Nessun dispositivo collegato per il collaudo reale. Versione conservata 0.33 (8),
 branch codex/v0.4, nessun push, tag o deploy backend.
+
+## Pubblicazione v0.4 richiesta dall’utente
+
+La successiva richiesta esplicita autorizza versione 0.4 (9), commit e push GitHub
+con APK e documentazione dei limiti. Supera il precedente vincolo di mantenere
+0.33, senza dichiarare operativi scheduler, routing o funzioni sperimentali.
+Migrazione 017 per bootstrap 0.4/9, minimo client 4 invariato; nessun deploy remoto.
+
+Build v0.4 debug/release e lint PASS (3m25s), 83 test Android senza errori; SQL
+001–017 PASS con riapplicazione 017 e minimo client verificato. APK controllato
+con aapt (0.4/9) e apksigner (firma Android Debug). Bootstrap remoto letto:
+HTTP 200, versione 0.33/8; nessun accesso amministrativo Cron e nessun deploy.
