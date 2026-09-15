@@ -78,6 +78,14 @@ import java.time.format.DateTimeFormatter
     var creatingMeeting by rememberSaveable {mutableStateOf(false)}
     var choosingRecipients by remember {mutableStateOf(false)}
     var selectedId by remember { mutableStateOf<String?>(null) }
+    var selectedMeeting by rememberSaveable {mutableStateOf<String?>(null)}
+    var seenCompletions by rememberSaveable {mutableStateOf(emptyList<String>())}
+    var celebration by rememberSaveable {mutableStateOf<String?>(null)}
+    LaunchedEffect(state.snapshot.meetings) {
+        val completed=state.snapshot.meetings.filter {it.completed_at!=null}
+        completed.firstOrNull {it.id !in seenCompletions}?.let {celebration=it.id}
+        seenCompletions=(seenCompletions+completed.map {it.id}).distinct()
+    }
     var selectedEvent by remember {mutableStateOf<String?>(null)}
     var actions by remember {mutableStateOf(false)}
     var checkinEditor by rememberSaveable {mutableStateOf(false)}
@@ -104,9 +112,9 @@ import java.time.format.DateTimeFormatter
             selectedEvent=event.id;selectedId=null;follow=false
             camera.setCameraPosition(CameraPosition(target=Position(payload.longitude,payload.latitude),zoom=if(payload.precision_m>0) 12.0 else 16.0));focused()
         }
-        val point=state.snapshot.meetings.firstOrNull {it.id==focus?.meeting && it.active}
+        val point=state.snapshot.meetings.firstOrNull {it.id==focus?.meeting}
         val person=state.visible.firstOrNull {it.location.userId==focus?.person}
-        if(point!=null || person!=null) {follow=false;selectedEvent=null;selectedId=person?.location?.userId
+        if(point!=null || person!=null) {selectedMeeting=point?.id;follow=false;selectedEvent=null;selectedId=person?.location?.userId
             camera.setCameraPosition(CameraPosition(target=point?.let {Position(it.longitude,it.latitude)} ?: Position(person!!.location.longitude,person.location.latitude),zoom=if((person?.location?.precisionMeters ?: 0)>0) 12.0 else 16.0));focused()}
     }
     Column(Modifier.fillMaxSize()) {
@@ -169,7 +177,7 @@ import java.time.format.DateTimeFormatter
                         }
                     }
                     state.snapshot.meetings.filter {it.active}.forEach {point ->
-                        Surface(onClick={scope.launch {follow=false;camera.setCameraPosition(CameraPosition(target=Position(point.longitude,point.latitude),zoom=16.0))}},color=androidx.compose.ui.graphics.Color.Transparent,
+                        Surface(onClick={selectedMeeting=point.id;scope.launch {follow=false;camera.setCameraPosition(CameraPosition(target=Position(point.longitude,point.latitude),zoom=16.0))}},color=androidx.compose.ui.graphics.Color.Transparent,
                             modifier=Modifier.placedAt(Position(point.longitude,point.latitude))) {Icon(Icons.Default.Flag,point.creator_name,Modifier.size(48.dp).padding(4.dp),tint=MaterialTheme.colorScheme.primary)}
                     }
                 })
@@ -282,6 +290,8 @@ import java.time.format.DateTimeFormatter
             }
         }
     }
+    state.snapshot.meetings.firstOrNull {it.id==selectedMeeting}?.let {point -> FlareProgressDialog(point,state.now) {selectedMeeting=null}}
+    if(celebration!=null) FlareReunion {celebration=null}
     if(choosingRecipients) MeetingEditor(state.snapshot,confirm={all,people,groups ->
         val point=camera.cameraPosition.target
         vm.meeting(point.latitude,((point.longitude+180)%360+360)%360-180,all,people,groups);choosingRecipients=false;creatingMeeting=false

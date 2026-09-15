@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="flare_reunited">GROUP REUNITED</string>
+  <string name="flare_completed_notification">%1$s: group reunited</string>
+  <string name="flare_radius">Arrival radius: %1$s m</string>
+  <string name="flare_arrived">Arrived</string>
+  <string name="flare_stale">Position not recent</string>
+  <string name="flare_approaching">On the way</string>
+  <string name="flare_uncertain">Position too uncertain to confirm arrival</string>
+  <string name="flare_unavailable">Position unavailable</string>
+  <string name="flare_air_distance">%1$s m in a straight line</string>
+  <string name="flare_eta_pending">ETA unavailable. Distances shown are in a straight line. An arrival Check-in linked to this flare can confirm your arrival.</string>
+</resources>

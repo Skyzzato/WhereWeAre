@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="flare_reunited">GRUPPO RIUNITO</string>
+  <string name="flare_completed_notification">%1$s: gruppo riunito</string>
+  <string name="flare_radius">Raggio di arrivo: %1$s m</string>
+  <string name="flare_arrived">Arrivato</string>
+  <string name="flare_stale">Posizione non recente</string>
+  <string name="flare_approaching">In arrivo</string>
+  <string name="flare_uncertain">Posizione troppo incerta per confermare l’arrivo</string>
+  <string name="flare_unavailable">Posizione non disponibile</string>
+  <string name="flare_air_distance">%1$s m in linea d’aria</string>
+  <string name="flare_eta_pending">ETA non disponibile. Le distanze mostrate sono in linea d’aria. Un Check-in di arrivo associato a questo Bengala può confermare il tuo arrivo.</string>
+</resources>

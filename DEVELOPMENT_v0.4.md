@@ -272,3 +272,27 @@ Build debug/release, 70 test Android e lint PASS (.tools/v04-block09-build.log).
 SQL 001–012, riapplicazione 012, revoca raw/RPC/check-in/inviti e regressioni PASS;
 hash 001–007 invariati. Restano prove fisiche dei selettori e della scadenza
 su due telefoni. Nessuna migrazione applicata al server remoto.
+
+
+## Blocco 10 — Bengala evoluto
+
+Riepilogo dei partecipanti dal pin/deep link: Arrivato, In arrivo, posizione
+non recente, incerta o indisponibile; distanza in linea d’aria esplicitamente
+etichettata, nessuna ETA inventata. Raggio iniziale 100 m. I 50 stili rimangono.
+L’animazione originale mostra tre persone che sollevano insieme un pin su una
+piattaforma circolare, senza riferimenti militari.
+
+Migrazione 013: progresso calcolato dal server con la precisione autorizzata
+per ciascun destinatario; GPS recente entro 2 minuti e intera incertezza entro
+il raggio, oppure Check-in Arrivato esplicitamente associato al Bengala.
+Il completamento richiede che tutti, creatore compreso, risultino arrivati
+secondo i permessi di ogni partecipante: non rivela coordinate nascoste tramite
+un esito derivato. Scatta su pubblicazione GPS, Check-in e lettura inbox, senza
+cron; timestamp persistito e notifica riutilizzano la chiusura esistente.
+
+Build debug/release, 72 test Android e lint PASS (.tools/v04-block10-final.log).
+SQL 001–013 e regressioni PASS: missing/stale/approximate/consensi mancanti,
+Check-in e completamento diretto su GPS, idempotenza migrazione. Hash 001–007
+immutati. Nessuna dipendenza o permesso aggiunto. Da provare su dispositivi:
+fluidità animazione, notifiche remote e comportamento con molti partecipanti.
+Migrazione non distribuita; nessuna garanzia di consegna FCM verificata.

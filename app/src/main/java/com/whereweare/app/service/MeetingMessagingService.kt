@@ -96,7 +96,7 @@ class MeetingNotificationWorker(context: Context,params: WorkerParameters): Coro
             val open=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             if(!entry.preferences().markMeetingSeen(user,"push:$id:${point.active}")) return Result.success()
             manager.notify(id.hashCode(),NotificationCompat.Builder(context,channelId).setSmallIcon(R.drawable.ic_location).setContentTitle(context.getString(R.string.app_name))
-                .setContentText(context.getString(if(point.active) R.string.meeting_created else R.string.meeting_removed,point.creator_name)).setContentIntent(open).setAutoCancel(true).build())
+                .setContentText(context.getString(if(point.completed_at!=null) R.string.flare_completed_notification else if(point.active) R.string.meeting_created else R.string.meeting_removed,point.creator_name)).setContentIntent(open).setAutoCancel(true).build())
             Result.success()
         } catch(e: kotlinx.coroutines.CancellationException) {throw e} catch(_: Exception) {if(runAttemptCount<5) Result.retry() else Result.failure()}
     }

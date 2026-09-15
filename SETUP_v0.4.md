@@ -15,6 +15,9 @@ Applicare in ordine, dopo le migrazioni 001–007 immutate:
 * 012_temporary_groups.sql: scadenza opzionale dei gruppi, controllata nelle
   autorizzazioni anche senza job di pulizia.
 
+* 013_flare_convergence.sql: stati autorizzati dei partecipanti e completamento
+  automatico del Bengala su pubblicazione posizione, Check-in o lettura inbox.
+
 Le migrazioni sono state provate localmente; non sono state applicate al server
 remoto da questo sviluppo. Le capability vengono abilitate dalle migrazioni.
 
