@@ -123,6 +123,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
         var focus by remember {mutableStateOf<MapFocus?>(null)}
         var scanning by remember {mutableStateOf(false)}
         val notice by appearance.notification.collectAsStateWithLifecycle()
+        val sharingSnapshot by appearance.sharing.state.collectAsStateWithLifecycle()
         val flare by appearance.flare.collectAsStateWithLifecycle()
         val flareSound by appearance.flareSound.collectAsStateWithLifecycle()
         val invitation by appearance.invite.collectAsStateWithLifecycle()
@@ -131,7 +132,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
             if(stack!=null) invite?.let { nav.navigate(if(it.type=="person") "people" else "groups") {launchSingleTop=true} }
         }
         LaunchedEffect(link) {
-            if(link?.scheme=="whereweare" && link.host=="meeting") {focus=MapFocus(meeting=link.lastPathSegment);nav.navigate("map") {launchSingleTop=true};linkHandled()}
+            if(link?.scheme=="whereweare" && link.host=="location-request") {nav.navigate("people") {launchSingleTop=true};linkHandled()}
+            else if(link?.scheme=="whereweare" && link.host=="meeting") {focus=MapFocus(meeting=link.lastPathSegment);nav.navigate("map") {launchSingleTop=true};linkHandled()}
             else if(link?.scheme=="https" && BuildConfig.INVITE_BASE_URL.isNotBlank() && link.host==android.net.Uri.parse(BuildConfig.INVITE_BASE_URL).host && link.pathSegments.firstOrNull()=="join") {
                 val token=link.lastPathSegment.orEmpty()
                 if(token.matches(Regex("[0-9a-f]{64}"))) {inviteToken=token;appearance.resolve(token)}
@@ -143,7 +145,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
         val icons=listOf(Icons.Default.Map,Icons.Default.People,Icons.Default.Groups,Icons.Default.Settings)
         Box(Modifier.fillMaxSize()) { Scaffold(topBar={ Column {TopAppBar(title={ Row(verticalAlignment=Alignment.CenterVertically) {
             Image(painterResource(R.drawable.ic_location),null,Modifier.size(28.dp)); Spacer(Modifier.width(8.dp)); Text("WhereWeAre")
-        } });notice?.let {point -> Surface(onClick={if(point.active) {focus=MapFocus(meeting=point.id);nav.navigate("map") {launchSingleTop=true}};appearance.notification.value=null},color=MaterialTheme.colorScheme.primaryContainer) {
+        } });if(sharingSnapshot.locationRequests.isNotEmpty() && stack?.destination?.route!="people") TextButton(onClick={nav.navigate("people") {launchSingleTop=true}}) {Text(Strings.text(R.string.location_request_pending,sharingSnapshot.locationRequests.size))}
+        notice?.let {point -> Surface(onClick={if(point.active) {focus=MapFocus(meeting=point.id);nav.navigate("map") {launchSingleTop=true}};appearance.notification.value=null},color=MaterialTheme.colorScheme.primaryContainer) {
             Text(if(point.active) Strings.text(R.string.ui_125, (point.creator_name).toString()) else Strings.text(R.string.ui_126, (point.creator_name).toString()),Modifier.fillMaxWidth().padding(12.dp))
         }} } },bottomBar={ NavigationBar { routes.forEachIndexed { index,route ->
             NavigationBarItem(selected=stack?.destination?.route==route,onClick={ nav.navigate(route) {

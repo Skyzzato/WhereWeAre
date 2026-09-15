@@ -1,0 +1,10 @@
+<resources>
+    <string name="location_request_action">Request location</string>
+    <string name="location_request_received">%1$s asks you to share your location</string>
+    <string name="location_request_share">Share</string>
+    <string name="location_request_consent">This allows the requester to receive your location and starts normal sharing, also with people and groups you already authorized. Your shared precision settings apply. You can stop sharing from the Map at any time.</string>
+    <string name="location_request_cooldown">A request was already sent recently. Please wait before trying again.</string>
+    <string name="location_request_expired">This request has expired or the connection is no longer available.</string>
+    <string name="location_request_pending">Location requests: %1$d</string>
+    <string name="location_request_channel">Location requests</string>
+</resources>

@@ -31,6 +31,8 @@ open class OperationViewModel: ViewModel() {
                     "stop_pending" in key -> R.string.stop_pending
                     "location_permission" in key -> R.string.location_permission
                     "location_disabled" in key -> R.string.location_disabled
+                    "request_cooldown" in key -> R.string.location_request_cooldown
+                    "request_expired" in key -> R.string.location_request_expired
                     "already_connected" in key -> R.string.error_connected
                     "self_invite" in key -> R.string.self_invite
                     "not_authorized" in key -> R.string.error_forbidden
@@ -101,7 +103,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun stop() { controller.requestStop() }
     fun refresh() { sharing.refresh() }
 }
-@HiltViewModel class PeopleViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor): OperationViewModel() {
+@HiltViewModel class PeopleViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor,val location: LocationRepository,private val controller: SharingController): OperationViewModel() {
     val online=network.online
     val state=sharing.state
     val userId get()=auth.userId
@@ -125,6 +127,13 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun cancel(id: String) { perform { sharing.cancel(id) } }
     fun permission(viewer: String,enabled: Boolean) { perform { sharing.permission(viewer,enabled) } }
     fun precision(viewer: String,value: Int?) {perform {sharing.sharedPrecision("person",viewer,value)}}
+    fun requestLocation(person: String) {perform(R.string.request_sent) {sharing.requestLocation(person)}}
+    fun respondLocation(id: String,accept: Boolean,completed: ()->Unit={}) {perform {
+        if(accept) {check(location.hasPermission()) {"location_permission"};check(location.enabled()) {"location_disabled"}}
+        val accepted=sharing.respondLocation(id,accept)
+        if(accept && accepted) controller.start()
+        completed()
+    }}
     fun invite(group: String,person: String) { perform(R.string.request_sent) {sharing.inviteMember(group,person)} }
     fun reveal(person: String) {perform {preferences.hide(requireNotNull(userId),setOf(person),false);state.value.members.filter {it.userId==person}.forEach {preferences.hideGroup(requireNotNull(userId),it.groupId,false)}}}
 }
@@ -225,7 +234,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
         viewModelScope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collect {
             notification.value=null;feedback.clear();invite.value=null
             val manager=context.getSystemService(android.app.NotificationManager::class.java)
-            manager.activeNotifications.filter {it.notification.channelId=="meetings"}.forEach {manager.cancel(it.id)}
+            manager.activeNotifications.filter {it.notification.channelId in setOf("meetings","meetings-v032","location-requests")}.forEach {manager.cancel(it.tag,it.id)}
         }}
         viewModelScope.launch {combine(auth.session,preferences.language) {_,lang -> auth.userId to lang}.distinctUntilChanged().collect {(id,_) -> if(id!=null) com.whereweare.app.service.PushRegistration.enqueue(context)}}
     }

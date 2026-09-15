@@ -58,7 +58,9 @@ data class Snapshot(val profile: UserProfile? = null, val names: Map<String,Stri
     val statuses: List<SharingStatus> = emptyList(), val locations: List<UserLocation> = emptyList(),
     val loading: Boolean = true, val offline: Boolean = false,
     val contacts: Map<String,ContactProfile> = emptyMap(),val groups: List<Group> = emptyList(),val members: List<GroupMember> = emptyList(),
-    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false,val realtimeUnavailable: Boolean=false,val savedPeople: Set<String> = emptySet(),val sharedPrecisionAvailable: Boolean=false)
+    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false,val realtimeUnavailable: Boolean=false,val savedPeople: Set<String> = emptySet(),val sharedPrecisionAvailable: Boolean=false,val locationRequestsAvailable: Boolean=false,val locationRequests: List<LocationRequest> = emptyList())
+
+@kotlinx.serialization.Serializable data class LocationRequest(val id: String,val sender_id: String,val receiver_id: String,val sender_name: String,val created_at: String)
 
 @kotlinx.serialization.Serializable data class PrecisionSource(val kind: String,val source_id: String,val name: String,val precision_m: Int)
 @kotlinx.serialization.Serializable data class AudienceMember(val user_id: String,val name: String,val precision_m: Int,val sources: List<PrecisionSource>)

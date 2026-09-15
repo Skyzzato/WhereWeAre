@@ -23,7 +23,7 @@ import android.util.Log
     init { scope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collect {connectionDiagnostics.reset()}} }
     private suspend fun serverRpc(name: String,params: JsonObject=buildJsonObject {})=connectionDiagnostics.measure(
         write=when(name) {
-            "app_metadata","lookup_user_by_invite_code","visible_locations","location_audience" -> false
+            "app_metadata","lookup_user_by_invite_code","visible_locations","location_audience","location_request_inbox" -> false
             "resolve_invite_link" -> params["confirm"]?.jsonPrimitive?.booleanOrNull==true
             else -> true
         }
@@ -89,7 +89,7 @@ import android.util.Log
                     if(readingGeneration!=generation.get()) { signals.trySend(Unit); continue }
                     if(readMetadata) metadataDirty=false
                     // REST success means data is current enough to display; Realtime status is tracked separately.
-                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable)
+                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable,locationRequestsAvailable=metadata?.location_requests_available ?: last.locationRequestsAvailable,locationRequests=metadata?.location_requests ?: last.locationRequests)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
                     send(last)
                 } catch(e: CancellationException) { throw e
@@ -165,6 +165,8 @@ import android.util.Log
         put("scope",scope);put("target",target?.let(::JsonPrimitive) ?: JsonNull);put("value",value?.let(::JsonPrimitive) ?: JsonNull)
     })
     suspend fun audience(): List<AudienceMember> = serverRpc("location_audience").decodeList()
+    suspend fun requestLocation(person: String)=rpc("request_location",buildJsonObject {put("person",person)})
+    suspend fun respondLocation(id: String,accept: Boolean): Boolean = serverRpc("respond_location_request",buildJsonObject {put("request_id",id);put("accept",accept)}).data.let {refresh();it=="true"}
     suspend fun remove(person: String)=mutate({ s -> s.copy(shares=s.shares.filter { it.owner!=person && it.viewer!=person },savedPeople=s.savedPeople-person) },{ s -> person !in s.savedPeople && s.shares.none { it.owner==person || it.viewer==person } }) { rpc("remove_connection",buildJsonObject { put("other_user_id",person) }) }
     suspend fun savePerson(person: String)=mutate({it.copy(savedPeople=it.savedPeople+person)},{person in it.savedPeople}) {rpc("save_group_person",buildJsonObject {put("person",person)})}
     suspend fun dismiss(id: String)=rpc("dismiss_request",buildJsonObject { put("request_id",id) })

@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import {pushData} from './payload.ts';
 
 // Called by a trusted scheduler only. Never expose these credentials in the APK.
 const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
@@ -28,7 +29,7 @@ export async function handle(request: Request): Promise<Response> {
       for(const device of job.tokens) {
         const result=await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`,{
           method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(15000),
-          body:JSON.stringify({message:{token:device,data:{meeting_id:job.meeting_id,recipient:job.recipient,kind:job.kind},android:{priority:'HIGH',ttl:'86400s'}}})
+          body:JSON.stringify({message:{token:device,data:pushData(job),android:{priority:'HIGH',ttl:'86400s'}}})
         });
         if(!result.ok) {
           const response=await result.json().catch(()=>({}));

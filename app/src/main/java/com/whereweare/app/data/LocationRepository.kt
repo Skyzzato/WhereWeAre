@@ -13,6 +13,7 @@ import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import com.google.android.gms.location.*
+import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.whereweare.app.domain.*
 import dagger.hilt.android.qualifiers.ApplicationContext

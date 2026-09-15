@@ -37,6 +37,11 @@ import com.whereweare.app.domain.normalizeInviteCode
     val unavailableHost=remember {SnackbarHostState()}
     LaunchedEffect(unavailable) {unavailable?.let {unavailableHost.showSnackbar(it);unavailable=null}}
     var invitePerson by remember {mutableStateOf<String?>(null)}
+    var locationRequest by rememberSaveable {mutableStateOf<String?>(null)}
+    val locationPermission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) {
+        if(vm.location.hasPermission()) locationRequest?.let {id -> vm.respondLocation(id,true) {locationRequest=null}}
+        else vm.message(R.string.location_permission)
+    }
     val id=vm.userId
     val connections=(state.shares.flatMap { listOf(it.owner,it.viewer) }+state.savedPeople).distinct().filter { it!=id }
     LaunchedEffect(connections) { selected=selected.intersect(connections.toSet()) }
@@ -45,6 +50,15 @@ import com.whereweare.app.domain.normalizeInviteCode
             SearchHeader(Strings.text(R.string.people),query,searching,{searching=it},{query=it})
             Button(onClick={ adding=true; vm.clearLookup() }) { Text(Strings.text(R.string.qr_enter_code)) }
             OutlinedButton(onClick=onScan) {Text(Strings.text(R.string.qr_scan))} }
+        items(state.locationRequests,key={"location-request-${it.id}"}) {request ->
+            OutlinedCard(Modifier.fillMaxWidth()) {Column(Modifier.padding(12.dp)) {
+                Text(Strings.text(R.string.location_request_received,request.sender_name))
+                Row {
+                    TextButton(onClick={vm.respondLocation(request.id,false)},enabled=!operation.busy) {Text(Strings.text(R.string.reject))}
+                    Button(onClick={locationRequest=request.id},enabled=!operation.busy) {Text(Strings.text(R.string.location_request_share))}
+                }
+            }}
+        }
         item { Row(verticalAlignment=Alignment.CenterVertically) { Text(Strings.text(R.string.connected_people),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge); TextButton(onClick={ selecting=!selecting; selected=emptySet() }) { Text(if(selecting) Strings.text(R.string.ui_010) else Strings.text(R.string.ui_063)) } } }
         if(selecting) item { TextButton(onClick={ selected=if(selected.size==connections.size) emptySet() else connections.toSet() }) { Text(if(selected.size==connections.size) Strings.text(R.string.ui_064) else Strings.text(R.string.ui_065)) } }
         if(selected.isNotEmpty()) item { SelectionActions(selected.size,
@@ -74,6 +88,7 @@ import com.whereweare.app.domain.normalizeInviteCode
                     else {vm.reveal(person);onShow(person)}
                 }) {Text(Strings.text(R.string.center_map))}
                 if(p?.commonGroup==true) Text(Strings.text(R.string.ui_069),style=MaterialTheme.typography.bodySmall)
+                if(state.locationRequestsAvailable && (p?.commonGroup==true || state.shares.any {it.owner==person || it.viewer==person})) TextButton(onClick={vm.requestLocation(person)},enabled=!operation.busy) {Text(Strings.text(R.string.location_request_action))}
             } }
         }
         listOf(true,false).forEach { received ->
@@ -94,6 +109,12 @@ import com.whereweare.app.domain.normalizeInviteCode
         found?.let { Text(it.displayName) }; Busy(operation,inline=true)
     } },confirmButton={ TextButton(onClick={ if(found==null) vm.lookup(code) else vm.send {adding=false;vm.message(null);inviteHandled()} },enabled=!operation.busy) { Text(if(found==null) Strings.text(R.string.search) else Strings.text(R.string.send_request)) } },dismissButton={ TextButton(onClick={adding=false;vm.message(null);inviteHandled()}) { Text(Strings.text(R.string.close)) } })
     remove?.let { ids -> ConfirmDestructive(Strings.text(R.string.ui_068),Strings.text(R.string.ui_074, (ids.size).toString()),{remove=null}) { vm.remove(ids); remove=null; selected=emptySet() } }
+    locationRequest?.let {request -> AlertDialog(onDismissRequest={locationRequest=null},title={Text(Strings.text(R.string.location_request_share))},text={Column {
+        Text(Strings.text(R.string.location_request_consent));Busy(operation,inline=true)
+    }},confirmButton={TextButton(enabled=!operation.busy,onClick={
+        if(vm.location.hasPermission()) vm.respondLocation(request,true) {locationRequest=null}
+        else locationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION,android.Manifest.permission.ACCESS_FINE_LOCATION))
+    }) {Text(Strings.text(R.string.location_request_share))}},dismissButton={TextButton(onClick={locationRequest=null}) {Text(Strings.text(R.string.close))}}) }
     Box(Modifier.fillMaxSize(),contentAlignment=Alignment.BottomCenter) {SnackbarHost(unavailableHost)}
     invitePerson?.let {person -> AlertDialog(onDismissRequest={invitePerson=null},title={Text(Strings.text(R.string.ui_011))},text={Column {state.groups.filter {g -> g.creator==id && state.members.none {it.groupId==g.id && it.userId==person} && state.groupRequests.none {it.group_id==g.id && it.user_id==person && it.status=="pending"}}.forEach {g -> TextButton(onClick={vm.invite(g.id,person);invitePerson=null}) {GroupIdentity(g.emoji,g.name,Modifier.fillMaxWidth())}}}},confirmButton={TextButton(onClick={invitePerson=null}) {Text(Strings.text(R.string.ui_006))}}) }
 }

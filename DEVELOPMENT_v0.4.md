@@ -203,3 +203,28 @@ autorizzazione Android. La 009 non è ancora applicata al server remoto.
 Prove manuali residue: due account con realtime remoto, cambi precisione
 durante ricezione, aree mappa a diversi zoom/font e pannello destinatari
 durante perdita rete. La baseline non contiene una history GPS da migrare.
+
+## Blocco 07 — richieste posizione
+
+Estesa share_requests con purpose, mantenendo un solo ciclo di vita richieste.
+La richiesta di posizione non è un collegamento reciproco: accettazione a
+senso unico, precisione preservata e avvio del normale SharingController solo
+dopo permesso GPS e risposta server positiva. Rifiuto o permesso negato non
+avviano tracking. Nessuna durata obbligatoria per la condivisione.
+
+La 010 introduce deduplicazione, cooldown, scadenza richiesta e notifica
+idempotente nella push_outbox esistente. Dispatcher esteso con payload tipizzato;
+notifica verificata dal worker tramite inbox autenticata, apertura Persone,
+richiamo nell'app e scelta Rifiuta/Condividi. I vecchi client continuano a
+ricevere solo le richieste di collegamento nella loro inbox.
+
+Build debug/release, 65 test Android e lint: PASS. Tre nuovi test ViewModel
+verificano ordine ACK/avvio, rifiuto e permesso negato. Log
+`.tools/v04-block07-build.log`. Due test Deno dispatcher/payload: PASS.
+SQL 001–010 e regressioni: PASS, incluse riapplicazione 010, idempotenza,
+privilegi, consenso non reciproco, precisione, cooldown e lease outbox.
+Hash 001–007 invariati. Nessuna nuova dipendenza o autorizzazione Android.
+
+Istruzioni incrementalmente aggiornate in SETUP_v0.4.md. Migrazione e dispatcher
+non distribuiti da questo sviluppo; restano da verificare FCM reale e UX su
+due dispositivi. Le credenziali/scheduler non sono stati inventati o modificati.

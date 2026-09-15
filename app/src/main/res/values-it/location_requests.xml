@@ -1,0 +1,10 @@
+<resources>
+    <string name="location_request_action">Richiedi posizione</string>
+    <string name="location_request_received">%1$s ti chiede di condividere la posizione</string>
+    <string name="location_request_share">Condividi</string>
+    <string name="location_request_consent">Autorizzi il richiedente a ricevere la tua posizione e avvii la condivisione normale, anche con persone e gruppi già autorizzati. Si applicano le tue impostazioni di precisione condivisa. Puoi spegnere la condivisione dalla Mappa in qualsiasi momento.</string>
+    <string name="location_request_cooldown">Hai già inviato una richiesta di recente. Attendi prima di riprovare.</string>
+    <string name="location_request_expired">La richiesta è scaduta o il collegamento non è più disponibile.</string>
+    <string name="location_request_pending">Richieste posizione: %1$d</string>
+    <string name="location_request_channel">Richieste posizione</string>
+</resources>

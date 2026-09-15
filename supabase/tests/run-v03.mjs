@@ -28,6 +28,9 @@ try {
        console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
      }
      console.log('ALL v0.4 IMPLEMENTED MIGRATION TESTS PASSED');
+     for(const file of ['supabase/migrations/010_location_requests.sql','supabase/migrations/010_location_requests.sql','supabase/tests/location_requests.sql','supabase/tests/shared_precision.sql','supabase/tests/security_v033.sql','supabase/tests/security_v03.sql']) {
+       console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
+     }
    }
  }
 } catch(error) {console.error(error.message,error.where ?? '',error.detail ?? '');process.exitCode=1;}
