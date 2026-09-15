@@ -254,11 +254,13 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun remove(group: String,ids: Set<String>) { perform { ids.forEach { sharing.removeMember(group,it) } } }
     fun delete(group: String) { perform { sharing.deleteGroup(group) } }
 }
-@HiltViewModel class AppearanceViewModel @Inject constructor(val invites: InviteStore,val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,val controller: SharingController,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context): OperationViewModel() {
+@HiltViewModel class AppearanceViewModel @Inject constructor(val invites: InviteStore,val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,val controller: SharingController,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,private val onboardingStore: OnboardingStore): OperationViewModel() {
     val theme=preferences.theme.stateIn(viewModelScope,SharingStarted.Eagerly,"default")
     val language=preferences.language.stateIn(viewModelScope,SharingStarted.Eagerly,"system")
     val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     val notification=MutableStateFlow<MeetingPoint?>(null)
+    val onboarding=onboardingStore.completed
+    fun finishOnboarding() {perform {check(onboardingStore.complete())}}
     val eventNotice=MutableStateFlow<AppEvent?>(null)
     val flare=combine(feedback.events,auth.session) {events,_ -> events.firstOrNull {it.user==auth.userId}}
         .stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)

@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="onboarding_title_1">Le persone che vuoi, sulla stessa mappa</string>
+  <string name="onboarding_title_2">Crea gruppi e condividi solo quando vuoi</string>
+  <string name="onboarding_title_3">Persi di vista? Lancia un Bengala</string>
+  <string name="onboarding_title_4">Decidi sempre chi può vederti</string>
+  <string name="onboarding_body_1">Ritrovati con amici e familiari che scelgono di condividere la propria posizione.</string>
+  <string name="onboarding_body_2">Una giornata fuori o le persone di tutti i giorni: attiva e ferma la condivisione quando vuoi.</string>
+  <string name="onboarding_body_3">Scegli un punto sulla mappa e invita le tue persone a raggiungerti.</string>
+  <string name="onboarding_body_4">Scegli destinatari e precisione condivisa. Controlla chi può vederti e interrompi la condivisione in ogni momento.</string>
+  <string name="onboarding_skip">Salta</string>
+  <string name="onboarding_next">Avanti</string>
+  <string name="onboarding_start">Troviamoci</string>
+</resources>

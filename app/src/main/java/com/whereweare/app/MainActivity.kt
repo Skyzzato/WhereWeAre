@@ -82,6 +82,9 @@ import io.github.jan.supabase.auth.status.SessionStatus
         }
     }
     LifecycleResumeEffect(Unit) { bootstrap.refresh(); onPauseOrDispose {} }
+    val onboarding by appearance.onboarding.collectAsStateWithLifecycle()
+    val onboardingOperation by appearance.operation.collectAsStateWithLifecycle()
+    if(!onboarding) {OnboardingScreen(onboardingOperation,appearance::finishOnboarding);return}
     if(boot.gate!=BootstrapGate.READY || session is SessionStatus.Initializing) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
             Image(painterResource(R.drawable.ic_location),null,Modifier.padding(vertical=12.dp).sizeIn(maxWidth=160.dp,maxHeight=160.dp).size(96.dp),contentScale=ContentScale.Fit)

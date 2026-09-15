@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="onboarding_title_1">The people you choose, on the same map</string>
+  <string name="onboarding_title_2">Create groups and share when you want</string>
+  <string name="onboarding_title_3">Lost sight of each other? Launch a flare</string>
+  <string name="onboarding_title_4">You always decide who can see you</string>
+  <string name="onboarding_body_1">Find each other with friends and family who choose to share their position.</string>
+  <string name="onboarding_body_2">A day outdoors or your everyday circle: turn sharing on and off whenever you need.</string>
+  <string name="onboarding_body_3">Choose a point on the map and invite your people to meet there.</string>
+  <string name="onboarding_body_4">Choose recipients and shared precision. Check who can see you and stop sharing at any time.</string>
+  <string name="onboarding_skip">Skip</string>
+  <string name="onboarding_next">Next</string>
+  <string name="onboarding_start">Let’s meet</string>
+</resources>

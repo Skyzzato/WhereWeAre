@@ -386,3 +386,18 @@ Test countdown/cancel/ACK/errore/GPS assente, permessi SQL, precisione SOS,
 risposte, cooldown, chiusura/retry e scadenza gruppi. Hash 001–007 invariati.
 Nessuna dipendenza o autorizzazione Android aggiunta. Test remoti FCM/dispositivi
 ancora necessari; nessuna distribuzione backend effettuata.
+
+
+## Blocco 16 — Onboarding
+
+Quattro pagine con illustrazioni Compose, mockup mappa/avatar/Bengala/privacy,
+indicatori, Avanti/Salta e stato persistente separato dagli inviti. Disponibile
+prima del login senza richiedere permessi. I payload Persona/Gruppo continuano
+nel loro InviteStore: onboarding e login non li consumano; la navigazione e la
+conferma del destinatario riprendono il flusso esistente.
+
+Build debug/release, 83 test Android e lint PASS (.tools/v04-block16-build.log).
+Test Robolectric di persistenza completamento/skip e recupero degli inviti
+Persona/Gruppo dopo ricreazione, oltre ai test deep link già presenti. Nessuna
+migrazione, dipendenza o permesso. Restano prove fisiche layout/font grandi,
+rotazione/ricreazione e primo accesso su dispositivo. Hash baseline invariati.
