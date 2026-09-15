@@ -401,3 +401,22 @@ Test Robolectric di persistenza completamento/skip e recupero degli inviti
 Persona/Gruppo dopo ricreazione, oltre ai test deep link già presenti. Nessuna
 migrazione, dipendenza o permesso. Restano prove fisiche layout/font grandi,
 rotazione/ricreazione e primo accesso su dispositivo. Hash baseline invariati.
+
+
+## Blocco 17 — Consolidamento UX
+
+Impostazioni organizzate in sezioni espandibili: Profilo/dimensione avatar,
+codice personale grigio e QR, Posizione e condivisione con stato coerente,
+Mappa/tema, Bengala (50 stili/suono), Luoghi, preferenze SOS, Lingua,
+Diagnostica, Account, Privacy, Informazioni e Copyright. Tutti i controlli
+precedenti sono conservati. Attribuzioni cartografiche e dipendenze QR visibili.
+
+La mappa mantiene centro, menu azioni compatto e SOS separato. Inquadra tutti
+passa al menu e comprende aree approssimate, Check-in/SOS e Bengala. Il banner
+riunione distingue completamento automatico da rimozione manuale. Informativa
+aggiornata per snapshot, luoghi e consenso temporaneo SOS; quattro tab invariati.
+
+Build debug/release, 83 test Android e lint PASS (.tools/v04-block17-final.log).
+466 stringhe IT/EN allineate, nessun duplicato; nessuna migrazione, dipendenza
+o permesso. ADB non rileva dispositivi: prove visive interattive, font grandi,
+TalkBack e interazioni mappa/QR restano manuali e non vengono dichiarate passate.

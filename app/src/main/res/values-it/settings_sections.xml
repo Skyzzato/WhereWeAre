@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="settings_location_sharing">Posizione e condivisione</string>
+  <string name="settings_information">Informazioni</string>
+  <string name="settings_expand">Espandi sezione</string>
+  <string name="settings_collapse">Comprimi sezione</string>
+  <string name="privacy_v04">I Check-in sono istantanee volontarie visibili per 24 ore. I luoghi sono privati; le regole usano la condivisione attiva. Un SOS autorizza separatamente la migliore posizione disponibile per i destinatari selezionati fino alla chiusura, per massimo 6 ore. L’app non contatta i servizi di emergenza.</string>
+</resources>

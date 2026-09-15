@@ -199,19 +199,20 @@ import java.time.format.DateTimeFormatter
                 FilledTonalButton(enabled=local!=null,colors=ButtonDefaults.filledTonalButtonColors(containerColor=if(follow) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer),onClick={ if(local!=null) { follow=true; scope.launch { camera.animateCameraPosition(CameraPosition(target=Position(local!!.longitude,local!!.latitude),zoom=15.0)) } } }) {
                     Text(stringResource(R.string.center_me))
                 }
-                FilledTonalButton(onClick={
-                    follow=false
-                    val points=state.visible.map { it.location }+listOfNotNull(local)
-                    if(points.isNotEmpty()) scope.launch {
-                        if(points.size==1) camera.animateCameraPosition(CameraPosition(target=Position(points[0].longitude,points[0].latitude),zoom=14.0))
-                        else camera.animateCameraToBounds(BoundingBox(west=points.minOf { it.longitude }-0.001,south=points.minOf { it.latitude }-0.001,
-                            east=points.maxOf { it.longitude }+0.001,north=points.maxOf { it.latitude }+0.001),padding=PaddingValues(60.dp))
-                    }
-                }) { Text(stringResource(R.string.fit_all)) }
             }
             if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
                 FloatingActionButton(onClick={actions=true}) {Icon(Icons.Default.MoreVert,Strings.text(R.string.map_actions))}
                 DropdownMenu(actions,{actions=false}) {
+                    DropdownMenuItem(text={Text(Strings.text(R.string.fit_all))},onClick={
+                        actions=false;follow=false
+                        val fixes=state.visible.map {it.location}+listOfNotNull(local)+events.mapNotNull {it.checkin()?.location(it.id)?:it.sos()?.location(it.id)}
+                        val points=fixes.flatMap {fix -> if(fix.precisionMeters>0) approximateBoundary(fix.latitude,fix.longitude,fix.precisionMeters) else listOf(Position(fix.longitude,fix.latitude))}+
+                            state.snapshot.meetings.filter {it.active}.map {Position(it.longitude,it.latitude)}
+                        if(points.isNotEmpty()) scope.launch {
+                            if(points.size==1) camera.animateCameraPosition(CameraPosition(target=points[0],zoom=14.0))
+                            else camera.animateCameraToBounds(BoundingBox(west=points.minOf {it.longitude}-.001,south=points.minOf {it.latitude}-.001,east=points.maxOf {it.longitude}+.001,north=points.maxOf {it.latitude}+.001),padding=PaddingValues(60.dp))
+                        }
+                    })
                     if(config.config?.features?.meeting_points!=false) DropdownMenuItem(text={Text(Strings.text(R.string.ui_046))},onClick={actions=false;follow=false;creatingMeeting=true})
                     if(state.snapshot.eventsAvailable) {
                         DropdownMenuItem(text={Text(Strings.text(R.string.checkin_title))},onClick={actions=false;vm.message(null);checkinEditor=true})

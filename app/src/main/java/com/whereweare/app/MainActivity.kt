@@ -152,8 +152,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
             Image(painterResource(R.drawable.ic_location),null,Modifier.size(28.dp)); Spacer(Modifier.width(8.dp)); Text("WhereWeAre")
         } });if(sharingSnapshot.locationRequests.isNotEmpty() && stack?.destination?.route!="people") TextButton(onClick={nav.navigate("people") {launchSingleTop=true}}) {Text(Strings.text(R.string.location_request_pending,sharingSnapshot.locationRequests.size))}
         eventNotice?.let {event -> TextButton(onClick={focus=MapFocus(event=event.id);nav.navigate("map") {launchSingleTop=true};appearance.eventNotice.value=null}) {Text(eventReceivedText(event))}}
-        notice?.let {point -> Surface(onClick={if(point.active) {focus=MapFocus(meeting=point.id);nav.navigate("map") {launchSingleTop=true}};appearance.notification.value=null},color=MaterialTheme.colorScheme.primaryContainer) {
-            Text(if(point.active) Strings.text(R.string.ui_125, (point.creator_name).toString()) else Strings.text(R.string.ui_126, (point.creator_name).toString()),Modifier.fillMaxWidth().padding(12.dp))
+        notice?.let {point -> Surface(onClick={if(point.active || point.completed_at!=null) {focus=MapFocus(meeting=point.id);nav.navigate("map") {launchSingleTop=true}};appearance.notification.value=null},color=MaterialTheme.colorScheme.primaryContainer) {
+            Text(if(point.completed_at!=null) Strings.text(R.string.flare_completed_notification,point.creator_name) else if(point.active) Strings.text(R.string.ui_125,point.creator_name) else Strings.text(R.string.ui_126,point.creator_name),Modifier.fillMaxWidth().padding(12.dp))
         }} } },bottomBar={ NavigationBar { routes.forEachIndexed { index,route ->
             NavigationBarItem(selected=stack?.destination?.route==route,onClick={ nav.navigate(route) {
                 popUpTo(nav.graph.startDestinationId) { saveState=true }; launchSingleTop=true; restoreState=true

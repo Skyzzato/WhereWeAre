@@ -32,6 +32,8 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
 @Composable fun SettingsScreen(vm: SettingsViewModel,onPrivacy: ()->Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
+    val tracking by vm.trackingDiagnostics.collectAsStateWithLifecycle()
+    val pending by vm.pendingStopDiagnostics.collectAsStateWithLifecycle(initialValue=null)
     val high by vm.highAccuracy.collectAsStateWithLifecycle()
     val interval by vm.interval.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
@@ -52,12 +54,19 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     LifecycleResumeEffect(Unit) {precise=vm.location.permission()==LocationPermission.PRECISE;onPauseOrDispose {}}
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Busy(operation)
-        Text(Strings.text(R.string.ui_078),style=MaterialTheme.typography.titleLarge)
+        SettingsSection(Strings.text(R.string.ui_078),initiallyExpanded=true) {
         state.profile?.let { Avatar(it.id,it.displayName,it.avatarPath,false,vm.avatars,64.dp) }
         vm.userId?.let {user -> AvatarEditor(user,vm.avatarDrafts,operation.busy,state.profile?.avatarPath!=null,
             onSave=vm::avatar,onRemove=vm::removeAvatar,onError={vm.message(R.string.error_generic)},error=operation.message) }
         OutlinedTextField(name,{name=it},label={Text(Strings.text(R.string.name))},singleLine=true,modifier=Modifier.fillMaxWidth())
         TextButton(onClick={vm.rename(name)},enabled=!operation.busy){Text(Strings.text(R.string.save))}
+        Text(Strings.text(R.string.ui_093),style=MaterialTheme.typography.titleSmall)
+        val scales=listOf(.75f,1f,1.25f,1.5f)
+        val sizes=listOf(Strings.text(R.string.ui_094),Strings.text(R.string.ui_095),Strings.text(R.string.ui_096),Strings.text(R.string.ui_097))
+        var sizeIndex by remember(scale) {mutableFloatStateOf(scales.indexOf(scale).coerceAtLeast(0).toFloat())}
+        Slider(sizeIndex,{sizeIndex=it},valueRange=0f..3f,steps=2,onValueChangeFinished={vm.avatarScale(scales[kotlin.math.round(sizeIndex).toInt()])})
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {sizes.forEach {Text(it,style=MaterialTheme.typography.labelSmall)}}
+        }
         val code=state.profile?.inviteCode.orEmpty()
         Card(modifier=Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerHighest)) {
             Column(Modifier.padding(16.dp)) {
@@ -72,7 +81,13 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
                 }
             }
         }
-        HorizontalDivider(); Text(Strings.text(R.string.ui_084),style=MaterialTheme.typography.titleLarge)
+        SettingsSection(Strings.text(R.string.settings_location_sharing),initiallyExpanded=false) {
+        val serverSharing=state.statuses.any {it.userId==state.profile?.id && it.sharing}
+        val sharingState=sharingUiState(tracking.active,tracking.starting,serverSharing,pending!=null)
+        Text(Strings.text(R.string.sharing)+": "+Strings.text(when(sharingState) {
+            SharingUiState.OFF -> R.string.off;SharingUiState.ON -> R.string.on;SharingUiState.STARTING -> R.string.sharing_starting
+            SharingUiState.STOPPING -> R.string.sharing_stopping;SharingUiState.REMOTE_ACTIVE -> R.string.remote_session_active
+        }))
         Row { FilterChip(!high || !precise,{vm.accuracy(false)},label={Text(Strings.text(R.string.balanced))}); Spacer(Modifier.width(8.dp)); FilterChip(high && precise,{vm.accuracy(true)},enabled=precise,label={Text(Strings.text(R.string.high_accuracy))}) }
         if(!precise) { Text(Strings.text(R.string.ui_085),color=MaterialTheme.colorScheme.error)
             TextButton(onClick={context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri()))}){Text(Strings.text(R.string.ui_086))} }
@@ -84,31 +99,47 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
             Text(Strings.text(R.string.precision_explanation),style=MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick={audience=true},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.precision_audience))}
         }
-        HorizontalDivider(); Text(Strings.text(R.string.map),style=MaterialTheme.typography.titleLarge)
+        }
+        SettingsSection(Strings.text(R.string.map),initiallyExpanded=false) {
         Choice(Strings.text(R.string.ui_090),MapStyle.fromId(style).id,MapStyle.entries.map { it.id },{MapStyle.fromId(it).label},vm::mapStyle)
-        HorizontalDivider();Text(Strings.text(R.string.ui_091),style=MaterialTheme.typography.titleLarge)
-        Text(Strings.text(R.string.flare_section),style=MaterialTheme.typography.titleLarge)
+        Choice(Strings.text(R.string.ui_092),theme,listOf("default","ocean","sunset","lavender","graphite","dark"),{it.replaceFirstChar(Char::uppercase)},vm::theme)
+        }
+        SettingsSection(Strings.text(R.string.flare_section),initiallyExpanded=false) {
         Choice(Strings.text(R.string.flare_style),flareStyle,(1..50).toList(),{Strings.text(if(it<=30) R.string.flare_number else R.string.rocket_number,it)},vm::flareStyle)
         Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {Text(Strings.text(R.string.flare_sound),Modifier.weight(1f));Switch(flareSound,vm::flareSound)}
-        Choice(Strings.text(R.string.ui_092),theme,listOf("default","ocean","sunset","lavender","graphite","dark"),{it.replaceFirstChar(Char::uppercase)},vm::theme)
-        Text(Strings.text(R.string.ui_093),style=MaterialTheme.typography.titleSmall)
-        val scales=listOf(.75f,1f,1.25f,1.5f)
-        val sizes=listOf(Strings.text(R.string.ui_094),Strings.text(R.string.ui_095),Strings.text(R.string.ui_096),Strings.text(R.string.ui_097))
-        var sizeIndex by remember(scale) {mutableFloatStateOf(scales.indexOf(scale).coerceAtLeast(0).toFloat())}
-        Slider(sizeIndex,{sizeIndex=it},valueRange=0f..3f,steps=2,onValueChangeFinished={vm.avatarScale(scales[kotlin.math.round(sizeIndex).toInt()])})
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {sizes.forEach {Text(it,style=MaterialTheme.typography.labelSmall)}}
+        }
+        if(state.placesAvailable) OutlinedButton(onClick={places=true},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.places_title))}
+        if(state.sosAvailable) SettingsSection("SOS") {
+            Row {Switch(checked=false,onCheckedChange={},enabled=false);Text(Strings.text(R.string.sos_nearby_disabled))}
+        }
+        SettingsSection(Strings.text(R.string.ui_098),initiallyExpanded=false) {
         Choice(Strings.text(R.string.ui_098),language,listOf("system","it","en"),{when(it) {"it"->Strings.text(R.string.ui_099);"en"->Strings.text(R.string.ui_100);else->Strings.text(R.string.ui_101)}},vm::language)
-        HorizontalDivider(); Text(Strings.text(R.string.ui_102),style=MaterialTheme.typography.titleLarge)
+        }
+        SettingsSection(Strings.text(R.string.diag_title),initiallyExpanded=false) {
+        OutlinedButton(onClick={diagnostic="location"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_location))}
+        OutlinedButton(onClick={diagnostic="connection"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_connection))}
+        }
+        SettingsSection(Strings.text(R.string.ui_102),initiallyExpanded=false) {
         Text(vm.registeredSince?.let { Strings.text(R.string.ui_103, (it).toString()) } ?: Strings.text(R.string.ui_104))
         OutlinedButton(onClick=vm::logout,enabled=!operation.busy,modifier=Modifier.fillMaxWidth()){Text(Strings.text(R.string.ui_105))}
         TextButton(onClick={delete=true},enabled=!operation.busy){Text(Strings.text(R.string.ui_106),color=MaterialTheme.colorScheme.error)}
-        HorizontalDivider()
-        if(state.placesAvailable) OutlinedButton(onClick={places=true},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.places_title))}
-        Text(Strings.text(R.string.diag_title),style=MaterialTheme.typography.titleLarge)
-        OutlinedButton(onClick={diagnostic="location"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_location))}
-        OutlinedButton(onClick={diagnostic="connection"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_connection))}
-        HorizontalDivider()
-        TextButton(onClick=onPrivacy){Text(Strings.text(R.string.ui_107))}
+        }
+        TextButton(onClick=onPrivacy) {Text(Strings.text(R.string.ui_107))}
+        SettingsSection(Strings.text(R.string.settings_information)) {
+            Text("WhereWeAre — Troviamoci.")
+            Text("v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        }
+        SettingsSection("Copyright") {
+            Text("© WhereWeAre")
+            val uri=LocalUriHandler.current
+            TextButton(onClick={uri.openUri("https://www.openstreetmap.org/copyright")}) {Text("© OpenStreetMap contributors")}
+            TextButton(onClick={uri.openUri("https://maplibre.org/")}) {Text("MapLibre Compose / Native")}
+            TextButton(onClick={uri.openUri("https://openfreemap.org/")}) {Text("OpenFreeMap · OpenMapTiles")}
+            TextButton(onClick={uri.openUri("https://opentopomap.org/about")}) {Text("OpenTopoMap · SRTM · CC-BY-SA")}
+            TextButton(onClick={uri.openUri("https://www.cyclosm.org/")}) {Text("CyclOSM · OpenStreetMap France")}
+            TextButton(onClick={uri.openUri("https://github.com/zxing/zxing")}) {Text("ZXing · Apache 2.0")}
+            TextButton(onClick={uri.openUri("https://developer.android.com/jetpack/androidx/releases/camera")}) {Text("AndroidX CameraX · Apache 2.0")}
+        }
     }
     if(delete) ConfirmDestructive(Strings.text(R.string.ui_106),Strings.text(R.string.ui_109),{delete=false}) {delete=false;vm.deleteAccount()}
     diagnostic?.let {DiagnosticScreen(vm,it=="location",close={diagnostic=null})}
@@ -124,6 +155,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         Text(Strings.text(R.string.ui_110))
         Text(Strings.text(R.string.ui_111))
         Text(Strings.text(R.string.ui_112))
+        Text(Strings.text(R.string.privacy_v04))
         Text("WhereWeAre v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · © WhereWeAre")
         TextButton(onClick={uri.openUri("https://www.openstreetmap.org/copyright")}){Text("© OpenStreetMap contributors")}
         TextButton(onClick={uri.openUri("https://openfreemap.org/")}){Text("OpenFreeMap · OpenMapTiles")}
