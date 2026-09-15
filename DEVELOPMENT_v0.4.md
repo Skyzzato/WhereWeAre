@@ -352,3 +352,14 @@ Build debug/release, 79 test Android e lint PASS (.tools/v04-block13-final.log).
 Test ETA assente, sequenza coerente, fermo, stale, allontanamento e dedup del
 candidato. Nessuna migrazione, dipendenza o permesso; hash 001–007 invariati.
 Integrazione operativa rinviata fino a infrastruttura e collaudo sul campo.
+
+
+## Blocco 14 — Mancato arrivo: bloccato dall’infrastruttura
+
+Nessuno scheduler remoto monitorato è stato verificato. Il setup esistente
+contiene istruzioni di configurazione, non evidenza di operatività. Come
+richiesto dal prompt, il blocco viene fermato senza timer locale sostitutivo,
+nuova funzione attiva o promessa di protezione. BLOCKED_OVERDUE_ALERTS.md
+specifica prerequisiti, evidenza e test necessari. Nessuna migrazione abilitante,
+permesso o dipendenza. Si continua con i blocchi indipendenti; questo requisito
+fondamentale impedisce la finalizzazione della v0.4 e l’incremento versione.
