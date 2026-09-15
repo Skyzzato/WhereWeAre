@@ -1,0 +1,14 @@
+<resources>
+    <string name="precision_default_title">Default shared precision</string>
+    <string name="precision_shared">Shared precision</string>
+    <string name="precision_default">Use default setting</string>
+    <string name="precision_exact">Precise</string>
+    <string name="precision_approximate">Approximate location ±%1$d m</string>
+    <string name="precision_explanation">Controls what others can receive. It does not change GPS acquisition. A more precise permission through another person or group connection takes precedence.</string>
+    <string name="precision_audience">Who can see me now?</string>
+    <string name="precision_audience_hint">People who can receive your current shared location, with every permission source. This does not tell you who is looking at the map.</string>
+    <string name="precision_checked">Checked at %1$s</string>
+    <string name="precision_no_audience">No one can currently receive your location. Sharing may be off or the location may have expired.</string>
+    <string name="precision_via_group">Group %1$s · %2$s</string>
+    <string name="precision_via_person">Personal connection with %1$s · %2$s</string>
+</resources>

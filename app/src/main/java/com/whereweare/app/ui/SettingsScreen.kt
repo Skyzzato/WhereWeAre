@@ -46,6 +46,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     var precise by remember {mutableStateOf(vm.location.permission()==LocationPermission.PRECISE)}
     var delete by remember {mutableStateOf(false)}
     var showQr by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
+    var audience by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
     var diagnostic by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf<String?>(null)}
     LifecycleResumeEffect(Unit) {precise=vm.location.permission()==LocationPermission.PRECISE;onPauseOrDispose {}}
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -77,6 +78,11 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         Choice(Strings.text(R.string.ui_087),interval,updateIntervals,::durationLabel,vm::interval)
         Choice(Strings.text(R.string.ui_088),threshold,accuracyThresholds,{"$it m"},vm::threshold)
         Choice(Strings.text(R.string.ui_089),state.profile?.visibilitySeconds ?: 86400,visibilityTimeouts,::durationLabel,vm::visibility)
+        if(state.sharedPrecisionAvailable) {
+            PrecisionChoice(state.profile?.sharedPrecision ?: 0,false,!operation.busy,vm::precision)
+            Text(Strings.text(R.string.precision_explanation),style=MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick={audience=true},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.precision_audience))}
+        }
         HorizontalDivider(); Text(Strings.text(R.string.map),style=MaterialTheme.typography.titleLarge)
         Choice(Strings.text(R.string.ui_090),MapStyle.fromId(style).id,MapStyle.entries.map { it.id },{MapStyle.fromId(it).label},vm::mapStyle)
         HorizontalDivider();Text(Strings.text(R.string.ui_091),style=MaterialTheme.typography.titleLarge)
@@ -104,6 +110,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     }
     if(delete) ConfirmDestructive(Strings.text(R.string.ui_106),Strings.text(R.string.ui_109),{delete=false}) {delete=false;vm.deleteAccount()}
     diagnostic?.let {DiagnosticScreen(vm,it=="location",close={diagnostic=null})}
+    if(audience) AudienceScreen(vm) {audience=false}
     state.profile?.inviteCode?.takeIf {showQr && validInviteCode(it)}?.let {QrDisplay("person",it) {showQr=false}}
 }
 @Composable fun PrivacyScreen(back: ()->Unit) {

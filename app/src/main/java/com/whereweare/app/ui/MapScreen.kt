@@ -94,7 +94,7 @@ import java.time.format.DateTimeFormatter
         val point=state.snapshot.meetings.firstOrNull {it.id==focus?.meeting && it.active}
         val person=state.visible.firstOrNull {it.location.userId==focus?.person}
         if(point!=null || person!=null) {follow=false;selectedId=person?.location?.userId
-            camera.setCameraPosition(CameraPosition(target=point?.let {Position(it.longitude,it.latitude)} ?: Position(person!!.location.longitude,person.location.latitude),zoom=16.0));focused()}
+            camera.setCameraPosition(CameraPosition(target=point?.let {Position(it.longitude,it.latitude)} ?: Position(person!!.location.longitude,person.location.latitude),zoom=if((person?.location?.precisionMeters ?: 0)>0) 12.0 else 16.0));focused()}
     }
     Column(Modifier.fillMaxSize()) {
         if(!online) Notice(R.string.connection_absent)
@@ -117,7 +117,12 @@ import java.time.format.DateTimeFormatter
                 uiOptions=MapUiOptions { renderMode=AndroidRenderMode.Texture },
                 overlay={
                     include(MapOverlay.Default)
-                    val markers=state.visible+listOfNotNull(local?.let {VisiblePerson(state.snapshot.profile?.displayName.orEmpty(),it,freshness(it.recordedAt,state.now))})
+                    state.visible.filter {it.location.precisionMeters>0}.forEach {person ->
+                        OutlinedButton(onClick={selectedId=person.location.userId},modifier=Modifier.placedAt(Position(person.location.longitude,person.location.latitude))) {
+                            Text("${person.name}\n${precisionLabel(person.location.precisionMeters)}")
+                        }
+                    }
+                    val markers=state.visible.filter {it.location.precisionMeters==0}+listOfNotNull(local?.let {VisiblePerson(state.snapshot.profile?.displayName.orEmpty(),it,freshness(it.recordedAt,state.now))})
                     val projected=markers.mapIndexed {index,person ->
                         val at=camera.screenLocationFromPosition(Position(person.location.longitude,person.location.latitude))
                         MarkerScreenPoint(index,at?.x?.value ?: (index*10000).toFloat(),at?.y?.value ?: 0f)
@@ -149,7 +154,8 @@ import java.time.format.DateTimeFormatter
                             modifier=Modifier.placedAt(Position(point.longitude,point.latitude))) {Icon(Icons.Default.Flag,point.creator_name,Modifier.size(48.dp).padding(4.dp),tint=MaterialTheme.colorScheme.primary)}
                     }
                 })
-            MeetingConnections(camera,state.snapshot.meetings,state.visible.map {it.location}+listOfNotNull(local))
+            ApproximateAreas(camera,state.visible.map {it.location})
+            MeetingConnections(camera,state.snapshot.meetings,state.visible.map {it.location}.filter {it.precisionMeters==0}+listOfNotNull(local))
             Column(Modifier.align(Alignment.TopStart).padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 FilledTonalButton(enabled=local!=null,colors=ButtonDefaults.filledTonalButtonColors(containerColor=if(follow) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer),onClick={ if(local!=null) { follow=true; scope.launch { camera.animateCameraPosition(CameraPosition(target=Position(local!!.longitude,local!!.latitude),zoom=15.0)) } } }) {
                     Text(stringResource(R.string.center_me))
@@ -183,7 +189,8 @@ import java.time.format.DateTimeFormatter
                     else stalePosition(person.location,state.snapshot.contacts[person.location.userId],state.now,config.config?.defaults?.stale_grace_seconds ?: 180)
                 if(stale) Text(stringResource(R.string.person_position_stale),color=MaterialTheme.colorScheme.error)
                 Text(freshnessText(person.freshness,person.location.recordedAt,state.now))
-                Text(Strings.text(R.string.ui_050, (person.location.accuracy.toLong()).toString()))
+                if(person.location.precisionMeters>0) Text(precisionLabel(person.location.precisionMeters),color=MaterialTheme.colorScheme.tertiary)
+                else Text(Strings.text(R.string.ui_050, (person.location.accuracy.toLong()).toString()))
                 val deviceAt=if(own) tracking.deviceStatus?.observedAt else person.location.deviceStatusAt
                 val deviceRecent=deviceStatusRecent(deviceAt,if(own) java.time.Instant.now() else state.now)
                 val battery=(if(own) tracking.deviceStatus?.status?.batteryLevel else person.location.batteryLevel).takeIf {deviceRecent}
@@ -192,6 +199,7 @@ import java.time.format.DateTimeFormatter
                 Text(stringResource(when(services) {true->R.string.person_location_on;false->R.string.person_location_off;null->R.string.person_location_unknown}))
                 deviceAt?.let {Text(stringResource(R.string.person_device_updated,DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(it)),style=MaterialTheme.typography.bodySmall)}
                 Text(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(person.location.recordedAt))
+                if(person.location.precisionMeters==0) {
                 Text(coordinateLabel(person.location.latitude,person.location.longitude)?.let { Strings.text(R.string.ui_051, (it).toString()) } ?: Strings.text(R.string.ui_052))
                 openStreetMapUrl(person.location.latitude,person.location.longitude)?.let { url ->
                     TextButton(onClick={
@@ -204,6 +212,7 @@ import java.time.format.DateTimeFormatter
                         try {context.startActivity(Intent(Intent.ACTION_VIEW,url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))}
                         catch(_: android.content.ActivityNotFoundException) {vm.message(R.string.error_generic)}
                     }) {Text(stringResource(R.string.person_open_google))}
+                }
                 }
             } } }
         }

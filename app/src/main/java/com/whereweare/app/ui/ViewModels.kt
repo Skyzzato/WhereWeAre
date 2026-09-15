@@ -124,6 +124,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun respond(id: String,accept: Boolean) { perform { sharing.respond(id,accept) } }
     fun cancel(id: String) { perform { sharing.cancel(id) } }
     fun permission(viewer: String,enabled: Boolean) { perform { sharing.permission(viewer,enabled) } }
+    fun precision(viewer: String,value: Int?) {perform {sharing.sharedPrecision("person",viewer,value)}}
     fun invite(group: String,person: String) { perform(R.string.request_sent) {sharing.inviteMember(group,person)} }
     fun reveal(person: String) {perform {preferences.hide(requireNotNull(userId),setOf(person),false);state.value.members.filter {it.userId==person}.forEach {preferences.hideGroup(requireNotNull(userId),it.groupId,false)}}}
 }
@@ -135,6 +136,8 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     val foregroundDiagnostics=controller.foregroundService.asStateFlow()
     val pendingStopDiagnostics=controller.pendingStop
     val diagnosticTestResult=MutableStateFlow<Int?>(null)
+    fun precision(value: Int?) {perform {sharing.sharedPrecision("default",null,value)}}
+    suspend fun audience()=sharing.audience()
     fun testConnection() { perform {
         diagnosticTestResult.value=null
         try { sharing.testConnection(); diagnosticTestResult.value=R.string.diag_test_success }
@@ -192,6 +195,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     val hiddenGroups=preferences.hiddenGroups(auth.userId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),emptySet())
     fun hideGroup(gid: String,hide: Boolean) {perform {preferences.hideGroup(requireNotNull(userId),gid,hide)}}
     fun groupSharing(gid: String,enabled: Boolean) {perform {sharing.groupSharing(gid,enabled)}}
+    fun precision(gid: String,value: Int?) {perform {sharing.sharedPrecision("group",gid,value)}}
     fun rename(gid: String,name: String) {perform {sharing.renameGroup(gid,name)}}
     fun edit(gid: String,name: String,emoji: String) {perform {sharing.editGroup(gid,name,emoji)}}
     fun cancelInvitation(id: String) {perform {sharing.cancelGroupInvitation(id)}}

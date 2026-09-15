@@ -87,6 +87,7 @@ import java.time.format.DateTimeFormatter
                 }
                 val enabled=state.members.any {it.groupId==group.id && it.userId==vm.userId && it.sharingEnabled}
                 TextButton(onClick={vm.groupSharing(group.id,!enabled)},enabled=!operation.busy) {Text(Strings.text(if(enabled) R.string.ui_009 else R.string.can_see_me))}
+                if(state.sharedPrecisionAvailable) PrecisionChoice(state.members.firstOrNull {it.groupId==group.id && it.userId==vm.userId}?.sharedPrecision,true,!operation.busy) {vm.precision(group.id,it)}
                 Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerHighest)) {
                     Column(Modifier.padding(16.dp)) {
                         Text(Strings.text(R.string.ui_023),style=MaterialTheme.typography.titleSmall)

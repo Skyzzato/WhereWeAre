@@ -23,7 +23,7 @@ import android.util.Log
     init { scope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collect {connectionDiagnostics.reset()}} }
     private suspend fun serverRpc(name: String,params: JsonObject=buildJsonObject {})=connectionDiagnostics.measure(
         write=when(name) {
-            "app_metadata","lookup_user_by_invite_code" -> false
+            "app_metadata","lookup_user_by_invite_code","visible_locations","location_audience" -> false
             "resolve_invite_link" -> params["confirm"]?.jsonPrimitive?.booleanOrNull==true
             else -> true
         }
@@ -63,7 +63,7 @@ import android.util.Log
             val time=SystemClock.elapsedRealtime()
             val unavailable=!realtimeOnline && time-disconnectedAt>=20_000
             if(last.realtimeUnavailable!=unavailable) {last=last.copy(realtimeUnavailable=unavailable);send(last)}
-            if(!realtimeOnline && time-lastPoll>=30_000) {lastPoll=time;metadataDirty=true;signals.trySend(Unit)}
+            if((!realtimeOnline || last.sharedPrecisionAvailable) && time-lastPoll>=30_000) {lastPoll=time;metadataDirty=true;signals.trySend(Unit)}
         }}
         launch {
             for(signal in signals) {
@@ -78,7 +78,9 @@ import android.util.Log
                     val requests=metadata?.requests?.map {it.domain()} ?: last.requests
                     val shares=metadata?.shares?.map {it.domain()} ?: last.shares
                     val statuses=metadata?.statuses?.map {it.domain()} ?: last.statuses
-                    val locations=connectionDiagnostics.measure(write=false) {client.from("latest_locations").select().decodeList<LocationDto>().map {it.domain()}}
+                    val precisionAvailable=metadata?.shared_precision ?: last.sharedPrecisionAvailable
+                    val locations=if(precisionAvailable) serverRpc("visible_locations").decodeList<LocationDto>().map {it.domain()}
+                        else connectionDiagnostics.measure(write=false) {client.from("latest_locations").select().decodeList<LocationDto>().map {it.domain()}}
                     val contacts=metadata?.contacts?.map {it.domain()}?.associateBy {it.id} ?: last.contacts
                     val groups=metadata?.groups?.map {it.domain()} ?: last.groups
                     val members=metadata?.members?.map {it.domain()} ?: last.members
@@ -87,7 +89,7 @@ import android.util.Log
                     if(readingGeneration!=generation.get()) { signals.trySend(Unit); continue }
                     if(readMetadata) metadataDirty=false
                     // REST success means data is current enough to display; Realtime status is tracked separately.
-                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople)
+                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
                     send(last)
                 } catch(e: CancellationException) { throw e
@@ -159,6 +161,10 @@ import android.util.Log
     suspend fun saveOwn(fix: UserLocation) { preferences.lastFix(fix.userId,Json.encodeToString(LocationDto.serializer(),LocationDto(fix.userId,fix.latitude,fix.longitude,fix.accuracy,fix.speed,fix.bearing,fix.recordedAt.toString()))) }
     suspend fun rpc(name: String,params: JsonObject=buildJsonObject {}) { serverRpc(name,params); refresh() }
     suspend fun visibility(seconds: Int) = rpc("set_visibility",buildJsonObject { put("seconds",seconds) })
+    suspend fun sharedPrecision(scope: String,target: String?,value: Int?)=rpc("set_shared_precision",buildJsonObject {
+        put("scope",scope);put("target",target?.let(::JsonPrimitive) ?: JsonNull);put("value",value?.let(::JsonPrimitive) ?: JsonNull)
+    })
+    suspend fun audience(): List<AudienceMember> = serverRpc("location_audience").decodeList()
     suspend fun remove(person: String)=mutate({ s -> s.copy(shares=s.shares.filter { it.owner!=person && it.viewer!=person },savedPeople=s.savedPeople-person) },{ s -> person !in s.savedPeople && s.shares.none { it.owner==person || it.viewer==person } }) { rpc("remove_connection",buildJsonObject { put("other_user_id",person) }) }
     suspend fun savePerson(person: String)=mutate({it.copy(savedPeople=it.savedPeople+person)},{person in it.savedPeople}) {rpc("save_group_person",buildJsonObject {put("person",person)})}
     suspend fun dismiss(id: String)=rpc("dismiss_request",buildJsonObject { put("request_id",id) })

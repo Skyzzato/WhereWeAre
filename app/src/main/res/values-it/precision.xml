@@ -1,0 +1,14 @@
+<resources>
+    <string name="precision_default_title">Precisione condivisa predefinita</string>
+    <string name="precision_shared">Precisione condivisa</string>
+    <string name="precision_default">Usa impostazione predefinita</string>
+    <string name="precision_exact">Precisa</string>
+    <string name="precision_approximate">Posizione approssimata ±%1$d m</string>
+    <string name="precision_explanation">Regola cosa possono ricevere gli altri. Non cambia il rilevamento GPS. Un permesso più preciso tramite un altro collegamento personale o gruppo ha la precedenza.</string>
+    <string name="precision_audience">Chi mi vede adesso?</string>
+    <string name="precision_audience_hint">Persone che possono ricevere la posizione condivisa attuale, con tutte le origini dei permessi. Non indica chi sta guardando la mappa.</string>
+    <string name="precision_checked">Verificato alle %1$s</string>
+    <string name="precision_no_audience">Nessuno può ricevere la tua posizione in questo momento. La condivisione potrebbe essere spenta o la posizione scaduta.</string>
+    <string name="precision_via_group">Gruppo %1$s · %2$s</string>
+    <string name="precision_via_person">Collegamento personale con %1$s · %2$s</string>
+</resources>

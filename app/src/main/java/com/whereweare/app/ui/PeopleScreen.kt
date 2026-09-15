@@ -64,6 +64,9 @@ import com.whereweare.app.domain.normalizeInviteCode
                 val allowed=state.shares.any { it.owner==id && it.viewer==person && it.enabled }
                 if(state.shares.any {it.owner==id && it.viewer==person}) TextButton(onClick={ vm.permission(person,!allowed) },enabled=!operation.busy) { Text(if(allowed) Strings.text(R.string.ui_009) else Strings.text(R.string.can_see_me)) }
                 else TextButton(onClick={vm.requestPerson(person)},enabled=!operation.busy) {Text(Strings.text(R.string.send_request))}
+                if(state.sharedPrecisionAvailable) state.shares.firstOrNull {it.owner==id && it.viewer==person}?.let {share ->
+                    PrecisionChoice(share.sharedPrecision,true,!operation.busy) {vm.precision(person,it)}
+                }
                 TextButton(onClick={
                     val fix=state.locations.firstOrNull {it.userId==person}
                     if(p?.canView==false) unavailable=Strings.text(R.string.ui_070, (name).toString())

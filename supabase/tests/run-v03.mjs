@@ -24,6 +24,9 @@ try {
      for(const file of ['supabase/migrations/008_device_status.sql','supabase/migrations/008_device_status.sql','supabase/tests/device_status.sql','supabase/tests/security_v033.sql','supabase/tests/security_v03.sql']) {
        console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
      }
+     for(const file of ['supabase/migrations/009_shared_precision.sql','supabase/migrations/009_shared_precision.sql','supabase/tests/shared_precision.sql','supabase/tests/device_status.sql','supabase/tests/security_v033.sql','supabase/tests/security_v03.sql']) {
+       console.log('RUN '+file);await db.exec(readFileSync(file,'utf8'));
+     }
      console.log('ALL v0.4 IMPLEMENTED MIGRATION TESTS PASSED');
    }
  }

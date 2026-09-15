@@ -4,10 +4,10 @@ import java.time.Duration
 import java.time.Instant
 import java.util.Locale
 
-data class UserProfile(val id: String, val displayName: String, val inviteCode: String, val avatarPath: String?=null, val visibilitySeconds: Int=86400)
+data class UserProfile(val id: String, val displayName: String, val inviteCode: String, val avatarPath: String?=null, val visibilitySeconds: Int=86400,val sharedPrecision: Int=0)
 data class ContactProfile(val id: String,val name: String,val avatarPath: String?,val visibilitySeconds: Int,val commonGroup: Boolean,val canView: Boolean=true,val updateInterval: Int=60)
 data class Group(val id: String,val name: String,val emoji: String,val code: String,val creator: String,val createdAt: Instant)
-data class GroupMember(val groupId: String,val userId: String,val sharingEnabled: Boolean=true)
+data class GroupMember(val groupId: String,val userId: String,val sharingEnabled: Boolean=true,val sharedPrecision: Int?=null)
 enum class LocationPermission { NONE, APPROXIMATE, PRECISE }
 fun locationPermission(coarse: Boolean,fine: Boolean) = when { fine -> LocationPermission.PRECISE; coarse -> LocationPermission.APPROXIMATE; else -> LocationPermission.NONE }
 val updateIntervals = listOf(5,30,60,300,600,1800,3600)
@@ -17,11 +17,11 @@ fun lowAccuracy(accuracy: Double,threshold: Int) = accuracy>threshold
 fun withinVisibility(at: Instant,now: Instant,seconds: Int) = !at.isBefore(now.minusSeconds(seconds.toLong()))
 fun validGroupName(name: String) = name.trim().codePointCount(0,name.trim().length) in 1..24
 data class ShareRequest(val id: String, val sender: String, val receiver: String, val status: String)
-data class LocationShare(val owner: String, val viewer: String, val enabled: Boolean)
+data class LocationShare(val owner: String, val viewer: String, val enabled: Boolean,val sharedPrecision: Int?=null)
 data class SharingStatus(val userId: String, val sharing: Boolean)
 data class UserLocation(val userId: String, val latitude: Double, val longitude: Double,
     val accuracy: Double, val speed: Double?, val bearing: Double?, val recordedAt: Instant,
-    val batteryLevel: Int?=null,val locationEnabled: Boolean?=null,val deviceStatusAt: Instant?=null)
+    val batteryLevel: Int?=null,val locationEnabled: Boolean?=null,val deviceStatusAt: Instant?=null,val precisionMeters: Int=0)
 
 data class DeviceStatus(val batteryLevel: Int?,val locationEnabled: Boolean)
 data class DeviceStatusObservation(val status: DeviceStatus,val observedAt: Instant)
@@ -58,7 +58,10 @@ data class Snapshot(val profile: UserProfile? = null, val names: Map<String,Stri
     val statuses: List<SharingStatus> = emptyList(), val locations: List<UserLocation> = emptyList(),
     val loading: Boolean = true, val offline: Boolean = false,
     val contacts: Map<String,ContactProfile> = emptyMap(),val groups: List<Group> = emptyList(),val members: List<GroupMember> = emptyList(),
-    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false,val realtimeUnavailable: Boolean=false,val savedPeople: Set<String> = emptySet())
+    val groupRequests: List<GroupRequest> = emptyList(),val meetings: List<MeetingPoint> = emptyList(),val syncFailed: Boolean=false,val realtimeUnavailable: Boolean=false,val savedPeople: Set<String> = emptySet(),val sharedPrecisionAvailable: Boolean=false)
+
+@kotlinx.serialization.Serializable data class PrecisionSource(val kind: String,val source_id: String,val name: String,val precision_m: Int)
+@kotlinx.serialization.Serializable data class AudienceMember(val user_id: String,val name: String,val precision_m: Int,val sources: List<PrecisionSource>)
 
 @kotlinx.serialization.Serializable data class GroupRequest(val id: String,val group_id: String,val group_name: String,val user_id: String,val name: String,val kind: String,val status: String,val can_respond: Boolean,val group_emoji: String="📍",val can_cancel: Boolean=false)
 @kotlinx.serialization.Serializable data class MeetingPoint(val id: String,val creator_id: String,val creator_name: String,val latitude: Double,val longitude: Double,val active: Boolean,val created_at: String,val removed_at: String?=null,val recipients: List<String> = emptyList(),val flare_style_id: Int?=1)

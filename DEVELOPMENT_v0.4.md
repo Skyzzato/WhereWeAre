@@ -176,3 +176,30 @@ SQL 001–008 e regressioni: PASS; hash 001–007 invariati. Risorse IT/EN allin
 Restano prove manuali su telefono: fotocamera, luce scarsa, permesso
 negato/revocato, cambio app, luminosità automatica, cross-navigation e foto
 profilo. Nessun dispositivo collegato disponibile per eseguirle qui.
+
+## Blocco 06 — precisione condivisa e destinatari
+
+Nuova migrazione 009: default e override Persona/Gruppo 0/250/500/1000 m,
+autorizzazione effettiva server-side, RLS raw limitata ai destinatari esatti,
+RPC esplicita per posizioni approssimate e pubblico attuale. Trasformazione
+stabile a griglie annidate e limiti documentati in ADR_SHARED_PRECISION.md.
+Nuove invalidazioni senza coordinate per i destinatari approssimati.
+
+Impostazioni, Persone e Gruppi mostrano le scelte quando la capability è
+disponibile. Mappa con area geografica tratteggiata e testo esplicito, senza
+pin/avatar o coordinate esatte fittizie. Pannello destinatari deduplicato con
+origini e precisione effettiva, timestamp e gestione indisponibilità.
+La precisione di rilevamento GPS rimane indipendente.
+
+`gradlew.bat :app:build`: PASS, debug/release, 62 test e nessun errore lint.
+Log `.tools/v04-block06-build.log`. Test Android per mapping e geometria area.
+SQL 001–009: PASS, 009 riapplicata e regressioni precedenti rieseguite.
+Test sicurezza: raw negato ad approssimati/estranei, proprietario esatto,
+override e default, permessi sovrapposti, revoca esatta, stop/scadenza,
+privilegi diretti, stabilità e limiti geometrici anche ai poli/cambio data.
+Hash 001–007 invariati, risorse IT/EN allineate. Nessuna nuova dipendenza o
+autorizzazione Android. La 009 non è ancora applicata al server remoto.
+
+Prove manuali residue: due account con realtime remoto, cambi precisione
+durante ricezione, aree mappa a diversi zoom/font e pannello destinatari
+durante perdita rete. La baseline non contiene una history GPS da migrare.
