@@ -9,15 +9,29 @@ import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
+enum class NetworkTransport { NONE, WIFI, MOBILE, ETHERNET, VPN, OTHER }
+data class NetworkConnection(val online: Boolean=false,val transport: NetworkTransport=NetworkTransport.NONE)
 @Singleton class NetworkMonitor @Inject constructor(@ApplicationContext context: Context) {
     private val manager=context.getSystemService(ConnectivityManager::class.java)
-    private fun connected()=manager.getNetworkCapabilities(manager.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)==true
-    val online=callbackFlow {
-        val callback=object: ConnectivityManager.NetworkCallback() {
-            override fun onCapabilitiesChanged(network: Network,caps: NetworkCapabilities) { trySend(connected()) }
-            override fun onLost(network: Network) { trySend(connected()) }
+    private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Default)
+    private fun connection(): NetworkConnection {
+        val caps=manager.getNetworkCapabilities(manager.activeNetwork) ?: return NetworkConnection()
+        val transport=when {
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> NetworkTransport.VPN
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkTransport.WIFI
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkTransport.MOBILE
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetworkTransport.ETHERNET
+            else -> NetworkTransport.OTHER
         }
-        manager.registerDefaultNetworkCallback(callback); trySend(connected())
+        return NetworkConnection(caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),transport)
+    }
+    val state=callbackFlow {
+        val callback=object: ConnectivityManager.NetworkCallback() {
+            override fun onCapabilitiesChanged(network: Network,caps: NetworkCapabilities) { trySend(connection()) }
+            override fun onLost(network: Network) { trySend(connection()) }
+        }
+        manager.registerDefaultNetworkCallback(callback); trySend(connection())
         awaitClose { manager.unregisterNetworkCallback(callback) }
-    }.distinctUntilChanged().stateIn(CoroutineScope(SupervisorJob()+Dispatchers.Default),SharingStarted.WhileSubscribed(5_000),connected())
+    }.distinctUntilChanged().stateIn(scope,SharingStarted.WhileSubscribed(5_000),connection())
+    val online=state.map {it.online}.stateIn(scope,SharingStarted.WhileSubscribed(5_000),connection().online)
 }

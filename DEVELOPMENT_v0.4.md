@@ -39,7 +39,7 @@ Verifiche baseline:
 ## Progressione
 
 Versione e bootstrap rimangono 0.33/8 fino alla verifica della release completa.
-Blocchi 01–02 completati nelle verifiche automatiche; blocchi 03–18 ancora da completare. Questo documento è
+Blocchi 01–03 completati nelle verifiche automatiche; blocchi 04–18 ancora da completare. Questo documento è
 un registro di sviluppo, non una dichiarazione di disponibilità della v0.4.
 
 Rischi da risolvere nel Blocco 02: la riconciliazione avviene nella Mappa e può
@@ -91,3 +91,32 @@ server affidabile indipendente dal telefono; lo scheduler non è verificato.
 Non è configurato un provider di routing: la scelta tecnica e l'hosting del
 Blocco 11 restano da affrontare. Questi limiti non certificano né completano
 alcuno dei blocchi 03–18.
+
+## Blocco 03 — diagnostica
+
+Due viste accessibili dalle Impostazioni, chiudibili con X e Indietro. Diagnostica
+posizione: fix/età/precisione, coordinate decimali, altitudine, velocità, direzione,
+provider, satelliti, stato reale foreground/condivisione/recovery, invii/conferme
+e ottimizzazione batteria. Il listener GNSS è passivo, esiste soltanto mentre la
+vista è osservata e non avvia acquisizioni; i campioni satellitari scadono dopo
+10 secondi. Altitudine e altri campi assenti restano Non disponibile.
+
+Diagnostica connessione: rete validata/tipo, ultima raggiungibilità e sessione
+verificata, realtime, letture/scritture confermate, latenza, richieste in corso,
+pubblicazione e stop pendenti. La telemetria osserva le richieste già presenti
+nel SharingRepository, non introduce polling. Il pulsante ESEGUI TEST legge
+lo stato proprio dal server con timeout di 12 secondi, senza inviare coordinate.
+Un HTTP 401 dimostra raggiungibilità ma segnala sessione rifiutata. Nessun errore
+grezzo, token, URL o nome backend è passato alla UI. I tempi riguardano questo
+processo e sono esplicitamente ultime osservazioni, non disponibilità garantita.
+Cambio account azzera la telemetria e ignora risposte tardive del precedente.
+
+Verifica del 15 settembre 2026: `gradlew.bat :app:build` PASS (debug/release,
+**52 test**, zero fallimenti/errori; lint senza errori). Log:
+`.tools/v04-block03-build.log`. Parità risorse IT/EN e hash migrazioni verificati.
+Nessuna nuova migrazione, dipendenza o autorizzazione Android in questo blocco.
+
+Da provare su telefono: entrambi i pannelli in IT/EN e font ingranditi, chiusura
+X/Indietro, GNSS all'aperto durante condivisione, permessi negati/revocati,
+servizi posizione spenti, connessione assente/server non disponibile e callback
+rilasciati dopo uscita dal pannello. La UI non richiede nuove tab principali.

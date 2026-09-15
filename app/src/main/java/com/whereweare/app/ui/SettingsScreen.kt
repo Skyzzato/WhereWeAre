@@ -45,6 +45,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     var name by remember(state.profile?.displayName) {mutableStateOf(state.profile?.displayName.orEmpty())}
     var precise by remember {mutableStateOf(vm.location.permission()==LocationPermission.PRECISE)}
     var delete by remember {mutableStateOf(false)}
+    var diagnostic by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf<String?>(null)}
     LifecycleResumeEffect(Unit) {precise=vm.location.permission()==LocationPermission.PRECISE;onPauseOrDispose {}}
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Busy(operation)
@@ -93,9 +94,14 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         OutlinedButton(onClick=vm::logout,enabled=!operation.busy,modifier=Modifier.fillMaxWidth()){Text(Strings.text(R.string.ui_105))}
         TextButton(onClick={delete=true},enabled=!operation.busy){Text(Strings.text(R.string.ui_106),color=MaterialTheme.colorScheme.error)}
         HorizontalDivider()
+        Text(Strings.text(R.string.diag_title),style=MaterialTheme.typography.titleLarge)
+        OutlinedButton(onClick={diagnostic="location"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_location))}
+        OutlinedButton(onClick={diagnostic="connection"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_connection))}
+        HorizontalDivider()
         TextButton(onClick=onPrivacy){Text(Strings.text(R.string.ui_107))}
     }
     if(delete) ConfirmDestructive(Strings.text(R.string.ui_106),Strings.text(R.string.ui_109),{delete=false}) {delete=false;vm.deleteAccount()}
+    diagnostic?.let {DiagnosticScreen(vm,it=="location",close={diagnostic=null})}
 }
 @Composable fun PrivacyScreen(back: ()->Unit) {
     val uri=LocalUriHandler.current

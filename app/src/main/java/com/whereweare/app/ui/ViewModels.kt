@@ -128,7 +128,23 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun reveal(person: String) {perform {preferences.hide(requireNotNull(userId),setOf(person),false);state.value.members.filter {it.userId==person}.forEach {preferences.hideGroup(requireNotNull(userId),it.groupId,false)}}}
 }
 @HiltViewModel class SettingsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,
-    private val preferences: PreferencesRepository,private val controller: SharingController,val avatars: AvatarRepository,val location: LocationRepository,private val push: com.whereweare.app.service.PushRegistration,private val analytics: ClientAnalytics,val avatarDrafts: AvatarDraftStore): OperationViewModel() {
+    private val preferences: PreferencesRepository,private val controller: SharingController,val avatars: AvatarRepository,val location: LocationRepository,private val push: com.whereweare.app.service.PushRegistration,private val analytics: ClientAnalytics,val avatarDrafts: AvatarDraftStore,network: NetworkMonitor): OperationViewModel() {
+    val connectionDiagnostics=sharing.diagnostics
+    val networkDiagnostics=network.state
+    val trackingDiagnostics=controller.state
+    val foregroundDiagnostics=controller.foregroundService.asStateFlow()
+    val pendingStopDiagnostics=controller.pendingStop
+    val diagnosticTestResult=MutableStateFlow<Int?>(null)
+    fun testConnection() { perform {
+        diagnosticTestResult.value=null
+        try { sharing.testConnection(); diagnosticTestResult.value=R.string.diag_test_success }
+        catch(e: CancellationException) {if(e !is TimeoutCancellationException) throw e; diagnosticTestResult.value=R.string.diag_test_unreachable}
+        catch(e: Exception) { diagnosticTestResult.value=when {
+            e is io.github.jan.supabase.exceptions.RestException && e.statusCode==401 -> R.string.diag_test_auth
+            e is io.github.jan.supabase.exceptions.RestException -> R.string.diag_test_server
+            else -> R.string.diag_test_unreachable
+        } }
+    } }
     val userId get()=auth.userId
     val state=sharing.state
     val email get()=auth.email

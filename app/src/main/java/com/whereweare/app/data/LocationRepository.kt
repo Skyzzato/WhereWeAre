@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.location.GnssStatus
+import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
@@ -22,8 +24,12 @@ import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class DeviceLocationDetails(val fix: UserLocation,val altitude: Double?,val provider: String?)
+data class SatelliteDetails(val visible: Int,val used: Int,val observedAt: Instant)
 @Singleton class LocationRepository @Inject constructor(@ApplicationContext private val context: Context,
     private val fused: FusedLocationProviderClient,private val auth: AuthRepository) {
+    private val mutableDetails=MutableStateFlow<DeviceLocationDetails?>(null)
+    val details=mutableDetails.asStateFlow()
     private fun granted(p: String)=ContextCompat.checkSelfPermission(context,p)==PackageManager.PERMISSION_GRANTED
     fun permission()=locationPermission(granted(Manifest.permission.ACCESS_COARSE_LOCATION),granted(Manifest.permission.ACCESS_FINE_LOCATION))
     fun hasPermission()=permission()!=LocationPermission.NONE
@@ -32,8 +38,27 @@ import javax.inject.Singleton
     private fun domain(fix: Location): UserLocation? {
         val age=((SystemClock.elapsedRealtimeNanos()-fix.elapsedRealtimeNanos)/1_000_000).coerceAtLeast(0)
         if(!fix.hasAccuracy() || age>30_000) return null
-        return UserLocation(auth.userId.orEmpty(),fix.latitude,fix.longitude,fix.accuracy.toDouble(),
+        val result=UserLocation(auth.userId.orEmpty(),fix.latitude,fix.longitude,fix.accuracy.toDouble(),
             if(fix.hasSpeed()) fix.speed.toDouble() else null,if(fix.hasBearing()) fix.bearing.toDouble() else null,Instant.now().minusMillis(age))
+        mutableDetails.value=DeviceLocationDetails(result,if(fix.hasAltitude()) fix.altitude else null,fix.provider)
+        return result
+    }
+    // Passive GNSS diagnostics: registering this listener never starts location tracking.
+    @SuppressLint("MissingPermission")
+    fun satellites(): Flow<SatelliteDetails?> = callbackFlow {
+        if(permission()!=LocationPermission.PRECISE) {trySend(null);close();return@callbackFlow}
+        val manager=context.getSystemService(LocationManager::class.java)
+        val callback=object: GnssStatus.Callback() {
+            override fun onStopped() {trySend(null)}
+            override fun onSatelliteStatusChanged(status: GnssStatus) {
+                trySend(SatelliteDetails(status.satelliteCount,(0 until status.satelliteCount).count {status.usedInFix(it)},Instant.now()))
+            }
+        }
+        val registered=try {manager.registerGnssStatusCallback(callback,Handler(Looper.getMainLooper()))}
+            catch(_: SecurityException) {false}
+        trySend(null)
+        if(!registered) {close();return@callbackFlow}
+        awaitClose { manager.unregisterGnssStatusCallback(callback) }
     }
     @OptIn(ExperimentalCoroutinesApi::class)
     @SuppressLint("MissingPermission")

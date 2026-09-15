@@ -15,7 +15,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val recovering: Boolean=false)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
@@ -29,6 +29,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
     private var generation=0L
     private val mutableState=MutableStateFlow(TrackingState())
     val state=mutableState.asStateFlow()
+    val foregroundService=MutableStateFlow(false)
     val pendingStop=preferences.pendingStop
     init { scope.launch { preferences.pendingStop.first()?.let(::enqueueStop) } }
 
@@ -67,7 +68,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                     saved=if(restarting) requireNotNull(previous) else TrackingSession(user,UUID.randomUUID().toString())
                     preferences.trackingSession(saved)
                     ownedSession=saved
-                    mutableState.value=TrackingState(starting=true,waiting=true)
+                    mutableState.value=TrackingState(starting=true,waiting=true,recovering=restarting)
                 }
                 // A system restart has no Activity/BootstrapViewModel to initialize these repositories.
                 bootstrap.refresh()
@@ -110,7 +111,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                                     repository.sharing(true,session,revision)
                                 }
                                 started=true
-                                mutableState.value=state.value.copy(active=true,starting=false,waiting=false)
+                                mutableState.value=state.value.copy(active=true,starting=false,waiting=false,recovering=false)
                             }
                             val elapsed=android.os.SystemClock.elapsedRealtime()
                             if(lastStatusCheck==0L || elapsed-lastStatusCheck>=30_000) {

@@ -34,6 +34,7 @@ import javax.inject.Inject
             .setContentIntent(open).setOngoing(true).addAction(0,localizedString(R.string.stop),stop).build()
         try {
             ServiceCompat.startForeground(this,10,notification(R.string.sharing_starting),if(Build.VERSION.SDK_INT>=29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0)
+            controller.foregroundService.value=true
             controller.attach(scope,restarting=intent==null || intent.action=="RESUME") { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
             notificationUpdates?.cancel()
             notificationUpdates=scope.launch {
@@ -49,5 +50,5 @@ import javax.inject.Inject
         } catch(_: SecurityException) { controller.serviceStartFailed();stopSelf(); return START_NOT_STICKY }
         return START_STICKY
     }
-    override fun onDestroy() { scope.cancel(); super.onDestroy() }
+    override fun onDestroy() { controller.foregroundService.value=false; scope.cancel(); super.onDestroy() }
 }
