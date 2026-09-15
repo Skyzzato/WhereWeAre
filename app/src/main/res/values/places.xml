@@ -23,4 +23,5 @@
   <string name="place_entered">%1$s arrived at %2$s</string>
   <string name="place_exited">%1$s left %2$s</string>
   <string name="place_event_received">Place update from %1$s</string>
+    <string name="arriving_disabled">Arrival prediction · experimental and disabled until reliable routing is configured and validated.</string>
 </resources>

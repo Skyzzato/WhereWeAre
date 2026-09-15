@@ -23,4 +23,5 @@
   <string name="place_entered">%1$s è arrivato a %2$s</string>
   <string name="place_exited">%1$s è uscito da %2$s</string>
   <string name="place_event_received">Aggiornamento luogo da %1$s</string>
+    <string name="arriving_disabled">Rilevamento “Sta arrivando” · sperimentale e disattivato finché il routing affidabile non sarà configurato e verificato.</string>
 </resources>

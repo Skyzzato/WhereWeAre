@@ -338,3 +338,17 @@ nessuna coordinata nei messaggi, debounce/dedup, precisione e nuova sessione.
 Due test Deno dispatcher/payload PASS; hash 001–007 invariati. Nessuna dipendenza
 o autorizzazione aggiunta. Da collaudare movimento reale, UX e FCM su telefoni;
 nessuna migrazione o funzione remota distribuita.
+
+
+## Blocco 13 — Sta arrivando (sperimentale disattivato)
+
+Predisposto il rilevatore puro con ETA routing obbligatoria, tre campioni su
+60 s, diminuzione ETA/percorso, movimento coerente oltre incertezza, freshness,
+isteresi e cooldown. Nessuna automazione è armabile: manca un servizio routing
+approvato e verificato. ARRIVING_EXPERIMENTAL_ENABLED=false e UI esplicita;
+ADR_ARRIVING.md distingue algoritmo predisposto da funzione operativa.
+
+Build debug/release, 79 test Android e lint PASS (.tools/v04-block13-final.log).
+Test ETA assente, sequenza coerente, fermo, stale, allontanamento e dedup del
+candidato. Nessuna migrazione, dipendenza o permesso; hash 001–007 invariati.
+Integrazione operativa rinviata fino a infrastruttura e collaudo sul campo.

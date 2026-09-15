@@ -31,6 +31,7 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
         Surface(Modifier.fillMaxSize()) {Column(Modifier.safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Row {Text(Strings.text(R.string.places_title),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge);TextButton(onClick=close) {Text(Strings.text(R.string.close))}}
             Text(Strings.text(R.string.places_monitoring))
+            Text(Strings.text(R.string.arriving_disabled),style=MaterialTheme.typography.bodySmall)
             Busy(operation,inline=true)
             repeat(4) {slot ->
                 val place=bundle.places.firstOrNull {it.slot==slot}
