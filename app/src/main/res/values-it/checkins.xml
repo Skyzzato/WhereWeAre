@@ -9,7 +9,7 @@
     <string name="checkin_meeting">Partecipanti al Bengala di %1$s</string>
     <string name="checkin_send">Invia Check-in</string>
     <string name="checkin_allow_location">Consenti posizione</string>
-    <string name="checkin_inbox">Check-in</string>
+    <string name="checkin_inbox">Check-in e aggiornamenti</string>
     <string name="checkin_retention">Gli snapshot restano visibili per 24 ore. Non sono posizioni in tempo reale.</string>
     <string name="checkin_empty">Nessun Check-in attuale.</string>
     <string name="checkin_recipients">Destinatari: %1$d</string>

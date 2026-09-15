@@ -149,6 +149,12 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
 }
 @HiltViewModel class SettingsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,
     private val preferences: PreferencesRepository,private val controller: SharingController,val avatars: AvatarRepository,val location: LocationRepository,private val push: com.whereweare.app.service.PushRegistration,private val analytics: ClientAnalytics,val avatarDrafts: AvatarDraftStore,network: NetworkMonitor): OperationViewModel() {
+    val places=MutableStateFlow(PlacesBundle())
+    fun loadPlaces() {places.value=PlacesBundle();perform {places.value=sharing.places()}}
+    fun savePlace(place: SavedPlace,done: ()->Unit) {perform {sharing.savePlace(place);places.value=sharing.places();done()}}
+    fun removePlace(id: String) {perform {sharing.removePlace(id);places.value=sharing.places()}}
+    fun saveRule(rule: PlaceRule,done: ()->Unit={}) {perform {sharing.saveRule(rule);places.value=sharing.places();done()}}
+    fun removeRule(id: String) {perform {sharing.removeRule(id);places.value=sharing.places()}}
     val connectionDiagnostics=sharing.diagnostics
     val networkDiagnostics=network.state
     val trackingDiagnostics=controller.state
@@ -254,7 +260,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
         val user=auth.userId ?: return@collect
         if(snapshot.profile?.id!=user) return@collect
         if(snapshot.events.none {it.id==eventNotice.value?.id && it.active(sharing.now())}) eventNotice.value=null
-        snapshot.events.filter {it.sender_id!=user && it.active(sharing.now())}.sortedBy {it.created_at}.forEach {event ->
+        snapshot.events.filter {(it.sender_id!=user || it.kind=="place") && it.active(sharing.now())}.sortedBy {it.created_at}.forEach {event ->
             if(preferences.markMeetingSeen(user,"event:${event.id}") && auth.userId==user) eventNotice.value=event
         }
         snapshot.meetings.sortedBy {it.created_at}.forEach { point ->

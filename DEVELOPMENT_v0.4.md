@@ -316,3 +316,25 @@ Build debug/release, 75 test Android e lint PASS (.tools/v04-block11-build.log).
 Test profili, conversione unità, risposta malformata/errore, assenza richieste
 per origine vecchia/approssimata e provider disabilitato. Hash 001–007 invariati.
 Restano collaudo endpoint reale e qualità ETA montagna; nessuna SLA dichiarata.
+
+
+## Blocco 12 — Luoghi e regole
+
+Impostazioni ospita Casa, Lavoro e due luoghi personalizzati, coordinate/raggio,
+CRUD e regole ingresso/uscita/arrivo di una persona, armabili e sospendibili.
+Le regole usano solo la condivisione normale già attiva; nessun monitoraggio
+aggiuntivo o nuovo permesso. Il testo di armamento spiega il limite.
+
+Migrazione 014: dati privati owner-only, RPC con controllo proprietario,
+consensi del soggetto ricontrollati con precisione autorizzata. Prima posizione
+baseline, due fix concordi separati da 30 s, isteresi 30 m e cooldown 15 minuti;
+reset sessione/gap lungo. Eventi privi di coordinate dei luoghi, push di soli ID,
+inbox/richiamo/deep link e worker autenticato riutilizzati. ADR_PLACES_RULES.md
+spiega privacy, frequenza di campionamento e limiti background.
+
+Build debug/release, 77 test Android e lint PASS (.tools/v04-block12-final.log).
+SQL 001–014/regressioni PASS, inclusi raw negato, proprietari separati,
+nessuna coordinata nei messaggi, debounce/dedup, precisione e nuova sessione.
+Due test Deno dispatcher/payload PASS; hash 001–007 invariati. Nessuna dipendenza
+o autorizzazione aggiunta. Da collaudare movimento reale, UX e FCM su telefoni;
+nessuna migrazione o funzione remota distribuita.

@@ -67,7 +67,11 @@ fun eventTime(at: String)=runCatching {DateTimeFormatter.ofPattern("dd/MM HH:mm"
             Text(Strings.text(R.string.checkin_retention))
             LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 if(events.isEmpty()) item {Text(Strings.text(R.string.checkin_empty))}
-                items(events,key={it.id}) {event -> event.checkin()?.let {payload ->
+                items(events,key={it.id}) {event ->
+                    event.place()?.let {notice -> OutlinedCard(onClick={open(event)},modifier=Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp)) {Text(placeEventText(notice));Text(eventTime(notice.observed_at))}
+                    }}
+                    event.checkin()?.let {payload ->
                     OutlinedCard(onClick={open(event)},modifier=Modifier.fillMaxWidth()) {Column(Modifier.padding(12.dp)) {
                         Text("${event.sender_name} · ${checkinLabel(payload.checkin_type)}",style=MaterialTheme.typography.titleMedium)
                         Text(eventTime(payload.recorded_at));Text(precisionLabel(payload.precision_m))

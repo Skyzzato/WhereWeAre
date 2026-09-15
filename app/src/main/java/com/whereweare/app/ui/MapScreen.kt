@@ -90,7 +90,7 @@ import java.time.format.DateTimeFormatter
     var actions by remember {mutableStateOf(false)}
     var checkinEditor by rememberSaveable {mutableStateOf(false)}
     var checkinInbox by rememberSaveable {mutableStateOf(false)}
-    val events=state.snapshot.events.filter {it.active(state.now) && it.checkin()!=null}
+    val events=state.snapshot.events.filter {it.active(state.now) && (it.checkin()!=null || it.place()!=null)}
     LaunchedEffect(events) {if(events.none {it.id==selectedEvent}) selectedEvent=null}
     var mapError by remember { mutableStateOf(false) }
     LaunchedEffect(camera) {
@@ -108,6 +108,7 @@ import java.time.format.DateTimeFormatter
     }
     LaunchedEffect(focus,state.snapshot.meetings,state.visible,events) {
         val event=events.firstOrNull {it.id==focus?.event}
+        if(event?.place()!=null) {selectedEvent=event.id;focused()}
         event?.checkin()?.let {payload ->
             selectedEvent=event.id;selectedId=null;follow=false
             camera.setCameraPosition(CameraPosition(target=Position(payload.longitude,payload.latitude),zoom=if(payload.precision_m>0) 12.0 else 16.0));focused()
@@ -289,6 +290,11 @@ import java.time.format.DateTimeFormatter
                 if(permissionState!=LocationPermission.PRECISE) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri())) }) { Text(Strings.text(R.string.ui_057)) }
             }
         }
+    }
+    events.firstOrNull {it.id==selectedEvent}?.place()?.let {notice ->
+        AlertDialog(onDismissRequest={selectedEvent=null},title={Text(Strings.text(R.string.places_title))},
+            text={Column {Text(placeEventText(notice));Text(eventTime(notice.observed_at))}},
+            confirmButton={TextButton(onClick={selectedEvent=null}) {Text(Strings.text(R.string.close))}})
     }
     state.snapshot.meetings.firstOrNull {it.id==selectedMeeting}?.let {point -> FlareProgressDialog(point,state.now,state.visible.map {it.location}+listOfNotNull(local),vm.routing) {selectedMeeting=null}}
     if(celebration!=null) FlareReunion {celebration=null}

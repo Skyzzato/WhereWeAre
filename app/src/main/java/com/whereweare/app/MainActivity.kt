@@ -148,7 +148,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
         Box(Modifier.fillMaxSize()) { Scaffold(topBar={ Column {TopAppBar(title={ Row(verticalAlignment=Alignment.CenterVertically) {
             Image(painterResource(R.drawable.ic_location),null,Modifier.size(28.dp)); Spacer(Modifier.width(8.dp)); Text("WhereWeAre")
         } });if(sharingSnapshot.locationRequests.isNotEmpty() && stack?.destination?.route!="people") TextButton(onClick={nav.navigate("people") {launchSingleTop=true}}) {Text(Strings.text(R.string.location_request_pending,sharingSnapshot.locationRequests.size))}
-        eventNotice?.let {event -> TextButton(onClick={focus=MapFocus(event=event.id);nav.navigate("map") {launchSingleTop=true};appearance.eventNotice.value=null}) {Text(Strings.text(R.string.checkin_received,event.sender_name))}}
+        eventNotice?.let {event -> TextButton(onClick={focus=MapFocus(event=event.id);nav.navigate("map") {launchSingleTop=true};appearance.eventNotice.value=null}) {Text(Strings.text(if(event.kind=="place") R.string.place_event_received else R.string.checkin_received,event.sender_name))}}
         notice?.let {point -> Surface(onClick={if(point.active) {focus=MapFocus(meeting=point.id);nav.navigate("map") {launchSingleTop=true}};appearance.notification.value=null},color=MaterialTheme.colorScheme.primaryContainer) {
             Text(if(point.active) Strings.text(R.string.ui_125, (point.creator_name).toString()) else Strings.text(R.string.ui_126, (point.creator_name).toString()),Modifier.fillMaxWidth().padding(12.dp))
         }} } },bottomBar={ NavigationBar { routes.forEachIndexed { index,route ->

@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="places_title">Luoghi e regole</string>
+  <string name="places_monitoring">Le regole usano solo la normale condivisione della posizione. Si sospendono quando la persona smette di condividere o mancano aggiornamenti. Non avviano altro tracciamento. Gli avvisi richiedono due rilevazioni coerenti distanti almeno 30 secondi.</string>
+  <string name="place_home">🏠 Casa</string>
+  <string name="place_work">💼 Lavoro</string>
+  <string name="place_custom_one">⭐ Luogo personalizzato 1</string>
+  <string name="place_custom_two">⭐ Luogo personalizzato 2</string>
+  <string name="place_latitude">Latitudine</string>
+  <string name="place_longitude">Longitudine</string>
+  <string name="place_radius">Raggio in metri (50–5000)</string>
+  <string name="place_radius_value">Raggio: %1$s m</string>
+  <string name="place_use_last">Usa la mia ultima posizione condivisa</string>
+  <string name="place_add_rule">Aggiungi regola</string>
+  <string name="place_delete">Rimuovi</string>
+  <string name="place_delete_confirm">Rimuovere questo luogo e le sue regole?</string>
+  <string name="place_enter">Quando entro → avvisa</string>
+  <string name="place_exit">Quando esco → avvisa</string>
+  <string name="place_arrival">Avvisami quando arriva questa persona</string>
+  <string name="place_armed">Armata · richiede condivisione</string>
+  <string name="place_paused">In pausa</string>
+  <string name="place_arm">Arma regola</string>
+  <string name="place_entered">%1$s è arrivato a %2$s</string>
+  <string name="place_exited">%1$s è uscito da %2$s</string>
+  <string name="place_event_received">Aggiornamento luogo da %1$s</string>
+</resources>

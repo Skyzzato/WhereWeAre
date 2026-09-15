@@ -18,6 +18,9 @@ Applicare in ordine, dopo le migrazioni 001–007 immutate:
 * 013_flare_convergence.sql: stati autorizzati dei partecipanti e completamento
   automatico del Bengala su pubblicazione posizione, Check-in o lettura inbox.
 
+* 014_places_rules.sql: luoghi privati e regole su pubblicazioni di posizione
+  già autorizzate; ridistribuire il dispatcher per gli eventi place.
+
 Le migrazioni sono state provate localmente; non sono state applicate al server
 remoto da questo sviluppo. Le capability vengono abilitate dalle migrazioni.
 

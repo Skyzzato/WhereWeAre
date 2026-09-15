@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="places_title">Places and rules</string>
+  <string name="places_monitoring">Rules use normal location sharing only. They pause when the person stops sharing or updates are missing. No additional tracking starts. Alerts need two consistent updates at least 30 seconds apart.</string>
+  <string name="place_home">🏠 Home</string>
+  <string name="place_work">💼 Work</string>
+  <string name="place_custom_one">⭐ Custom place 1</string>
+  <string name="place_custom_two">⭐ Custom place 2</string>
+  <string name="place_latitude">Latitude</string>
+  <string name="place_longitude">Longitude</string>
+  <string name="place_radius">Radius in meters (50–5000)</string>
+  <string name="place_radius_value">Radius: %1$s m</string>
+  <string name="place_use_last">Use my last shared position</string>
+  <string name="place_add_rule">Add rule</string>
+  <string name="place_delete">Remove</string>
+  <string name="place_delete_confirm">Remove this place and its rules?</string>
+  <string name="place_enter">When I enter → notify</string>
+  <string name="place_exit">When I leave → notify</string>
+  <string name="place_arrival">Notify me when this person arrives</string>
+  <string name="place_armed">Armed · requires sharing</string>
+  <string name="place_paused">Paused</string>
+  <string name="place_arm">Arm rule</string>
+  <string name="place_entered">%1$s arrived at %2$s</string>
+  <string name="place_exited">%1$s left %2$s</string>
+  <string name="place_event_received">Place update from %1$s</string>
+</resources>

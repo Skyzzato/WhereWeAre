@@ -46,6 +46,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     var precise by remember {mutableStateOf(vm.location.permission()==LocationPermission.PRECISE)}
     var delete by remember {mutableStateOf(false)}
     var showQr by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
+    var places by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
     var audience by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
     var diagnostic by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf<String?>(null)}
     LifecycleResumeEffect(Unit) {precise=vm.location.permission()==LocationPermission.PRECISE;onPauseOrDispose {}}
@@ -102,6 +103,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         OutlinedButton(onClick=vm::logout,enabled=!operation.busy,modifier=Modifier.fillMaxWidth()){Text(Strings.text(R.string.ui_105))}
         TextButton(onClick={delete=true},enabled=!operation.busy){Text(Strings.text(R.string.ui_106),color=MaterialTheme.colorScheme.error)}
         HorizontalDivider()
+        if(state.placesAvailable) OutlinedButton(onClick={places=true},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.places_title))}
         Text(Strings.text(R.string.diag_title),style=MaterialTheme.typography.titleLarge)
         OutlinedButton(onClick={diagnostic="location"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_location))}
         OutlinedButton(onClick={diagnostic="connection"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_connection))}
@@ -110,6 +112,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     }
     if(delete) ConfirmDestructive(Strings.text(R.string.ui_106),Strings.text(R.string.ui_109),{delete=false}) {delete=false;vm.deleteAccount()}
     diagnostic?.let {DiagnosticScreen(vm,it=="location",close={diagnostic=null})}
+    if(places) PlacesScreen(vm) {places=false}
     if(audience) AudienceScreen(vm) {audience=false}
     state.profile?.inviteCode?.takeIf {showQr && validInviteCode(it)}?.let {QrDisplay("person",it) {showQr=false}}
 }

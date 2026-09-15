@@ -25,7 +25,7 @@ import javax.inject.*
 class MeetingMessagingService: FirebaseMessagingService() {
     override fun onNewToken(token: String) {PushRegistration.enqueue(this)}
     override fun onMessageReceived(message: RemoteMessage) {
-        if(message.data["kind"]=="checkin") {
+        if(message.data["kind"] in setOf("checkin","place")) {
             val id=message.data["event_id"] ?: return
             if(!id.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))) return
             WorkManager.getInstance(this).enqueueUniqueWork("app-event-$id",ExistingWorkPolicy.KEEP,
