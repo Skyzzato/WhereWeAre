@@ -42,7 +42,7 @@ import java.time.ZoneId
     var now by remember {mutableStateOf(Instant.now())}
     LaunchedEffect(Unit) {while(true) {now=Instant.now();kotlinx.coroutines.delay(1000)}}
     val expiry=if(temporary) groupExpiry(endDate,endTime,zone,now) else null
-    val emojis=listOf("📍","👨‍👩‍👧‍👦","🏠","❤️","👋","😊","🏔️","🥾","⛰️","🌲","🏕️","🔥","🚴","🚵","🏃","⚽","🏀","🎾","🏊","⛷️","🏂","🚗","🏍️","🚐","⛵","✈️","🚆","🌍","🏖️","🏝️","🎒","🏫","🎓","💼","🛠️","💻","🎉","🎂","🎵","🍕")
+
     AlertDialog(properties=DialogProperties(usePlatformDefaultWidth=false),modifier=Modifier.fillMaxWidth().padding(12.dp),onDismissRequest={if(!busy) dismiss()},title={Text(Strings.text(if(editing) R.string.ui_026 else R.string.ui_017))},
         text={Column(Modifier.heightIn(max=600.dp).verticalScroll(rememberScrollState()).padding(top=16.dp)) {
             OutlinedTextField(name,{name=it},enabled=!busy,label={Text(Strings.text(R.string.ui_034))},singleLine=true,
@@ -67,16 +67,21 @@ import java.time.ZoneId
             Busy(OperationState(busy,error),inline=true)
             Text(Strings.text(if(emoji.isBlank()) R.string.group_add_icon else R.string.ui_035,emoji))
             if(emoji.isNotBlank()) TextButton(enabled=!busy,onClick={emoji=""}) {Text(Strings.text(R.string.group_remove_icon))}
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
+            EmojiPicker(emoji,busy) {emoji=it}
+        }},confirmButton={TextButton(enabled=validGroupName(name)&&!busy&&(!temporary||expiry!=null),onClick={save(name.trim(),emoji,expiry)}) {
+            Text(Strings.text(if(editing) R.string.group_save_changes else R.string.ui_036))
+        }},dismissButton={TextButton(enabled=!busy,onClick=dismiss) {Text(Strings.text(R.string.ui_006))}})
+}
+
+@Composable fun EmojiPicker(emoji: String,busy: Boolean,choose: (String)->Unit) {
+    val emojis=listOf("📍","👨‍👩‍👧‍👦","🏠","❤️","👋","😊","🏔️","🥾","⛰️","🌲","🏕️","🔥","🚴","🚵","🏃","⚽","🏀","🎾","🏊","⛷️","🏂","🚗","🏍️","🚐","⛵","✈️","🚆","🌍","🏖️","🏝️","🎒","🏫","🎓","💼","🛠️","💻","🎉","🎂","🎵","🍕")
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
             val minimumCell=maxOf(48f,27f*androidx.compose.ui.platform.LocalDensity.current.fontScale+8f)
             val columns=(maxWidth.value/minimumCell).toInt().coerceAtLeast(1)
             val cellWidth=maxWidth/columns
             Column {emojis.chunked(columns).forEach {row -> Row {
-                row.forEach {value -> TextButton(enabled=!busy,onClick={emoji=value},modifier=Modifier.width(cellWidth).heightIn(min=48.dp),
+                row.forEach {value -> TextButton(enabled=!busy,onClick={choose(value)},modifier=Modifier.width(cellWidth).heightIn(min=48.dp),
                     contentPadding=PaddingValues(1.dp),colors=ButtonDefaults.textButtonColors(
                         containerColor=if(value==emoji) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)) {Text(value,fontSize=27.sp)}
             }}}}}
-        }},confirmButton={TextButton(enabled=validGroupName(name)&&!busy&&(!temporary||expiry!=null),onClick={save(name.trim(),emoji,expiry)}) {
-            Text(Strings.text(if(editing) R.string.group_save_changes else R.string.ui_036))
-        }},dismissButton={TextButton(enabled=!busy,onClick=dismiss) {Text(Strings.text(R.string.ui_006))}})
 }

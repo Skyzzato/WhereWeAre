@@ -7,7 +7,7 @@ import dagger.hilt.android.HiltAndroidApp
     override fun onCreate() {
         super.onCreate()
         com.whereweare.app.ui.Strings.configure(this)
-        if(BuildConfig.FIREBASE_APP_ID.isNotBlank() && BuildConfig.FIREBASE_API_KEY.isNotBlank() && BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() && BuildConfig.FIREBASE_SENDER_ID.isNotBlank()) {
+        if(com.google.firebase.FirebaseApp.getApps(this).none {it.name==com.google.firebase.FirebaseApp.DEFAULT_APP_NAME} && BuildConfig.FIREBASE_APP_ID.isNotBlank() && BuildConfig.FIREBASE_API_KEY.isNotBlank() && BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() && BuildConfig.FIREBASE_SENDER_ID.isNotBlank()) {
             com.google.firebase.FirebaseApp.initializeApp(this,com.google.firebase.FirebaseOptions.Builder().setApplicationId(BuildConfig.FIREBASE_APP_ID)
                 .setApiKey(BuildConfig.FIREBASE_API_KEY).setProjectId(BuildConfig.FIREBASE_PROJECT_ID).setGcmSenderId(BuildConfig.FIREBASE_SENDER_ID).build())
         }

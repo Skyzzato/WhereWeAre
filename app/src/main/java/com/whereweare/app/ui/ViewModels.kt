@@ -22,11 +22,14 @@ open class OperationViewModel: ViewModel() {
         viewModelScope.launch {
             mutableOperation.value=OperationState(busy=true)
             try { block(); mutableOperation.value=OperationState(message=success)
-            } catch(e: CancellationException) { throw e
+            } catch(e: CancellationException) {
+                mutableOperation.value=OperationState(message=if(e is TimeoutCancellationException) R.string.connection_unreachable else null)
+                if(e !is TimeoutCancellationException) throw e
             } catch(e: Exception) {
                 val key=e.message.orEmpty()
                 val resource=when {
                     e is java.io.IOException -> R.string.error_network
+                    "place_duplicate" in key -> R.string.place_duplicate
                     "configuration" in key -> R.string.error_config
                     "stop_pending" in key -> R.string.stop_pending
                     "location_permission" in key -> R.string.location_permission
@@ -68,36 +71,11 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
 @HiltViewModel class MapViewModel @Inject constructor(
     val controller: SharingController,private val sharing: SharingRepository,
     val location: LocationRepository,private val preferences: PreferencesRepository,private val auth: AuthRepository,val avatars: AvatarRepository,
-    network: NetworkMonitor,bootstrap: BootstrapRepository,private val feedback: MeetingFeedback,val routing: ConfiguredRoutingRepository=ConfiguredRoutingRepository()
+    network: NetworkMonitor,bootstrap: BootstrapRepository,private val feedback: MeetingFeedback,val sos: SosOperationRepository,val routing: ConfiguredRoutingRepository=ConfiguredRoutingRepository()
 ): OperationViewModel() {
-    val sosSendState=MutableStateFlow(SosSendState.IDLE)
-    val sosError=MutableStateFlow<Int?>(null)
-    fun resetSos() {if(sosSendState.value!=SosSendState.SENDING) {sosSendState.value=SosSendState.IDLE;sosError.value=null}}
-    fun sendSos(id: String,category: String,people: Set<String>,groups: Set<String>,nearby: Boolean=false) {
-        if(sosSendState.value==SosSendState.SENDING) return
-        val user=auth.userId ?: return
-        sosError.value=null
-        viewModelScope.launch {
-            dispatchSos(capture={
-                val fallback=sharing.state.value.locations.firstOrNull {it.userId==auth.userId && it.recordedAt>=sharing.now().minusSeconds(86400)}
-                try {withTimeout(8000) {location.snapshot(true)}} catch(e: TimeoutCancellationException) {fallback}
-                catch(e: CancellationException) {throw e} catch(_: Exception) {fallback}
-            },register={fix ->
-                check(auth.userId==user)
-                try {sharing.sendSos(id,category,people,groups,fix?.takeIf {it.userId==user},nearby)}
-                catch(e: CancellationException) {throw e}
-                catch(e: Exception) {
-                    sosError.value=when {
-                        "sos_cooldown" in e.message.orEmpty() -> R.string.nearby_send_limit
-                        "sos_already_active" in e.message.orEmpty() -> R.string.sos_active
-                        "nearby_configuration" in e.message.orEmpty() -> R.string.nearby_setup_required
-                        else -> R.string.nearby_send_unconfirmed
-                    };throw e
-                }
-                check(auth.userId==user)
-            },report={sosSendState.value=it})
-        }
-    }
+    val sosSendState=sos.state
+    val sosError=sos.error
+    fun sendSos(id: String,category: String,people: Set<String>,groups: Set<String>,nearby: Boolean=false)=sos.send(id,category,people,groups,nearby)
     suspend fun sosStatus(id: String)=sharing.sosStatus(id)
     fun respondSos(id: String,response: String?) {perform(if(response!=null) R.string.sos_response_confirmed else null) {sharing.respondSos(id,response)}}
     fun closeSos(id: String,reason: String,done: ()->Unit) {perform {sharing.closeSos(id,reason);done()}}
@@ -184,7 +162,11 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun currentTime()=sharing.now()
     fun editGroup(id: String,name: String,emoji: String,expiry: Instant?,done: ()->Unit) {perform {sharing.editGroup(id,name,emoji,expiry);done()}}
     val places=MutableStateFlow(PlacesBundle())
-    fun loadPlaces() {places.value=PlacesBundle();perform {places.value=sharing.places()}}
+    private var placesOwner: String?=null
+    fun loadPlaces() {
+        if(placesOwner!=auth.userId) {places.value=PlacesBundle();placesOwner=auth.userId}
+        perform {places.value=sharing.places()}
+    }
     fun savePlace(place: SavedPlace,done: ()->Unit) {perform {sharing.savePlace(place);places.value=sharing.places();done()}}
     fun removePlace(id: String) {perform {sharing.removePlace(id);places.value=sharing.places()}}
     fun saveRule(rule: PlaceRule,done: ()->Unit={}) {perform {sharing.saveRule(rule);places.value=sharing.places();done()}}
@@ -243,7 +225,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     } }
     fun accuracy(value: Boolean) { perform { preferences.accuracy(value) } }
     fun rename(name: String) { if(!validName(name)) message(R.string.invalid_form) else perform(R.string.saved) { sharing.rename(name) } }
-    fun logout() { perform { val id=auth.userId; push.unregister(); controller.logout(); avatars.clear(); if(id!=null) {preferences.clearUser(id);avatarDrafts.clear(id)} } }
+    fun logout() { perform { val id=auth.userId; nearby.endAvailability(); push.unregister(); controller.logout(); avatars.clear(); if(id!=null) {preferences.clearUser(id);avatarDrafts.clear(id)} } }
 }
 @HiltViewModel class GroupsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor): OperationViewModel() {
     val now=flow {while(true) {emit(sharing.now());delay(1_000)}}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),sharing.now())

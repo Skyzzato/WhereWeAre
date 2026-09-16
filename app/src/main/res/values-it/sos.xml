@@ -13,8 +13,8 @@
   <string name="sos_cancel">ANNULLA</string>
   <string name="sos_send">INVIA SOS</string>
   <string name="sos_sending">Registrazione SOS in corso…</string>
-  <string name="sos_confirmed">SOS registrato e confermato dal server. Non è stato inviato al 112 o ai soccorsi.</string>
-  <string name="sos_unknown">Impossibile confermare la registrazione. Riprova o contatta direttamente i destinatari.</string>
+  <string name="sos_confirmed">SOS registrato e confermato dal server. Non è stato inviato al 112 o ai soccorsi. Questo non conferma la ricezione o la lettura dei destinatari.</string>
+  <string name="sos_unknown">Non è stato possibile verificare se il server ha registrato l’SOS. Verifica lo stato oppure contatta direttamente i destinatari.</string>
   <string name="sos_retry">Riprova lo stesso SOS</string>
   <string name="sos_nearby_disabled">Utenti nelle vicinanze: non disponibile. Mancano adesione revocabile, disponibilità recente e ricerca protetta contro gli abusi. Gli SOS verso persone e gruppi selezionati restano separati.</string>
   <string name="sos_received">SOS da %1$s</string>

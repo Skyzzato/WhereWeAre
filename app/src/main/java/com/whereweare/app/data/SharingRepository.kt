@@ -16,18 +16,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import android.util.Log
 
-@Singleton class SharingRepository @Inject constructor(private val client: SupabaseClient, private val auth: AuthRepository,private val preferences: PreferencesRepository) {
+@Singleton class SharingRepository @Inject constructor(private val client: SupabaseClient, private val auth: AuthRepository,private val preferences: PreferencesRepository,private val network: NetworkMonitor) {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
     private val connectionDiagnostics=ConnectionDiagnostics()
     val diagnostics=connectionDiagnostics.state
     init { scope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collect {connectionDiagnostics.reset()}} }
     private suspend fun serverRpc(name: String,params: JsonObject=buildJsonObject {})=connectionDiagnostics.measure(
-        write=when(name) {
-            "app_metadata","lookup_user_by_invite_code","visible_locations","location_audience","location_request_inbox","event_inbox" -> false
+        operation=name,write=when(name) {
+            "app_metadata","lookup_user_by_invite_code","visible_locations","location_audience","location_request_inbox","event_inbox","places_rules","sos_status","sos_registered" -> false
             "resolve_invite_link" -> params["confirm"]?.jsonPrimitive?.booleanOrNull==true
             else -> true
         }
-    ) { client.postgrest.rpc(name,params) }
+    ) { auth.awaitSession();withTimeout(12_000) {client.postgrest.rpc(name,params)} }
     suspend fun testConnection() { withTimeout(12_000) {ownSharingStatus()} }
     private val refreshes=MutableSharedFlow<Unit>(extraBufferCapacity=1)
     private data class AvatarChange(val user: String,val path: String?)
@@ -44,10 +44,13 @@ import android.util.Log
         else if(snapshot.profile.avatarPath==change.path) { avatarChange.compareAndSet(change,null); snapshot }
         else snapshot.copy(profile=snapshot.profile.copy(avatarPath=change.path))
     }.combine(optimistic.changes) { snapshot,pending -> optimistic.render(snapshot,pending) }
-        .stateIn(scope,SharingStarted.WhileSubscribed(5_000,0),Snapshot())
+        .stateIn(scope,SharingStarted.WhileSubscribed(5_000),Snapshot())
 
     private fun observe(id: String): Flow<Snapshot> = channelFlow {
-        var last=Snapshot()
+        var last=state.value.takeIf {it.profile?.id==id}?:Snapshot()
+        var failures=0
+        var automaticBlocked=false
+        var realtimeFailures=0
         val cached=preferences.lastFix(id).first()?.let { runCatching { Json.decodeFromString<LocationDto>(it).domain() }.getOrNull() }
         if(cached!=null) { last=last.copy(locations=listOf(cached)); send(last) }
         var realtimeOnline=false
@@ -57,17 +60,19 @@ import android.util.Log
         var metadataDirty=true
         val generation=AtomicLong(0)
         val signals=Channel<Unit>(Channel.CONFLATED)
-        launch { refreshes.collect { metadataDirty=true; generation.incrementAndGet(); signals.trySend(Unit) } }
+        launch {network.state.collect {if(it.online) {automaticBlocked=false;failures=0;metadataDirty=true;signals.trySend(Unit)}}}
+        launch { refreshes.collect { automaticBlocked=false;failures=0;metadataDirty=true; generation.incrementAndGet(); signals.trySend(Unit) } }
         launch {while(isActive) {
             delay(5_000)
             val time=SystemClock.elapsedRealtime()
             val unavailable=!realtimeOnline && time-disconnectedAt>=20_000
             if(last.realtimeUnavailable!=unavailable) {last=last.copy(realtimeUnavailable=unavailable);send(last)}
-            if((!realtimeOnline || last.sharedPrecisionAvailable || last.eventsAvailable || last.locationRequestsAvailable) && time-lastPoll>=30_000) {lastPoll=time;metadataDirty=true;signals.trySend(Unit)}
+            if(!automaticBlocked && (!realtimeOnline || last.sharedPrecisionAvailable || last.eventsAvailable || last.locationRequestsAvailable) && time-lastPoll>=30_000) {lastPoll=time;metadataDirty=true;signals.trySend(Unit)}
         }}
         launch {
             for(signal in signals) {
                 try {
+                    auth.awaitSession()
                     val readingGeneration=generation.get()
                     val readMetadata=metadataDirty
                     val requestStarted=SystemClock.elapsedRealtime()
@@ -93,12 +98,21 @@ import android.util.Log
                     // REST success means data is current enough to display; Realtime status is tracked separately.
                     last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable,locationRequestsAvailable=metadata?.location_requests_available ?: last.locationRequestsAvailable,locationRequests=metadata?.location_requests ?: last.locationRequests,eventsAvailable=metadata?.events_available ?: last.eventsAvailable,events=metadata?.events ?: last.events,temporaryGroupsAvailable=metadata?.temporary_groups_available ?: last.temporaryGroupsAvailable,placesAvailable=metadata?.places_available ?: last.placesAvailable,sosAvailable=metadata?.sos_available ?: last.sosAvailable,nearbySosAvailable=metadata?.nearby_sos_available ?: last.nearbySosAvailable)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
+                    failures=0
                     send(last)
-                } catch(e: CancellationException) { throw e
+                } catch(e: CancellationException) {
+                    if(e !is TimeoutCancellationException) throw e
+                    last=last.copy(loading=false,syncFailed=true);send(last)
+                    failures=(failures+1).coerceAtMost(4)
+                    delay((1000L shl failures)+kotlin.random.Random.nextLong(1000));if(failures<=3) signals.trySend(Unit)
                 } catch(e: Exception) {
                     if(com.whereweare.app.BuildConfig.DEBUG) Log.w("WhereWeAreRealtime","REST refresh failed: ${e.javaClass.simpleName}")
                     last=last.copy(loading=false,offline=true,syncFailed=true); send(last)
-                    delay(5_000); signals.trySend(Unit)
+                    failures=(failures+1).coerceAtMost(4)
+                    delay((1000L shl failures)+kotlin.random.Random.nextLong(1000))
+                    // Stop automatic retries on authentication/authorization failures; resume/network/manual refresh can retry.
+                    automaticBlocked=e is io.github.jan.supabase.exceptions.RestException && e.statusCode in listOf(400,401,403,404)
+                    if(!automaticBlocked && failures<=3) signals.trySend(Unit)
                 }
             }
         }
@@ -133,7 +147,7 @@ import android.util.Log
                         if(realtimeOnline && status!=RealtimeChannel.Status.SUBSCRIBED) disconnectedAt=SystemClock.elapsedRealtime()
                         realtimeOnline=status==RealtimeChannel.Status.SUBSCRIBED
                         connectionDiagnostics.realtime(realtimeOnline)
-                        if(realtimeOnline) { metadataDirty=true; signals.trySend(Unit) }
+                        if(realtimeOnline) {realtimeFailures=0; metadataDirty=true; signals.trySend(Unit) }
                         // CONNECTING/RECONNECTING is not an offline REST failure; avoid bootstrap flicker.
                     } }
                     launch { channel.systemFlow().collect { event ->
@@ -144,8 +158,12 @@ import android.util.Log
                     signals.trySend(Unit)
                     awaitCancellation()
                 }
-            } catch(e: CancellationException) { throw e
-            } catch(e: Exception) { if(realtimeOnline) disconnectedAt=SystemClock.elapsedRealtime();realtimeOnline=false; realtimeStatus="ERROR"; if(com.whereweare.app.BuildConfig.DEBUG) Log.w("WhereWeAreRealtime","retry in 5s: ${e.javaClass.simpleName}");delay(5_000)
+            } catch(e: Exception) {
+                if(e is CancellationException && e !is TimeoutCancellationException) throw e
+                if(realtimeOnline) disconnectedAt=SystemClock.elapsedRealtime()
+                realtimeOnline=false;realtimeStatus="ERROR"
+                realtimeFailures=(realtimeFailures+1).coerceAtMost(5)
+                delay((1000L shl realtimeFailures)+kotlin.random.Random.nextLong(1000))
             } finally { connectionDiagnostics.realtime(false); withContext(NonCancellable) { runCatching { client.realtime.removeChannel(channel) } } }
         }
     }.flowOn(Dispatchers.IO.limitedParallelism(1))
@@ -176,12 +194,13 @@ import android.util.Log
         check(result==id)
         refresh()
     }
+    suspend fun sosRegistered(id: String): Boolean=serverRpc("sos_registered",buildJsonObject {put("eid",id)}).decodeAs()
     suspend fun sosStatus(id: String): SosStatus=serverRpc("sos_status",buildJsonObject {put("eid",id)}).decodeAs()
     suspend fun respondSos(id: String,response: String?)=rpc("respond_sos",buildJsonObject {put("eid",id);put("answer",response?.let(::JsonPrimitive)?:JsonNull)})
     suspend fun closeSos(id: String,reason: String)=rpc("close_sos",buildJsonObject {put("eid",id);put("closure_reason",reason)})
     suspend fun places(): PlacesBundle=serverRpc("places_rules").decodeAs()
-    suspend fun savePlace(p: SavedPlace)=rpc("save_place",buildJsonObject {
-        put("pid",p.id);put("slot_number",p.slot);put("label",p.name);put("lat",p.latitude);put("lon",p.longitude);put("radius",p.radius_m)
+    suspend fun savePlace(p: SavedPlace)=rpc("save_place_v043",buildJsonObject {
+        put("icon",p.emoji);put("pid",p.id);put("slot_number",p.slot);put("label",p.name);put("lat",p.latitude);put("lon",p.longitude);put("radius",p.radius_m)
     })
     suspend fun removePlace(id: String)=rpc("remove_place",buildJsonObject {put("pid",id)})
     suspend fun saveRule(r: PlaceRule)=rpc("save_place_rule",buildJsonObject {

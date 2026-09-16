@@ -42,8 +42,10 @@ import io.github.jan.supabase.auth.status.SessionStatus
         val intended=(uri.scheme=="whereweare" && uri.host in setOf("person","group")) || (uri.scheme=="https" && BuildConfig.INVITE_BASE_URL.isNotBlank() && uri.host==android.net.Uri.parse(BuildConfig.INVITE_BASE_URL).host && uri.pathSegments.firstOrNull()!="join")
         if(intended) invalidInvite=!inviteStore.accept(uri)
     }
+    @javax.inject.Inject lateinit var nearby: com.whereweare.app.data.NearbySosRepository
+    @javax.inject.Inject lateinit var sharing: com.whereweare.app.data.SharingRepository
     private var link by mutableStateOf<android.net.Uri?>(null)
-    override fun onStart() {super.onStart(); visible=true}
+    override fun onStart() {super.onStart(); visible=true;sharing.refresh()}
     override fun onStop() {visible=false;super.onStop()}
     companion object {@Volatile var visible=false; private set}
     override fun onNewIntent(intent: android.content.Intent) {super.onNewIntent(intent);setIntent(intent);intent.data?.let {receiveInvite(it)};link=intent.data ?: intent.getStringExtra("meeting_id")?.let {android.net.Uri.parse("whereweare://meeting/$it")}}

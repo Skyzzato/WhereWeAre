@@ -13,8 +13,8 @@
   <string name="sos_cancel">CANCEL</string>
   <string name="sos_send">SEND SOS</string>
   <string name="sos_sending">Registering SOS…</string>
-  <string name="sos_confirmed">SOS registered and confirmed by the server. It has not been sent to 112 or emergency services.</string>
-  <string name="sos_unknown">Unable to confirm registration. Retry or contact your recipients directly.</string>
+  <string name="sos_confirmed">SOS registered and confirmed by the server. It has not been sent to 112 or emergency services. This does not confirm receipt or reading by recipients.</string>
+  <string name="sos_unknown">It was not possible to verify whether the server registered the SOS. Check its status or contact recipients directly.</string>
   <string name="sos_retry">Retry same SOS</string>
   <string name="sos_nearby_disabled">Nearby users: unavailable. Revocable enrolment, recent availability and abuse-protected search are missing. SOS to selected people and groups is separate.</string>
   <string name="sos_received">SOS from %1$s</string>

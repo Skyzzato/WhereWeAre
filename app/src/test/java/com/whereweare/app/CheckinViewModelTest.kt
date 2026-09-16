@@ -41,7 +41,7 @@ class CheckinViewModelTest {
             `when`(location.permission()).thenReturn(LocationPermission.PRECISE)
             `when`(network.online).thenReturn(MutableStateFlow(true))
             `when`(boot.state).thenReturn(MutableStateFlow(BootstrapState(BootstrapGate.READY)))
-            val vm=MapViewModel(controller,repo,location,prefs,auth,mock(AvatarRepository::class.java),network,boot,mock(MeetingFeedback::class.java))
+            val vm=MapViewModel(controller,repo,location,prefs,auth,mock(AvatarRepository::class.java),network,boot,mock(MeetingFeedback::class.java),mock(SosOperationRepository::class.java).also { org.mockito.Mockito.`when`(it.state).thenReturn(MutableStateFlow(com.whereweare.app.domain.SosSendState.IDLE)); org.mockito.Mockito.`when`(it.error).thenReturn(MutableStateFlow<Int?>(null)) })
             store.put("map",vm);test(vm,repo,location,controller)
         } finally {store.clear();runCurrent();Dispatchers.resetMain()}
     }

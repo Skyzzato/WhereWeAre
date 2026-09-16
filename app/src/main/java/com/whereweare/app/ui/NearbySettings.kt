@@ -19,18 +19,20 @@ import kotlinx.coroutines.*
     LaunchedEffect(Unit) {while(true) {elapsed=android.os.SystemClock.elapsedRealtime();delay(1000)}}
     LaunchedEffect(Unit) {vm.nearby.sync()}
     Text(Strings.text(R.string.nearby_optin_explanation))
+    Text(Strings.text(R.string.nearby_refresh_policy),style=MaterialTheme.typography.bodySmall)
     if(!snapshot.nearbySosAvailable) Text(Strings.text(R.string.nearby_setup_required))
     Row {
         Text(Strings.text(R.string.nearby_receive),Modifier.weight(1f))
-        Switch(state.status?.opted_in==true,onCheckedChange={agree -> scope.launch {vm.nearby.consent(agree)}},
-            enabled=state.pending==null && state.status!=null && (snapshot.nearbySosAvailable || state.status?.opted_in==true))
+        Switch(state.pending ?: (state.status?.opted_in==true),onCheckedChange={agree -> scope.launch {vm.nearby.consent(agree)}},
+            enabled=state.status!=null && (snapshot.nearbySosAvailable || state.status?.opted_in==true))
     }
     if(state.pending!=null) Text(Strings.text(R.string.nearby_pending))
     if(state.failed) Text(Strings.text(R.string.nearby_sync_failed))
-    if(state.status==null || state.failed) TextButton(enabled=state.pending==null,onClick={scope.launch {vm.nearby.consent(false)}}) {
+    if(state.status==null || state.failed) TextButton(onClick={scope.launch {vm.nearby.consent(false)}}) {
         Text(Strings.text(R.string.nearby_revoke))
     }
     if(state.status?.opted_in==true) {
+        Text(Strings.text(R.string.nearby_permanent))
         Text(Strings.text(if(state.availableNow(elapsed)) R.string.nearby_available else R.string.nearby_expired))
         state.status?.available_until?.let {Text(eventTime(it))}
         OutlinedButton(enabled=!busy && state.pending==null,onClick={scope.launch {

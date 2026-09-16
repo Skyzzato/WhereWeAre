@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="place_add">Add place</string>
+  <string name="place_duplicate">A place with this name already exists.</string>
+  <string name="place_rule_limit">Up to 20 automation rules per account; places can have no rules.</string>
+  <string name="sos_unconfirmed_title">SOS send not confirmed</string>
+  <string name="sos_failed">SOS not sent</string>
+  <string name="sos_failed_detail">The server rejected this SOS request. Check your session and recipients before trying again.</string>
+  <string name="sos_verify">Check status</string>
+  <string name="sos_dismiss">Dismiss this outcome</string>
+  <string name="sos_old_request">This request is over 5 minutes old. Check its status or dismiss this outcome before preparing a new SOS.</string>
+  <string name="nearby_permanent">Opted in. This stays active until you turn it off.</string>
+  <string name="connection_checking">Checking connection…</string>
+  <string name="connection_service">Server service error. Try updating again.</string>
+  <string name="connection_unreachable">Server unreachable or request timed out. Check the connection and retry.</string>
+  <string name="nearby_refresh_policy">Availability uses a fresh position every 5 minutes while the app is open with location permission and Internet access. In the background it reuses updates from sharing, if active. After 15 minutes without a fresh position availability ends; your opt-in remains active.</string>
+</resources>

@@ -3,6 +3,10 @@ package com.whereweare.app.ui
 import android.content.Intent
 import androidx.core.net.toUri
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -29,7 +33,8 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
     val context=LocalContext.current
     val status by vm.sosSendState.collectAsStateWithLifecycle()
     val sendError by vm.sosError.collectAsStateWithLifecycle()
-    val id=rememberSaveable {UUID.randomUUID().toString()}
+    var id by rememberSaveable {mutableStateOf(UUID.randomUUID().toString())}
+    LaunchedEffect(status) {if(status==SosSendState.IDLE) id=UUID.randomUUID().toString()}
     var category by rememberSaveable {mutableStateOf("help")}
     var people by rememberSaveable {mutableStateOf(emptyList<String>())}
     var groups by rememberSaveable {mutableStateOf(emptyList<String>())}
@@ -37,11 +42,12 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
     var choosing by rememberSaveable {mutableStateOf(false)}
     var counting by remember {mutableStateOf(false)}
     var remaining by remember {mutableIntStateOf(5)}
-    LaunchedEffect(Unit) {vm.resetSos()}
+
     LaunchedEffect(counting) {if(counting) sosCountdown({remaining=it}) {counting=false;vm.sendSos(id,category,people.toSet(),groups.toSet(),nearby)}}
     LifecycleResumeEffect(Unit) {onPauseOrDispose {counting=false}}
     val editable=!counting && status==SosSendState.IDLE
     AlertDialog(onDismissRequest={if(status!=SosSendState.SENDING) close()},title={Text("SOS",color=Color(0xFFB3261E))},text={Column(Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        SosOutcomeCard(status,sendError,vm.sos::verify,vm.sos::dismiss)
         Text(Strings.text(R.string.sos_emergency))
         Button(onClick={runCatching {context.startActivity(Intent(Intent.ACTION_DIAL,"tel:112".toUri()))}.onFailure {vm.message(R.string.error_generic)}}) {Text(Strings.text(R.string.sos_dial))}
         Text(Strings.text(R.string.sos_position_consent))
@@ -58,16 +64,15 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
             Text(Strings.text(R.string.sos_countdown,remaining.toString()),style=MaterialTheme.typography.headlineMedium)
             Button(onClick={counting=false},modifier=Modifier.fillMaxWidth().heightIn(min=64.dp)) {Text(Strings.text(R.string.sos_cancel))}
         }
-        if(status!=SosSendState.IDLE) Text(Strings.text(when(status) {SosSendState.SENDING -> R.string.sos_sending;SosSendState.CONFIRMED -> R.string.sos_confirmed;else -> R.string.sos_unknown}))
+        if(status==SosSendState.SENDING || status==SosSendState.CONFIRMED) Text(Strings.text(when(status) {SosSendState.SENDING -> R.string.sos_sending;SosSendState.CONFIRMED -> R.string.sos_confirmed;else -> R.string.sos_unknown}))
         if(status==SosSendState.SENDING) LinearProgressIndicator(Modifier.fillMaxWidth())
-        sendError?.let {Text(Strings.text(it),color=MaterialTheme.colorScheme.error)}
         if(snapshot.nearbySosAvailable) {
             Row {Checkbox(nearby,{nearby=it},enabled=editable);Text(Strings.text(R.string.nearby_send))}
             Text(Strings.text(R.string.nearby_sender_consent),style=MaterialTheme.typography.bodySmall)
         } else Text(Strings.text(R.string.nearby_setup_required),style=MaterialTheme.typography.bodySmall)
-    }},confirmButton={if(status!=SosSendState.CONFIRMED) TextButton(enabled=!counting && status!=SosSendState.SENDING && (people.isNotEmpty()||groups.isNotEmpty()||nearby),onClick={counting=true}) {
+    }},confirmButton={if(status!=SosSendState.CONFIRMED) TextButton(enabled=!counting && status!=SosSendState.SENDING && (status==SosSendState.UNKNOWN || status==SosSendState.FAILED || people.isNotEmpty()||groups.isNotEmpty()||nearby),onClick={counting=true}) {
         Text(Strings.text(if(status==SosSendState.UNKNOWN) R.string.sos_retry else R.string.sos_send),color=Color(0xFFB3261E))
-    }},dismissButton={TextButton(enabled=status!=SosSendState.SENDING,onClick=close) {Text(Strings.text(R.string.close))}})
+    }},dismissButton={TextButton(enabled=status!=SosSendState.SENDING,onClick={if(status==SosSendState.CONFIRMED) vm.sos.dismiss();close()}) {Text(Strings.text(R.string.close))}})
     if(choosing) SosRecipients(snapshot,vm.avatars,people,groups,close={choosing=false},confirm={p,g -> people=p;groups=g;choosing=false})
 }
 
@@ -115,4 +120,21 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
         }
         Busy(operation,inline=true)
     }},confirmButton={TextButton(onClick=close) {Text(Strings.text(R.string.close))}})
+}
+
+@Composable fun SosOutcomeCard(status: SosSendState,sendError: Int?,verify: ()->Unit,dismiss: ()->Unit) {
+        if(status==SosSendState.UNKNOWN || status==SosSendState.FAILED) {
+            val uncertain=status==SosSendState.UNKNOWN
+            val foreground=if(uncertain) Color(0xFF653C00) else Color(0xFF8C1710)
+            Card(colors=CardDefaults.cardColors(containerColor=if(uncertain) Color(0xFFFFE6B3) else Color(0xFFFFDAD6)),border=BorderStroke(2.dp,foreground)) {
+                Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Warning,null,tint=foreground)
+                    Text(Strings.text(if(uncertain) R.string.sos_unconfirmed_title else R.string.sos_failed),fontWeight=FontWeight.Bold,color=foreground)
+                    Text(Strings.text(if(uncertain) R.string.sos_unknown else R.string.sos_failed_detail),color=foreground)
+                    sendError?.let {Text(Strings.text(it),color=foreground)}
+                    TextButton(onClick=verify) {Text(Strings.text(R.string.sos_verify),color=foreground)}
+                    TextButton(onClick=dismiss) {Text(Strings.text(R.string.sos_dismiss),color=foreground)}
+                }
+            }
+        }
 }
