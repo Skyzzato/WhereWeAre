@@ -15,7 +15,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val publishedFix: UserLocation?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
@@ -127,7 +127,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                                 if(java.time.Duration.between(it.recordedAt,java.time.Instant.now()).toHours()<2) {
                                     withTimeout(12_000) { repository.publish(session,it) }; sent=it; repository.saveOwn(it)
                                     mutableState.value=state.value.copy(active=true,waiting=false,lastSent=it.recordedAt,
-                                        lastAcknowledged=java.time.Instant.now(),pendingUpload=latest.value!=sent)
+                                        lastAcknowledged=java.time.Instant.now(),publishedFix=it,pendingUpload=latest.value!=sent)
                                 }
                             }
                             if(lastDeviceSample==null || elapsed-lastDeviceSample>=60_000) {

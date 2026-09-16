@@ -27,7 +27,7 @@ class SosTest {
         assertTrue(registered)
         assertEquals(SosSendState.CONFIRMED,states.last())
         assertNull(SosPayload("lost").location("event"))
-        assertFalse(NEARBY_SOS_ENABLED)
+        assertFalse(Snapshot().nearbySosAvailable)
     }
     @Test fun countdownWaitsFiveSecondsAndCancellationPreventsSend()=runTest {
         var sends=0

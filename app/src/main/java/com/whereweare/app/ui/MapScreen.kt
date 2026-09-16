@@ -322,7 +322,7 @@ import java.time.format.DateTimeFormatter
                         SharingUiState.REMOTE_ACTIVE -> R.string.remote_session_active
                     }),Modifier.padding(start=8.dp),color=if(tracking.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                 }
-                if(tracking.active) Text(if(tracking.waiting) Strings.text(R.string.ui_055) else Strings.text(R.string.ui_056, (tracking.fix?.accuracy?.toLong()).toString()),style=MaterialTheme.typography.bodySmall)
+                if(tracking.active) Text(sharingAccuracyText(tracking.lastAcknowledged!=null,tracking.publishedFix?.accuracy),style=MaterialTheme.typography.bodySmall)
                 val significantDelay=tracking.pendingUpload && (tracking.lastAcknowledged?.isBefore(state.now.minusSeconds(maxOf(60L,updateInterval.toLong()+30))) ?: tracking.waiting)
                 val warning=when {
                     pending!=null -> R.string.stop_pending

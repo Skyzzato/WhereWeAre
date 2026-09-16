@@ -35,6 +35,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.auth.status.SessionStatus
 
 @AndroidEntryPoint class MainActivity: ComponentActivity() {
+    @javax.inject.Inject lateinit var nearbyConsent: com.whereweare.app.data.NearbySosRepository
     @javax.inject.Inject lateinit var inviteStore: com.whereweare.app.data.InviteStore
     private var invalidInvite by mutableStateOf(false)
     private fun receiveInvite(uri: android.net.Uri) {

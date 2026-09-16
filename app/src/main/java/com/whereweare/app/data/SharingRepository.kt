@@ -91,7 +91,7 @@ import android.util.Log
                     if(readingGeneration!=generation.get()) { signals.trySend(Unit); continue }
                     if(readMetadata) metadataDirty=false
                     // REST success means data is current enough to display; Realtime status is tracked separately.
-                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable,locationRequestsAvailable=metadata?.location_requests_available ?: last.locationRequestsAvailable,locationRequests=metadata?.location_requests ?: last.locationRequests,eventsAvailable=metadata?.events_available ?: last.eventsAvailable,events=metadata?.events ?: last.events,temporaryGroupsAvailable=metadata?.temporary_groups_available ?: last.temporaryGroupsAvailable,placesAvailable=metadata?.places_available ?: last.placesAvailable,sosAvailable=metadata?.sos_available ?: last.sosAvailable)
+                    last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable,locationRequestsAvailable=metadata?.location_requests_available ?: last.locationRequestsAvailable,locationRequests=metadata?.location_requests ?: last.locationRequests,eventsAvailable=metadata?.events_available ?: last.eventsAvailable,events=metadata?.events ?: last.events,temporaryGroupsAvailable=metadata?.temporary_groups_available ?: last.temporaryGroupsAvailable,placesAvailable=metadata?.places_available ?: last.placesAvailable,sosAvailable=metadata?.sos_available ?: last.sosAvailable,nearbySosAvailable=metadata?.nearby_sos_available ?: last.nearbySosAvailable)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
                     send(last)
                 } catch(e: CancellationException) { throw e
@@ -166,8 +166,9 @@ import android.util.Log
     suspend fun sharedPrecision(scope: String,target: String?,value: Int?)=rpc("set_shared_precision",buildJsonObject {
         put("scope",scope);put("target",target?.let(::JsonPrimitive) ?: JsonNull);put("value",value?.let(::JsonPrimitive) ?: JsonNull)
     })
-    suspend fun sendSos(id: String,category: String,people: Set<String>,groups: Set<String>,fix: UserLocation?) {
-        val result=serverRpc("send_sos",buildJsonObject {
+    suspend fun sendSos(id: String,category: String,people: Set<String>,groups: Set<String>,fix: UserLocation?,nearby: Boolean=false) {
+        val result=serverRpc(if(nearby) "send_sos_v042" else "send_sos",buildJsonObject {
+            if(nearby) put("nearby",true)
             put("eid",id);put("category",category);putJsonArray("people") {people.forEach {add(it)}};putJsonArray("group_ids") {groups.forEach {add(it)}}
             put("lat",fix?.latitude?.let(::JsonPrimitive)?:JsonNull);put("lon",fix?.longitude?.let(::JsonPrimitive)?:JsonNull)
             put("accuracy_m",fix?.accuracy?.let(::JsonPrimitive)?:JsonNull);put("fix_at",fix?.recordedAt?.toString()?.let(::JsonPrimitive)?:JsonNull)

@@ -23,7 +23,7 @@ import java.time.ZoneId
 
 @Composable fun GroupIdentity(emoji: String,name: String,modifier: Modifier=Modifier) {
     Row(modifier,verticalAlignment=Alignment.CenterVertically) {
-        Text(emoji,fontSize=31.sp)
+        Text(emoji.ifBlank { "＋" },fontSize=31.sp)
         Text(name,Modifier.weight(1f).padding(start=8.dp))
     }
 }
@@ -44,7 +44,7 @@ import java.time.ZoneId
     val expiry=if(temporary) groupExpiry(endDate,endTime,zone,now) else null
     val emojis=listOf("📍","👨‍👩‍👧‍👦","🏠","❤️","👋","😊","🏔️","🥾","⛰️","🌲","🏕️","🔥","🚴","🚵","🏃","⚽","🏀","🎾","🏊","⛷️","🏂","🚗","🏍️","🚐","⛵","✈️","🚆","🌍","🏖️","🏝️","🎒","🏫","🎓","💼","🛠️","💻","🎉","🎂","🎵","🍕")
     AlertDialog(properties=DialogProperties(usePlatformDefaultWidth=false),modifier=Modifier.fillMaxWidth().padding(12.dp),onDismissRequest={if(!busy) dismiss()},title={Text(Strings.text(if(editing) R.string.ui_026 else R.string.ui_017))},
-        text={Column(Modifier.heightIn(max=600.dp).verticalScroll(rememberScrollState())) {
+        text={Column(Modifier.heightIn(max=600.dp).verticalScroll(rememberScrollState()).padding(top=16.dp)) {
             OutlinedTextField(name,{name=it},enabled=!busy,label={Text(Strings.text(R.string.ui_034))},singleLine=true,
                 isError=name.isNotEmpty() && !validGroupName(name))
             if(temporaryAvailable) {
@@ -65,7 +65,8 @@ import java.time.ZoneId
                 }
             }
             Busy(OperationState(busy,error),inline=true)
-            Text(Strings.text(R.string.ui_035,emoji))
+            Text(Strings.text(if(emoji.isBlank()) R.string.group_add_icon else R.string.ui_035,emoji))
+            if(emoji.isNotBlank()) TextButton(enabled=!busy,onClick={emoji=""}) {Text(Strings.text(R.string.group_remove_icon))}
             BoxWithConstraints(Modifier.fillMaxWidth()) {
             val minimumCell=maxOf(48f,27f*androidx.compose.ui.platform.LocalDensity.current.fontScale+8f)
             val columns=(maxWidth.value/minimumCell).toInt().coerceAtLeast(1)

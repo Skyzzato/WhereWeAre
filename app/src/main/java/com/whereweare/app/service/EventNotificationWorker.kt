@@ -41,7 +41,7 @@ class EventNotificationWorker(context: Context,params: WorkerParameters): Corout
             val open=PendingIntent.getActivity(context,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             if(!entry.preferences().markMeetingSeen(user,"event:$id")) return Result.success()
             manager.notify("app-event",id.hashCode(),NotificationCompat.Builder(context,channel).setSmallIcon(R.drawable.ic_location)
-                .setContentTitle(context.getString(R.string.app_name)).setContentText(context.getString(when(event.kind) {"place" -> R.string.place_event_received;"sos" -> R.string.sos_received;"sos_closed" -> R.string.sos_closed_received;else -> R.string.checkin_received},event.sender_name))
+                .setContentTitle(context.getString(R.string.app_name)).setContentText(if(event.kind=="sos" && event.sender_name.isBlank()) context.getString(R.string.nearby_anonymous) else context.getString(when(event.kind) {"place" -> R.string.place_event_received;"sos" -> R.string.sos_received;"sos_closed" -> R.string.sos_closed_received;else -> R.string.checkin_received},event.sender_name))
                 .setContentIntent(open).setAutoCancel(true).build())
             Result.success()
         } catch(e: CancellationException) {throw e}

@@ -23,6 +23,7 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
     val bundle by vm.places.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
+    var editingGroup by rememberSaveable {mutableStateOf<String?>(null)}
     var editing by rememberSaveable {mutableStateOf<Int?>(null)}
     var rulePlace by rememberSaveable {mutableStateOf<String?>(null)}
     var deleting by remember {mutableStateOf<SavedPlace?>(null)}
@@ -33,6 +34,11 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
             Text(Strings.text(R.string.places_monitoring))
             Text(Strings.text(R.string.arriving_disabled),style=MaterialTheme.typography.bodySmall)
             Busy(operation,inline=true)
+            state.groups.filter {it.creator==vm.userId && it.active(vm.currentTime())}.forEach {group ->
+                OutlinedCard(onClick={editingGroup=group.id},modifier=Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {GroupIdentity(group.emoji,group.name);Text(Strings.text(R.string.group_edit_title))}
+                }
+            }
             repeat(4) {slot ->
                 val place=bundle.places.firstOrNull {it.slot==slot}
                 OutlinedCard(Modifier.fillMaxWidth()) {Column(Modifier.padding(12.dp)) {
@@ -56,6 +62,10 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
                 }}
             }
         }}
+    }
+    state.groups.firstOrNull {it.id==editingGroup && it.creator==vm.userId}?.let {group ->
+        GroupEditor(true,group.name,group.emoji,operation.busy,state.temporaryGroupsAvailable,group.expiresAt,operation.message,
+            dismiss={editingGroup=null},save={name,emoji,expiry -> vm.editGroup(group.id,name,emoji,expiry) {editingGroup=null}})
     }
     editing?.let {slot ->
         PlaceEditor(slot,bundle.places.firstOrNull {it.slot==slot},state.locations.firstOrNull {it.userId==vm.userId},operation,{editing=null}) {vm.savePlace(it) {editing=null}}

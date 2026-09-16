@@ -71,16 +71,31 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     network: NetworkMonitor,bootstrap: BootstrapRepository,private val feedback: MeetingFeedback,val routing: ConfiguredRoutingRepository=ConfiguredRoutingRepository()
 ): OperationViewModel() {
     val sosSendState=MutableStateFlow(SosSendState.IDLE)
-    fun resetSos() {if(sosSendState.value!=SosSendState.SENDING) sosSendState.value=SosSendState.IDLE}
-    fun sendSos(id: String,category: String,people: Set<String>,groups: Set<String>) {
+    val sosError=MutableStateFlow<Int?>(null)
+    fun resetSos() {if(sosSendState.value!=SosSendState.SENDING) {sosSendState.value=SosSendState.IDLE;sosError.value=null}}
+    fun sendSos(id: String,category: String,people: Set<String>,groups: Set<String>,nearby: Boolean=false) {
         if(sosSendState.value==SosSendState.SENDING) return
         val user=auth.userId ?: return
+        sosError.value=null
         viewModelScope.launch {
             dispatchSos(capture={
                 val fallback=sharing.state.value.locations.firstOrNull {it.userId==auth.userId && it.recordedAt>=sharing.now().minusSeconds(86400)}
                 try {withTimeout(8000) {location.snapshot(true)}} catch(e: TimeoutCancellationException) {fallback}
                 catch(e: CancellationException) {throw e} catch(_: Exception) {fallback}
-            },register={check(auth.userId==user);sharing.sendSos(id,category,people,groups,it?.takeIf {fix -> fix.userId==user});check(auth.userId==user)},report={sosSendState.value=it})
+            },register={fix ->
+                check(auth.userId==user)
+                try {sharing.sendSos(id,category,people,groups,fix?.takeIf {it.userId==user},nearby)}
+                catch(e: CancellationException) {throw e}
+                catch(e: Exception) {
+                    sosError.value=when {
+                        "sos_cooldown" in e.message.orEmpty() -> R.string.nearby_send_limit
+                        "sos_already_active" in e.message.orEmpty() -> R.string.sos_active
+                        "nearby_configuration" in e.message.orEmpty() -> R.string.nearby_setup_required
+                        else -> R.string.nearby_send_unconfirmed
+                    };throw e
+                }
+                check(auth.userId==user)
+            },report={sosSendState.value=it})
         }
     }
     suspend fun sosStatus(id: String)=sharing.sosStatus(id)
@@ -165,7 +180,9 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun reveal(person: String) {perform {preferences.hide(requireNotNull(userId),setOf(person),false);state.value.members.filter {it.userId==person}.forEach {preferences.hideGroup(requireNotNull(userId),it.groupId,false)}}}
 }
 @HiltViewModel class SettingsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,
-    private val preferences: PreferencesRepository,private val controller: SharingController,val avatars: AvatarRepository,val location: LocationRepository,private val push: com.whereweare.app.service.PushRegistration,private val analytics: ClientAnalytics,val avatarDrafts: AvatarDraftStore,network: NetworkMonitor): OperationViewModel() {
+    private val preferences: PreferencesRepository,private val controller: SharingController,val avatars: AvatarRepository,val location: LocationRepository,private val push: com.whereweare.app.service.PushRegistration,private val analytics: ClientAnalytics,val avatarDrafts: AvatarDraftStore,network: NetworkMonitor,val nearby: NearbySosRepository): OperationViewModel() {
+    fun currentTime()=sharing.now()
+    fun editGroup(id: String,name: String,emoji: String,expiry: Instant?,done: ()->Unit) {perform {sharing.editGroup(id,name,emoji,expiry);done()}}
     val places=MutableStateFlow(PlacesBundle())
     fun loadPlaces() {places.value=PlacesBundle();perform {places.value=sharing.places()}}
     fun savePlace(place: SavedPlace,done: ()->Unit) {perform {sharing.savePlace(place);places.value=sharing.places();done()}}

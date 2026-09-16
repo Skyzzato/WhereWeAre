@@ -1,0 +1,92 @@
+begin;
+create or replace function pg_temp.assert_true(value boolean,description text) returns void language plpgsql as $$
+begin if value is distinct from true then raise exception 'FAIL: %',description;end if;end $$;
+insert into auth.users(id,raw_user_meta_data) values
+ ('00000000-0000-0000-0000-000000000001','{"display_name":"Sender"}'),
+ ('00000000-0000-0000-0000-000000000002','{"display_name":"Volunteer"}'),
+ ('00000000-0000-0000-0000-000000000003','{"display_name":"Stranger"}');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+select pg_temp.assert_true(public.nearby_sos_status()->>'opted_in'='false','existing accounts default OFF');
+select public.set_nearby_sos_consent(true);
+select pg_temp.assert_true(public.nearby_sos_status()->>'available'='false','consent is not availability');
+select public.refresh_nearby_sos(46.001,11.001,12,now());
+do $$ begin
+ begin perform public.refresh_nearby_sos(46,11,12,now()-interval '1 hour');raise exception 'stale fix accepted';
+ exception when raise_exception then if sqlerrm<>'nearby_fresh_fix_required' then raise;end if;end;
+ begin perform public.refresh_nearby_sos(46,11,'NaN',now());raise exception 'NaN accepted';
+ exception when raise_exception then if sqlerrm<>'nearby_fresh_fix_required' then raise;end if;end;
+ begin perform public.refresh_nearby_sos(46,11,12,now());raise exception 'replay refreshed availability';
+ exception when raise_exception then if sqlerrm<>'nearby_consent_or_new_fix_required' then raise;end if;end;
+ begin perform 1 from private.nearby_volunteers;raise exception 'private coordinates exposed';exception when insufficient_privilege then null;end;
+end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+select public.send_sos_v042('80000000-0000-0000-0000-000000000001','help','{}','{}',46,11,12,now(),true);
+select public.send_sos_v042('80000000-0000-0000-0000-000000000001','help','{}','{}',46,11,12,now(),true);
+select pg_temp.assert_true(public.sos_status('80000000-0000-0000-0000-000000000001')->'recipients'='[]','sender cannot enumerate pending candidates');
+select pg_temp.assert_true(public.event_inbox()->0->'recipients'='null','sender inbox does not enumerate nearby candidates');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',true);
+select pg_temp.assert_true(public.event_inbox()='[]','non-adherent cannot read event');
+do $$ begin
+ begin perform public.respond_sos('80000000-0000-0000-0000-000000000001','can_help');raise exception 'stranger accepted';
+ exception when raise_exception then if sqlerrm<>'not_authorized' then raise;end if;end;
+ begin perform public.sos_status('80000000-0000-0000-0000-000000000001');raise exception 'stranger read status';
+ exception when raise_exception then if sqlerrm<>'not_authorized' then raise;end if;end;
+end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+select pg_temp.assert_true(jsonb_array_length(public.event_inbox())=1,'nearby volunteer selected');
+select pg_temp.assert_true(public.event_inbox()->0->>'sender_name'='' and public.event_inbox()->0->>'sender_id'='00000000-0000-0000-0000-000000000000','identity hidden before acceptance');
+select pg_temp.assert_true(not(public.event_inbox()->0->'payload' ? 'latitude'),'exact location hidden');
+select public.respond_sos('80000000-0000-0000-0000-000000000001',null);
+select pg_temp.assert_true(not(public.event_inbox()->0->'payload' ? 'latitude'),'view does not imply acceptance');
+reset role;
+select pg_temp.assert_true((select count(*)=1 from private.push_outbox),'retry notification deduplicated');
+select pg_temp.assert_true(public.push_job_authorized((select id from private.push_outbox limit 1)),'valid queued push');
+update private.nearby_volunteers set available_until=now()-interval '1 second';
+select pg_temp.assert_true(not public.push_job_authorized((select id from private.push_outbox limit 1)),'expired availability prevents queued push');
+set local role authenticated;
+select pg_temp.assert_true(public.event_inbox()='[]','expired availability prevents pending access');
+reset role;
+update private.nearby_volunteers set available_until=now()+interval '15 minutes',acquired_at=now()-interval '16 minutes';
+set local role authenticated;
+select pg_temp.assert_true(public.event_inbox()='[]','stale fix independently prevents pending access');
+reset role;
+update private.nearby_volunteers set acquired_at=now();
+set local role authenticated;
+select public.respond_sos('80000000-0000-0000-0000-000000000001','can_help');
+select pg_temp.assert_true(public.event_inbox()->0->>'sender_name'='Sender' and public.event_inbox()->0->'payload'->>'latitude'='46','acceptance reveals necessary sender data');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+select pg_temp.assert_true(public.sos_status('80000000-0000-0000-0000-000000000001')->'recipients'->0->>'name'='Volunteer','sender sees accepted volunteer identity');
+select pg_temp.assert_true(not(public.sos_status('80000000-0000-0000-0000-000000000001')->'recipients'->0 ? 'latitude'),'volunteer location never returned');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+select public.set_nearby_sos_consent(false);
+select pg_temp.assert_true(public.event_inbox()='[]','revocation removes accepted access');
+select public.set_nearby_sos_consent(true);
+select pg_temp.assert_true(public.event_inbox()='[]','reopt-in does not resurrect grants');
+reset role;
+select pg_temp.assert_true((select count(*)=0 from private.push_outbox),'revocation removes queued push');
+select pg_temp.assert_true((select latitude is null from private.nearby_volunteers),'revocation clears private fix');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+select public.close_sos('80000000-0000-0000-0000-000000000001','okay');
+do $$ begin
+ begin perform public.send_sos_v042('80000000-0000-0000-0000-000000000002','help','{}','{}',46,11,12,now(),true);raise exception 'cooldown bypassed';
+ exception when raise_exception then if sqlerrm<>'sos_cooldown' then raise;end if;end;
+end $$;
+reset role;
+update private.app_events set created_at=now()-interval '10 minutes';
+update private.nearby_volunteers set available_until=now()+interval '15 minutes',latitude=47,longitude=11,accuracy=12,acquired_at=now();
+set local role authenticated;
+select public.send_sos_v042('80000000-0000-0000-0000-000000000002','help','{}','{}',46,11,12,now(),true);
+reset role;
+select pg_temp.assert_true((select count(*)=0 from private.nearby_invitations where event_id='80000000-0000-0000-0000-000000000002'),'outside radius excluded');
+-- Group icon removal, null normalization, reopening data and replacement preserve identity/members.
+set local role authenticated;
+select public.create_group('Icon cycle','📍');
+select public.edit_group(id,name,null) from public.groups where creator_id=auth.uid();
+select pg_temp.assert_true((select emoji='' from public.groups where creator_id=auth.uid()),'null removal persisted as empty icon');
+select public.edit_group(id,name,'🏠') from public.groups where creator_id=auth.uid();
+select pg_temp.assert_true((select emoji='🏠' from public.groups where creator_id=auth.uid()),'icon restored on same group');
+reset role;
+select pg_temp.assert_true((select count(*)=1 from public.group_members),'members preserved');
+rollback;

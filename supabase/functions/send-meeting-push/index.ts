@@ -27,6 +27,9 @@ export async function handle(request: Request): Promise<Response> {
     let completed=0;
     for(const job of jobs ?? []) {
       const delivery=await deliveryResult(job.tokens,async device=> {
+        const {data:allowed,error:guardError}=await admin.rpc('push_job_authorized',{job:job.id});
+        if(guardError) throw Error('Authorization check unavailable');
+        if(!allowed) return 'invalid';
         const result=await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`,{
           method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(15000),
           body:JSON.stringify({message:{token:device,data:pushData(job),android:{priority:'HIGH',ttl:'86400s'}}})

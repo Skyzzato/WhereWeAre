@@ -97,10 +97,12 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         Choice(Strings.text(R.string.ui_089),state.profile?.visibilitySeconds ?: 86400,visibilityTimeouts,::durationLabel,vm::visibility)
         if(state.sharedPrecisionAvailable) {
             PrecisionChoice(state.profile?.sharedPrecision ?: 0,false,!operation.busy,vm::precision)
-            OutlinedButton(onClick={audience=true},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.precision_audience))}
+            OutlinedCard(onClick={audience=true},modifier=Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {DetailLine(Icons.Default.Visibility,Strings.text(R.string.precision_audience));Text(Strings.text(R.string.audience_card_hint))}
+            }
         }
         if(state.sosAvailable) SettingsSection("SOS") {
-            Text(Strings.text(R.string.sos_nearby_disabled))
+            NearbySettings(vm)
         }
         }
         if(state.placesAvailable) OutlinedCard(onClick={places=true},modifier=Modifier.fillMaxWidth()) {
@@ -133,7 +135,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         }
 
         SettingsSection(Strings.text(R.string.settings_information)) {
-            Text("WhereWeAre — Troviamoci.")
+            Text("WhereWeAre - Troviamoci")
             Text("v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         }
         TextButton(onClick=onPrivacy) {Text(Strings.text(R.string.ui_107))}

@@ -4,7 +4,7 @@ import com.whereweare.app.domain.*
 import kotlinx.serialization.Serializable
 import java.time.Instant
 
-@Serializable data class MetadataDto(val profile: ProfileDto,val names: List<NameDto>,val requests: List<RequestDto>,val shares: List<ShareDto>,val statuses: List<StatusDto>,val contacts: List<ContactDto>,val groups: List<GroupDto>,val members: List<MemberDto>,val group_requests: List<GroupRequest>,val meetings: List<MeetingPoint>,val server_time: String,val saved_people: List<String> = emptyList(),val shared_precision: Boolean=false,val location_requests_available: Boolean=false,val location_requests: List<LocationRequest> = emptyList(),val events_available: Boolean=false,val events: List<AppEvent> = emptyList(),val temporary_groups_available: Boolean=false,val places_available: Boolean=false,val sos_available: Boolean=false)
+@Serializable data class MetadataDto(val profile: ProfileDto,val names: List<NameDto>,val requests: List<RequestDto>,val shares: List<ShareDto>,val statuses: List<StatusDto>,val contacts: List<ContactDto>,val groups: List<GroupDto>,val members: List<MemberDto>,val group_requests: List<GroupRequest>,val meetings: List<MeetingPoint>,val server_time: String,val saved_people: List<String> = emptyList(),val shared_precision: Boolean=false,val location_requests_available: Boolean=false,val location_requests: List<LocationRequest> = emptyList(),val events_available: Boolean=false,val events: List<AppEvent> = emptyList(),val temporary_groups_available: Boolean=false,val places_available: Boolean=false,val sos_available: Boolean=false,val nearby_sos_available: Boolean=false)
 
 @Serializable data class ProfileDto(val id: String, val display_name: String, val invite_code: String,val avatar_path: String?=null,val visibility_seconds: Int=86400,val shared_precision: Int=0) {
     fun domain() = UserProfile(id, display_name, invite_code,SafeAvatar.reference(avatar_path),visibility_seconds,shared_precision)
@@ -12,8 +12,8 @@ import java.time.Instant
 @Serializable data class ContactDto(val user_id: String,val display_name: String,val avatar_path: String?=null,val visibility_seconds: Int=86400,val common_group: Boolean=false,val can_view: Boolean=true,val update_interval_seconds: Int=60) {
     fun domain()=ContactProfile(user_id,display_name,SafeAvatar.reference(avatar_path),visibility_seconds,common_group,can_view,update_interval_seconds)
 }
-@Serializable data class GroupDto(val id: String,val name: String,val emoji: String,val invite_code: String,val creator_id: String,val created_at: String?=null,val expires_at: String?=null) {
-    fun domain()=Group(id,name,emoji,invite_code,creator_id,created_at?.let {runCatching {Instant.parse(it)}.getOrNull()},expires_at?.let(Instant::parse))
+@Serializable data class GroupDto(val id: String,val name: String,val emoji: String?=null,val invite_code: String,val creator_id: String,val created_at: String?=null,val expires_at: String?=null) {
+    fun domain()=Group(id,name,emoji.orEmpty(),invite_code,creator_id,created_at?.let {runCatching {Instant.parse(it)}.getOrNull()},expires_at?.let(Instant::parse))
 }
 @Serializable data class MemberDto(val group_id: String,val user_id: String,val sharing_enabled: Boolean=true,val shared_precision: Int?=null) { fun domain()=GroupMember(group_id,user_id,sharing_enabled,shared_precision) }
 @Serializable data class NameDto(val user_id: String, val display_name: String)

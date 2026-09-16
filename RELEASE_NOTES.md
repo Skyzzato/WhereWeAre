@@ -1,3 +1,9 @@
+# Versione corrente v0.42
+
+Note attuali: [RELEASE_NOTES_v0.42.md](RELEASE_NOTES_v0.42.md). Deploy e limiti: [SETUP_v0.42.md](SETUP_v0.42.md).
+
+La sezione seguente conserva la ricostruzione storica.
+
 # WhereWeAre — evoluzione fino alla v0.33
 
 Questa pubblicazione conserva il codice locale della v0.33, senza sviluppo della v0.4. I commit delle tappe recuperate vengono creati durante il recupero: non sono commit originali datati retroattivamente. Provenienza e limiti: [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).

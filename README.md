@@ -1,22 +1,20 @@
-# WhereWeAre — Troviamoci.
+# WhereWeAre - Troviamoci
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-**Versione v0.41 (versionCode=10), APK debug con limitazioni documentate.** Lo scheduler per gli avvisi di mancato arrivo non è verificato; routing reale e rilevamento sperimentale non sono attivi. Vedi [stato e note v0.41](RELEASE_NOTES_v0.41.md), [distribuzione incrementale](SETUP_v0.4.md) e [verifiche](VERIFICATION_v0.41.md). La baseline rimane documentata in [SETUP v0.33](SETUP_v0.33.md).
+**Versione v0.42 (versionCode=11), APK debug con limitazioni documentate.** Lo scheduler per gli avvisi di mancato arrivo non è verificato; routing reale e rilevamento sperimentale non sono attivi. Vedi [stato e note v0.42](RELEASE_NOTES_v0.42.md), [distribuzione incrementale](SETUP_v0.42.md) e [verifiche](VERIFICATION_v0.42.md). La baseline rimane documentata in [SETUP v0.33](SETUP_v0.33.md).
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
-Il controllo remoto del 16/09/2026 restituisce bootstrap 0.4/9 con capability SOS,
-check-in, precisione e richieste attive; prossimità SOS disattivata. Nessun deploy
-server nella v0.41. Scheduler/FCM restano da verificare: [dettagli](RELEASE_NOTES_v0.41.md).
+Il server verificato il 16/09/2026 restituisce bootstrap **0.42/11**, prossimità SOS attiva. Migrazioni 018/019 e dispatcher distribuiti; test transazionale remoto passato. **FCM non ancora configurato: ricezione tramite inbox con app aperta.** Dettagli e passaggi mancanti: [SETUP_v0.42.md](SETUP_v0.42.md).
 
 ## Avvio
 
 1. Installa Android Studio, JDK 21, SDK API 37 e Build Tools 36.0.0. Minimo Android 8/API 26; serve Google Play Services per Fused Location e FCM.
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
-3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Per le funzioni incrementali di questo branch applica poi 008–017 secondo [SETUP v0.4](SETUP_v0.4.md). Le nuove migrazioni non sono state distribuite da questo sviluppo.
+3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Per le funzioni di questo branch applica poi 008–019 secondo [SETUP v0.42](SETUP_v0.42.md), verificando prima le migrazioni già presenti. Il progetto configurato ha già ricevuto 018/019.
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. APK installabile: [WhereWeAre-v0.41-debug.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.41/WhereWeAre-v0.41-debug.apk), con firma debug. Sorgente locale: `app/build/outputs/apk/debug/app-debug.apk`. Non è firmato con una chiave di produzione.
+5. APK installabile: [WhereWeAre-v0.42-debug.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.42/WhereWeAre-v0.42-debug.apk), con firma debug. Artefatto consegnato: `.tools/release-v0.42/WhereWeAre-v0.42-debug.apk`. Non è firmato con una chiave di produzione.
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
@@ -43,7 +41,8 @@ Le funzioni server vengono mostrate solo quando la relativa migrazione è dispon
 
 Il routing Valhalla è configurabile e disabilitato senza endpoint; “Sta arrivando”
 resta sperimentale disattivato. Mancato arrivo bloccato dallo scheduler non verificato;
-SOS verso sconosciuti vicini non disponibile. Non è una protezione d’emergenza garantita.
+SOS verso volontari vicini aderenti disponibile dalla v0.42 tramite inbox nell'app;
+push FCM ancora da configurare. Non è una protezione d’emergenza garantita.
 
 ## GPS e riservatezza
 
@@ -55,7 +54,7 @@ La migrazione 002 disattiva il vecchio cleanup fisso a due ore: non reintrodurlo
 
 ## Cartografia
 
-Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.4` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
+Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.42` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
 
 ## Test riproducibili
 
