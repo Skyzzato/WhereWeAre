@@ -72,7 +72,7 @@ import java.time.format.DateTimeFormatter
         if(Build.VERSION.SDK_INT>=33) permissions+=Manifest.permission.POST_NOTIFICATIONS
         permission.launch(permissions.toTypedArray())
     }
-    LifecycleResumeEffect(Unit) { vm.permissionsChanged(); vm.refresh(); onPauseOrDispose { } }
+    LifecycleResumeEffect(Unit) { vm.permissionsChanged(); onPauseOrDispose { } }
     val provider=MapStyle.fromId(style)
     val baseStyle=remember(provider) { provider.tileUrl?.let { BaseStyle.Json(provider.rasterJson()) } ?: BaseStyle.Uri(BuildConfig.MAP_STYLE_URL) }
     val camera=rememberMapState(baseStyle=baseStyle,
@@ -175,7 +175,7 @@ import java.time.format.DateTimeFormatter
                         val at=camera.screenLocationFromPosition(Position(person.location.longitude,person.location.latitude))
                         MarkerScreenPoint(index,at?.x?.value ?: (index*10000).toFloat(),at?.y?.value ?: 0f)
                     }
-                    clusterMarkers(projected,maxOf(48f,54f*avatarScale)).forEach {cluster ->
+                    clusterMarkers(projected,maxOf(48f,mapAvatarDp(avatarScale,true)+10f)).forEach {cluster ->
                         val person=markers[cluster.first()]
                         Box(modifier=Modifier.placedAt(Position(person.location.longitude,person.location.latitude))) {
                             if(cluster.size>1) {
@@ -191,7 +191,7 @@ import java.time.format.DateTimeFormatter
                                     Box(Modifier.sizeIn(minWidth=48.dp,minHeight=48.dp).padding(5.dp),contentAlignment=Alignment.Center) {
                                         val own=person.location.userId==state.snapshot.profile?.id
                                         val contact=state.snapshot.contacts[person.location.userId]
-                                        Avatar(person.location.userId,person.name,if(own) state.snapshot.profile?.avatarPath else contact?.avatarPath,contact?.commonGroup==true,vm.avatars,(if(selectedId==person.location.userId) 54.dp else 32.dp)*avatarScale)
+                                        Avatar(person.location.userId,person.name,if(own) state.snapshot.profile?.avatarPath else contact?.avatarPath,contact?.commonGroup==true,vm.avatars,mapAvatarDp(avatarScale,selectedId==person.location.userId).dp)
                                     }
                                 }
                             }
@@ -199,7 +199,7 @@ import java.time.format.DateTimeFormatter
                     }
                     state.snapshot.meetings.filter {it.active}.forEach {point ->
                         Surface(onClick={selectedMeeting=point.id;scope.launch {follow=false;camera.setCameraPosition(CameraPosition(target=Position(point.longitude,point.latitude),zoom=16.0))}},color=androidx.compose.ui.graphics.Color.Transparent,
-                            modifier=Modifier.placedAt(Position(point.longitude,point.latitude))) {Icon(Icons.Default.Flag,point.creator_name,Modifier.size(48.dp).padding(4.dp),tint=MaterialTheme.colorScheme.primary)}
+                            modifier=Modifier.placedAt(Position(point.longitude,point.latitude))) {Icon(Icons.Default.Flag,point.creator_name,Modifier.size(48.dp).padding(4.dp),tint=sharingActionColor())}
                     }
                 })
             ApproximateAreas(camera,state.visible.map {it.location}+events.mapNotNull {it.checkin()?.location(it.id)?:it.sos()?.location(it.id)})
@@ -213,11 +213,11 @@ import java.time.format.DateTimeFormatter
                 }
             }
             if(!creatingMeeting) Column(Modifier.align(Alignment.TopStart).padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                if(config.config?.features?.meeting_points!=false) FloatingActionButton(onClick={follow=false;creatingMeeting=true}) {Icon(Icons.Default.Flag,Strings.text(R.string.ui_046))}
-                if(state.snapshot.eventsAvailable) FloatingActionButton(onClick={vm.message(null);checkinEditor=true}) {Icon(Icons.Default.Check,Strings.text(R.string.checkin_title))}
+                if(config.config?.features?.meeting_points!=false) FloatingActionButton(onClick={follow=false;creatingMeeting=true}) {Icon(Icons.Default.Flag,Strings.text(R.string.ui_046),tint=sharingActionColor())}
+                if(state.snapshot.eventsAvailable) FloatingActionButton(onClick={vm.message(null);checkinEditor=true}) {Icon(Icons.Default.Check,Strings.text(R.string.checkin_title),tint=sharingActionColor())}
             }
             if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
-                FloatingActionButton(onClick={actions=true}) {Icon(Icons.Default.MoreVert,Strings.text(R.string.map_actions))}
+                FloatingActionButton(onClick={actions=true}) {Icon(Icons.Default.MoreVert,Strings.text(R.string.map_actions),tint=sharingActionColor())}
                 DropdownMenu(actions,{actions=false}) {
                     // SOS and check-ins share the single updates entry below.
                     DropdownMenuItem(text={Text(Strings.text(R.string.fit_all))},onClick={
@@ -233,7 +233,7 @@ import java.time.format.DateTimeFormatter
                     if(config.config?.features?.meeting_points!=false) DropdownMenuItem(text={Text(Strings.text(R.string.ui_046))},onClick={actions=false;follow=false;creatingMeeting=true})
                     DropdownMenuItem(text={Text(Strings.text(R.string.places_title))},onClick={actions=false;onPlaces()})
                     if(state.snapshot.eventsAvailable) {
-                        DropdownMenuItem(text={Text(Strings.text(R.string.checkin_title))},leadingIcon={Icon(Icons.Default.Check,null)},onClick={actions=false;vm.message(null);checkinEditor=true})
+                        DropdownMenuItem(text={Text(Strings.text(R.string.checkin_title))},leadingIcon={Icon(Icons.Default.Check,null,tint=sharingActionColor())},onClick={actions=false;vm.message(null);checkinEditor=true})
                     }
                     DropdownMenuItem(text={Text(Strings.text(R.string.checkin_inbox))},onClick={actions=false;checkinInbox=true})
                 }
@@ -304,7 +304,7 @@ import java.time.format.DateTimeFormatter
         Surface(tonalElevation=3.dp) {
             Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 val serverSharing=state.snapshot.statuses.any { it.userId==state.snapshot.profile?.id && it.sharing }
-                val sharingState=com.whereweare.app.domain.sharingUiState(tracking.active,tracking.starting,serverSharing,pending!=null,tracking.initializing || state.snapshot.loading,tracking.waiting || !online || permissionState==LocationPermission.NONE)
+                val sharingState=com.whereweare.app.domain.sharingUiState(tracking.active,tracking.starting,serverSharing,pending!=null,tracking.initializing || state.snapshot.loading,tracking.waiting || !online || permissionState==LocationPermission.NONE || !vm.location.enabled())
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.sharing),style=MaterialTheme.typography.titleMedium)
                     Text(stringResource(when(sharingState) {
@@ -315,21 +315,25 @@ import java.time.format.DateTimeFormatter
                         SharingUiState.STARTING -> R.string.sharing_starting
                         SharingUiState.STOPPING -> R.string.sharing_stopping
                         SharingUiState.REMOTE_ACTIVE -> R.string.remote_session_active
-                    }),Modifier.padding(start=8.dp),color=if(tracking.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                    }),Modifier.padding(start=8.dp),color=if(sharingState==SharingUiState.ON) sharingActionColor() else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if(tracking.active) Text(sharingAccuracyText(tracking.lastAcknowledged!=null,tracking.publishedFix?.accuracy),style=MaterialTheme.typography.bodySmall)
                 val significantDelay=tracking.pendingUpload && (tracking.lastAcknowledged?.isBefore(state.now.minusSeconds(maxOf(60L,updateInterval.toLong()+30))) ?: tracking.waiting)
                 val warning=when {
                     pending!=null -> R.string.stop_pending
                     sharingState==SharingUiState.REMOTE_ACTIVE -> R.string.process_stopped
-                    tracking.waiting -> trackingFailureMessage(tracking)
+                    !online -> R.string.connection_unreachable
+                    permissionState==LocationPermission.NONE -> R.string.location_permission
+                    !vm.location.enabled() -> R.string.location_disabled
+                    tracking.initializing || tracking.retrying -> R.string.sync_waiting
+                    tracking.failure!=null -> trackingFailureMessage(tracking)
                     significantDelay -> R.string.location_upload_pending
                     else -> null
                 }
                 Box(Modifier.fillMaxWidth().height(48.dp).verticalScroll(rememberScrollState()),contentAlignment=Alignment.CenterStart) {
-                    warning?.let {Text(Strings.text(it),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)}
+                    warning?.let {Text(Strings.text(it),style=MaterialTheme.typography.bodySmall,color=if(tracking.initializing || tracking.retrying) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)}
                 }
-                Button(onClick={ if(sharingState==SharingUiState.OFF) requestPermission(true) else vm.stop() },enabled=sharingState !in setOf(SharingUiState.STOPPING,SharingUiState.VERIFYING),modifier=Modifier.fillMaxWidth()) {
+                Button(colors=ButtonDefaults.buttonColors(containerColor=sharingActionColor(),contentColor=if(MaterialTheme.colorScheme.background==appColors("dark").background) appColors("dark").onPrimary else appColors("default").onPrimary),onClick={ if(sharingState==SharingUiState.OFF) requestPermission(true) else vm.stop() },enabled=sharingState !in setOf(SharingUiState.STOPPING,SharingUiState.VERIFYING),modifier=Modifier.fillMaxWidth()) {
                     Text(stringResource(when(sharingState) {SharingUiState.VERIFYING -> R.string.sharing_initializing; SharingUiState.SUSPENDED -> R.string.stop; SharingUiState.ON -> R.string.stop; SharingUiState.REMOTE_ACTIVE -> R.string.reconcile_stop; SharingUiState.STARTING -> R.string.ui_006; SharingUiState.STOPPING -> R.string.sharing_stopping; SharingUiState.OFF -> R.string.start}))
                 }
                 if(!vm.location.enabled()) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }) { Text(stringResource(R.string.open_location_settings)) }

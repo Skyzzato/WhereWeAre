@@ -128,7 +128,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun permissionsChanged() { permissionEpoch.value++ }
     fun start() { perform { controller.start() } }
     fun stop() { controller.requestStop() }
-    fun refresh() { sharing.refresh() }
+    fun refresh() { sharing.refresh(); viewModelScope.launch {controller.resumeFromVisibleActivity()} }
 }
 @HiltViewModel class PeopleViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor,val location: LocationRepository,private val controller: SharingController): OperationViewModel() {
     val online=network.online

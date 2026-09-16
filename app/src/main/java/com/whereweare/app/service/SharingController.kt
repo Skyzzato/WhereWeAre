@@ -25,6 +25,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
 ) {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private val mutex=Mutex()
+    private val resumeMutex=Mutex()
     private var tracking: Job?=null
     private var generation=0L
     private val mutableState=MutableStateFlow(TrackingState())
@@ -164,7 +165,8 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                             } else if(!retryableRead(e)) break
                             failures=(failures+1).coerceAtMost(5)
                         } finally {mutableState.value=state.value.copy(retrying=false)}
-                        if(failures>0) delay((1_000L shl failures).coerceAtMost(30_000))
+                        if(failures>=4) {repository.awaitRecoverySignal();failures=0}
+                        else if(failures>0) delay((1_000L shl failures).coerceAtMost(30_000))
                         else withTimeoutOrNull(3_000) { signals.receive() }
                     }
                 } finally { updates.cancel() }
@@ -235,27 +237,41 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
         true
     }
     suspend fun resumeFromVisibleActivity() {
-        auth.awaitSession()
+        if(!resumeMutex.tryLock()) return
+        val owner=generation
+        try { resumeSharing(owner) } finally {resumeMutex.unlock()}
+    }
+    private suspend fun resumeSharing(owner: Long) {
+        try {withTimeout(12_000) {auth.awaitSession()}}
+        catch(e: CancellationException) {if(e !is TimeoutCancellationException) throw e;if(owner==generation) mutableState.value=state.value.copy(failure="unreachable");return}
+        catch(e: Exception) {if(owner==generation) mutableState.value=state.value.copy(failure=connectionFailure(e));return}
         if(state.value.active || state.value.starting || tracking?.isActive==true) return
         if(preferences.pendingStop.first()!=null) return
         val user=auth.userId ?: return
         val saved=preferences.trackingSession.first()
         if(saved!=null && saved.userId!=user) return
         if(!location.hasPermission() || !location.enabled()) return
+        if(preferences.sharingIntent(user).first()==false) {
+            if(owner==generation) mutableState.value=state.value.copy(initializing=false,waiting=false,failure=null)
+            return
+        }
         if(saved==null) {
-            mutableState.value=state.value.copy(initializing=true)
+            mutableState.value=state.value.copy(initializing=true,waiting=false,failure=null)
             try {
                 val intent=preferences.sharingIntent(user).first()
-                val remote=withTimeout(12_000) {repository.ownSharingStatus()}
+                val remote=withTimeout(32_000) {repository.ownSharingStatus()}
+                if(owner!=generation || auth.userId!=user || preferences.pendingStop.first()!=null || preferences.sharingIntent(user).first()==false) return
+                mutableState.value=state.value.copy(failure=null,waiting=false)
                 // Revision zero means no start/stop choice has ever been saved on the server.
                 // A previous OFF, including one saved by older versions, must win.
                 if(!shouldInitializeSharing(intent,remote.revision,remote.is_sharing)) return
                 if(com.whereweare.app.MainActivity.visible && bootstrap.state.value.gate==BootstrapGate.READY) start()
-            } catch(e: CancellationException) {if(e !is TimeoutCancellationException) throw e}
-            catch(e: Exception) {mutableState.value=state.value.copy(failure=connectionFailure(e))}
-            finally {mutableState.value=state.value.copy(initializing=false)}
+            } catch(e: CancellationException) {if(e !is TimeoutCancellationException) throw e; if(owner==generation) mutableState.value=state.value.copy(failure="unreachable")}
+            catch(e: Exception) {if(owner==generation) mutableState.value=state.value.copy(failure=connectionFailure(e))}
+            finally {if(owner==generation) mutableState.value=state.value.copy(initializing=false)}
             return
         }
+        if(owner!=generation || preferences.pendingStop.first()!=null || preferences.sharingIntent(user).first()==false) return
         if(bootstrap.state.value.gate!=BootstrapGate.READY) return
         if(!com.whereweare.app.MainActivity.visible) return
         mutableState.value=state.value.copy(starting=true)

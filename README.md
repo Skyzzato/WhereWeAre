@@ -1,8 +1,8 @@
-# WhereWeAre - Troviamoci
+# WhereWeAre
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-**Versione v0.46 (versionCode=15), prerelease di collaudo.** Aggiornamenti unificati, rimozione personale, esiti SOS visibili, condivisione coerente e ricezione vicini persistente. Vedi [note v0.46](RELEASE_NOTES_v0.46.md), [verifiche](VERIFICATION_v0.46.md) e [configurazione](SETUP_v0.46.md).
+**Versione v0.47 (versionCode=16), prerelease di collaudo.** Recupero alla riapertura, Cronologia eventi, nome WhereWeAre, icone verdi e nuova scala avatar. Vedi [note v0.47](RELEASE_NOTES_v0.47.md), [verifiche](VERIFICATION_v0.47.md) e [configurazione server vigente](SETUP_v0.46.md).
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
@@ -14,7 +14,7 @@ Il server verificato il 16/09/2026 restituisce bootstrap **0.46/15**, quota SOS 
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
 3. Applica le migrazioni 001–021 in ordine, verificando prima quelle già presenti. Il progetto configurato ha già ricevuto la 021: [SETUP v0.46](SETUP_v0.46.md).
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. APK installabile: [WhereWeAre-v0.46-debug.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.46/WhereWeAre-v0.46-debug.apk), firma debug precedente. Artefatto `.tools/release-v0.46/WhereWeAre-v0.46-debug.apk`; checksum e provenienza negli allegati della prerelease.
+5. APK installabile: [WhereWeAre-v0.47.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.47/WhereWeAre-v0.47.apk), firma debug precedente. Artefatto `.tools/release-v0.47/WhereWeAre-v0.47.apk`; checksum e provenienza negli allegati della prerelease.
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
@@ -54,7 +54,7 @@ La migrazione 002 disattiva il vecchio cleanup fisso a due ore: non reintrodurlo
 
 ## Cartografia
 
-Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.46` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
+Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.47` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
 
 ## Test riproducibili
 

@@ -19,6 +19,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowSystemClock
 import java.io.IOException
 import java.time.Duration
+import kotlin.coroutines.startCoroutine
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -202,4 +203,58 @@ class SharingRecoveryTest {
             verify(repo,never()).sharing(eq(false),any(),any())
         }
     }
+    @Test fun reopeningAfterFailedReadClearsTheOldFailure() = runTest {
+        scenario { controller,_,repo,_,_ ->
+            doAnswer {throw IOException("offline")}.`when`(repo).ownSharingStatus()
+            controller.resumeFromVisibleActivity()
+            assertEquals("unreachable",controller.state.value.failure)
+            doReturn(StatusDto("owner",false,4,null)).`when`(repo).ownSharingStatus()
+            controller.resumeFromVisibleActivity()
+            assertNull(controller.state.value.failure)
+            assertFalse(controller.state.value.initializing)
+            assertFalse(controller.state.value.active)
+        }
+    }
+    @Test fun reopeningWithExplicitOffDoesNotEvenReadOrStartSharing() = runTest {
+        scenario { controller,prefs,repo,_,_ ->
+            prefs.sharingIntent("owner",false)
+            controller.resumeFromVisibleActivity()
+            verify(repo,never()).ownSharingStatus()
+            assertFalse(controller.state.value.starting)
+            assertFalse(controller.state.value.active)
+        }
+    }
+    @Test fun simultaneousResumeRequestsShareOneReadAndLateFailureCannotUndoStop() = runTest {
+        val scheduler=mock(androidx.work.impl.WorkManagerImpl::class.java)
+        androidx.work.impl.WorkManagerImpl.setDelegate(scheduler)
+        try {scenario { controller,prefs,repo,_,_ ->
+            val response=CompletableDeferred<StatusDto>()
+            doAnswer { invocation ->
+                val continuation=invocation.rawArguments.last() as kotlin.coroutines.Continuation<StatusDto>
+                val operation: suspend ()->StatusDto={response.await()}
+                operation.startCoroutine(continuation)
+                kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
+            }.`when`(repo).ownSharingStatus()
+            val first=launch {controller.resumeFromVisibleActivity()}
+            runCurrent()
+            controller.resumeFromVisibleActivity()
+            verify(repo,times(1)).ownSharingStatus()
+            controller.stop()
+            response.completeExceptionally(IOException("old request"))
+            first.join()
+            assertEquals(false,prefs.sharingIntent("owner").first())
+            assertNull(controller.state.value.failure)
+            assertFalse(controller.state.value.active)
+        }} finally {androidx.work.impl.WorkManagerImpl.setDelegate(null)}
+    }
+
+    @Test fun avatarPreferenceRoundTripsWithoutChangingChoiceIdentity()=runTest {
+        scenario { _,prefs,_,_,_ ->
+            for(choice in listOf(.75f,1f,1.25f,1.5f)) {
+                prefs.avatarScale(choice)
+                assertEquals(choice,prefs.avatarScale.first())
+            }
+        }
+    }
+
 }

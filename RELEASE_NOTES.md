@@ -1,3 +1,7 @@
+# v0.47 — prerelease
+
+Versione 0.47/16: [note](RELEASE_NOTES_v0.47.md), [verifiche](VERIFICATION_v0.47.md). Recupero condivisione, Cronologia eventi e aggiornamenti grafici. Nessuna nuova migrazione server.
+
 # v0.46 — prerelease
 
 Versione 0.46/15: [note](RELEASE_NOTES_v0.46.md), [verifiche](VERIFICATION_v0.46.md), [migrazione e configurazione](SETUP_v0.46.md). Le nuove specifiche SOS prevalgono sulle indicazioni storiche incompatibili.

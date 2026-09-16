@@ -117,6 +117,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         var sizeIndex by remember(scale) {mutableFloatStateOf(scales.indexOf(scale).coerceAtLeast(0).toFloat())}
         Slider(sizeIndex,{sizeIndex=it},valueRange=0f..3f,steps=2,onValueChangeFinished={vm.avatarScale(scales[kotlin.math.round(sizeIndex).toInt()])})
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {sizes.forEach {Text(it,style=MaterialTheme.typography.labelSmall)}}
+        state.profile?.let { Avatar(it.id,it.displayName,it.avatarPath,true,vm.avatars,com.whereweare.app.domain.mapAvatarDp(scales[kotlin.math.round(sizeIndex).toInt()]).dp) }
 
         Choice(Strings.text(R.string.ui_090),MapStyle.fromId(style).id,MapStyle.entries.map { it.id },{MapStyle.fromId(it).label},vm::mapStyle)
         Choice(Strings.text(R.string.ui_092),theme,listOf("default","ocean","sunset","lavender","graphite","dark"),{it.replaceFirstChar(Char::uppercase)},vm::theme)
@@ -137,7 +138,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         }
 
         SettingsSection(Strings.text(R.string.settings_information)) {
-            Text("WhereWeAre - Troviamoci")
+            Text("WhereWeAre")
             Text("v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         }
         TextButton(onClick=onPrivacy) {Text(Strings.text(R.string.ui_107))}

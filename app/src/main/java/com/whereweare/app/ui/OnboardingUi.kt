@@ -24,7 +24,7 @@ import com.whereweare.app.R
     val bodies=listOf(R.string.onboarding_body_1,R.string.onboarding_body_2,R.string.onboarding_body_3,R.string.onboarding_body_4)
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Text("WhereWeAre - Troviamoci",Modifier.weight(1f),style=MaterialTheme.typography.titleMedium)
+            Text("WhereWeAre",Modifier.weight(1f),style=MaterialTheme.typography.titleMedium)
             TextButton(enabled=!operation.busy,onClick=finish) {Text(Strings.text(R.string.onboarding_skip))}
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {

@@ -33,13 +33,13 @@ import kotlinx.coroutines.CancellationException
     }
     val colors=listOf(0xFF147D73,0xFF52618C,0xFF9C4866,0xFF95601B,0xFF596B36)
     Box(Modifier.size(size)) {
-        Box(Modifier.fillMaxSize().clip(CircleShape).background(Color(colors[(id.hashCode().toLong() and 0x7fffffff).rem(colors.size).toInt()])).border((size.value/32f).coerceIn(1f,2f).dp,MaterialTheme.colorScheme.primary,CircleShape),contentAlignment=Alignment.Center) {
+        Box(Modifier.fillMaxSize().clip(CircleShape).background(Color(colors[(id.hashCode().toLong() and 0x7fffffff).rem(colors.size).toInt()])).border((size.value/32f).coerceIn(1f,4f).dp,MaterialTheme.colorScheme.primary,CircleShape),contentAlignment=Alignment.Center) {
             if(path!=null && bitmap!=null) Image(bitmap!!.asImageBitmap(),name,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
             else Text(com.whereweare.app.domain.avatarInitial(name),color=Color.White,style=MaterialTheme.typography.titleMedium)
         }
         if(star) {
             val description=Strings.text(R.string.ui_003)
-            Canvas(Modifier.size((size.value*.34f).coerceIn(11f,24f).dp).align(Alignment.TopEnd).semantics {contentDescription=description}) {
+            Canvas(Modifier.size((size.value*.34f).coerceIn(8f,36f).dp).align(Alignment.TopEnd).semantics {contentDescription=description}) {
                 val path=Path()
                 val radius=(this.size.minDimension-2.dp.toPx())/2f
                 repeat(10) {i ->

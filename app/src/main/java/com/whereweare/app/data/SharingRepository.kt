@@ -29,6 +29,8 @@ import android.util.Log
         }
     ) { withTimeout(12_000) {auth.awaitSession();client.postgrest.rpc(name,params)} }
     suspend fun testConnection() { withTimeout(12_000) {ownSharingStatus()} }
+    val online=network.online
+    suspend fun awaitRecoverySignal() { merge(refreshes,network.state.map {it.online}.distinctUntilChanged().drop(1).filter {it}.map {Unit}).first() }
     private val refreshes=MutableSharedFlow<Unit>(extraBufferCapacity=1)
     private data class AvatarChange(val user: String,val path: String?)
     private val avatarChange=MutableStateFlow<AvatarChange?>(null)
@@ -61,7 +63,7 @@ import android.util.Log
         var metadataDirty=true
         val generation=AtomicLong(0)
         val signals=Channel<Unit>(Channel.CONFLATED)
-        launch {network.state.collect {if(it.online) {automaticBlocked=false;failures=0;metadataDirty=true;signals.trySend(Unit)}}}
+        launch {network.state.map {it.online}.distinctUntilChanged().collect {online -> generation.incrementAndGet();if(online) {automaticBlocked=false;failures=0;metadataDirty=true;signals.trySend(Unit)}}}
         launch { refreshes.collect { automaticBlocked=false;failures=0;metadataDirty=true; generation.incrementAndGet(); signals.trySend(Unit) } }
         launch {while(isActive) {
             delay(5_000)
@@ -72,12 +74,12 @@ import android.util.Log
         }}
         launch {
             for(signal in signals) {
+                val readingGeneration=generation.get()
                 try {
                     if(automaticBlocked) continue
-                    if(!network.state.value.online) {last=last.copy(syncInProgress=false);send(last);continue}
-                    last=last.copy(syncInProgress=true);send(last)
+                    if(!network.state.value.online) {last=last.copy(loading=false,offline=true,syncInProgress=false,syncFailed=false,syncError=null);send(last);continue}
+                    last=last.copy(syncInProgress=true,syncError=null);send(last)
                     withTimeout(12_000) {auth.awaitSession()}
-                    val readingGeneration=generation.get()
                     val readMetadata=metadataDirty
                     val requestStarted=SystemClock.elapsedRealtime()
                     val metadata=if(readMetadata) connectionDiagnostics.measure(false,"metadata_decode") {serverRpc("app_metadata").decodeAs<MetadataDto>()} else null
@@ -95,7 +97,7 @@ import android.util.Log
                     val statuses=metadata?.statuses?.map {it.domain()} ?: last.statuses
                     val precisionAvailable=metadata?.shared_precision ?: last.sharedPrecisionAvailable
                     val locations=if(precisionAvailable) connectionDiagnostics.measure(false,"locations_decode") {serverRpc("visible_locations").decodeList<LocationDto>().map {it.domain()}}
-                        else connectionDiagnostics.measure(write=false) {client.from("latest_locations").select().decodeList<LocationDto>().map {it.domain()}}
+                        else connectionDiagnostics.measure(write=false,operation="latest_locations") {withTimeout(12_000) {client.from("latest_locations").select().decodeList<LocationDto>().map {it.domain()}}}
                     val contacts=metadata?.contacts?.map {it.domain()}?.associateBy {it.id} ?: last.contacts
                     val groups=metadata?.groups?.map {it.domain()} ?: last.groups
                     val members=metadata?.members?.map {it.domain()} ?: last.members
@@ -111,22 +113,28 @@ import android.util.Log
                     send(last)
                 } catch(e: CancellationException) {
                     if(e !is TimeoutCancellationException) throw e
+                    if(readingGeneration!=generation.get()) {signals.trySend(Unit);continue}
                     last=last.copy(loading=false,syncFailed=true,syncInProgress=false,syncError="unreachable");send(last)
-                    failures=(failures+1).coerceAtMost(4)
+                    failures=(failures+1).coerceAtMost(4); if(failures>=4) automaticBlocked=true
                     delay((1000L shl failures)+kotlin.random.Random.nextLong(1000));if(failures<=3) signals.trySend(Unit)
                 } catch(e: Exception) {
+                    if(readingGeneration!=generation.get()) {signals.trySend(Unit);continue}
                     if(com.whereweare.app.BuildConfig.DEBUG) Log.w("WhereWeAreRealtime","REST refresh failed: ${e.javaClass.simpleName}")
+                    if(connectionFailure(e)=="session" && !sessionRecoveryAttempted) {
+                        sessionRecoveryAttempted=true
+                        last=last.copy(syncInProgress=true,syncError=null);send(last)
+                        try {
+                            withTimeout(12_000) {auth.recoverSession()}
+                            automaticBlocked=false;signals.trySend(Unit);continue
+                        } catch(cancel: CancellationException) {if(cancel !is TimeoutCancellationException) throw cancel}
+                        catch(_: Exception) { /* Report the original session failure after recovery fails. */ }
+                        if(readingGeneration!=generation.get()) {signals.trySend(Unit);continue}
+                    }
                     last=last.copy(loading=false,offline=connectionFailure(e)=="unreachable",syncFailed=true,syncInProgress=false,syncError=connectionFailure(e)); send(last)
                     failures=(failures+1).coerceAtMost(4)
                     if(retryableRead(e)) delay((1000L shl failures)+kotlin.random.Random.nextLong(1000))
                     // Stop automatic retries on authentication/authorization failures; resume/network/manual refresh can retry.
-                    automaticBlocked=!retryableRead(e)
-                    if(e is io.github.jan.supabase.exceptions.RestException && e.statusCode==401 && !sessionRecoveryAttempted) {
-                        sessionRecoveryAttempted=true
-                        try {withTimeout(12_000) {auth.recoverSession()};automaticBlocked=false;signals.trySend(Unit)}
-                        catch(cancel: CancellationException) {if(cancel !is TimeoutCancellationException) throw cancel}
-                        catch(_: Exception) { /* Keep the actionable session error. */ }
-                    }
+                    automaticBlocked=failures>=4 || !retryableRead(e)
                     if(!automaticBlocked && failures<=3) signals.trySend(Unit)
                 }
             }
@@ -134,6 +142,7 @@ import android.util.Log
         // Profiles and requests remain usable even if the WebSocket is temporarily unavailable.
         signals.trySend(Unit)
         while(isActive) {
+            network.state.first {it.online}
             val channel=client.realtime.channel("whereweare-$id")
             try {
                 coroutineScope {
@@ -170,7 +179,7 @@ import android.util.Log
                         if(com.whereweare.app.BuildConfig.DEBUG) Log.d("WhereWeAreRealtime","system status=${event.status}")
                         check(event.status!="error") { "realtime_unavailable" }
                     } }
-                    channel.subscribe(blockUntilSubscribed=true)
+                    withTimeout(12_000) {auth.awaitSession();channel.subscribe(blockUntilSubscribed=true)}
                     signals.trySend(Unit)
                     awaitCancellation()
                 }
@@ -179,8 +188,9 @@ import android.util.Log
                 if(realtimeOnline) disconnectedAt=SystemClock.elapsedRealtime()
                 realtimeOnline=false;realtimeStatus="ERROR"
                 realtimeFailures=(realtimeFailures+1).coerceAtMost(5)
-                delay((1000L shl realtimeFailures)+kotlin.random.Random.nextLong(1000))
-            } finally { connectionDiagnostics.realtime(false); withContext(NonCancellable) { runCatching { client.realtime.removeChannel(channel) } } }
+            } finally { connectionDiagnostics.realtime(false); withContext(NonCancellable) { withTimeoutOrNull(12_000) {runCatching { client.realtime.removeChannel(channel) }} } }
+            if(realtimeFailures>=4) {awaitRecoverySignal();realtimeFailures=0}
+            else delay((1000L shl realtimeFailures)+kotlin.random.Random.nextLong(1000))
         }
     }.flowOn(Dispatchers.IO.limitedParallelism(1))
     fun refresh() { refreshes.tryEmit(Unit) }
@@ -275,7 +285,11 @@ import android.util.Log
     suspend fun respond(id: String,accept: Boolean) { serverRpc("respond_to_share_request",buildJsonObject { put("request_id",id); put("accept",accept) }); refresh() }
     suspend fun cancel(id: String) { serverRpc("cancel_share_request",buildJsonObject { put("request_id",id) }); refresh() }
     suspend fun permission(viewer: String,enabled: Boolean)=mutate({s -> s.copy(shares=s.shares.map {if(it.owner==auth.userId && it.viewer==viewer) it.copy(enabled=enabled) else it}) },{s -> s.shares.any {it.owner==auth.userId && it.viewer==viewer && it.enabled==enabled} }) { rpc("set_location_share",buildJsonObject { put("viewer",viewer); put("enabled",enabled) }) }
-    suspend fun ownSharingStatus(): StatusDto = connectionDiagnostics.measure(write=false) {client.from("sharing_status").select { filter { eq("user_id",requireNotNull(auth.userId)) } }.decodeSingle<StatusDto>()}
+    suspend fun ownSharingStatus(): StatusDto = connectionDiagnostics.measure(write=false,operation="own_sharing_status") {
+        sessionRead(auth::awaitSession,auth::recoverSession) {
+            client.from("sharing_status").select { filter { eq("user_id",auth.userId ?: throw SessionUnavailableException()) } }.decodeSingle<StatusDto>()
+        }
+    }
     suspend fun sharingRevision(): Long = ownSharingStatus().revision
     suspend fun deviceStatus(session: String,status: DeviceStatus): Boolean = serverRpc("update_device_status",buildJsonObject {
         put("session",session);put("battery",status.batteryLevel?.let(::JsonPrimitive) ?: JsonNull);put("location_enabled",status.locationEnabled)

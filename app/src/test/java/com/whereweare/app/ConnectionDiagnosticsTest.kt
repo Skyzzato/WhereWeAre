@@ -89,4 +89,16 @@ class ConnectionDiagnosticsTest {
         assertEquals(false,metrics.state.value.realtimeConnected)
         assertNotNull(metrics.state.value.lastRead)
     }
+    @Test fun lateFailureCannotOverwriteNewerSuccessForSameOperation()=runTest {
+        val metrics=metrics()
+        val finish=CompletableDeferred<Unit>()
+        val old=launch {try {metrics.measure(false,"own_sharing_status") {finish.await();throw IOException()}} catch(_: IOException) {}}
+        runCurrent()
+        metrics.measure(false,"own_sharing_status") {Unit}
+        finish.complete(Unit);old.join()
+        assertNull(metrics.state.value.failure)
+        assertEquals(true,metrics.state.value.serverReachable)
+        assertEquals(0,metrics.state.value.inFlight)
+    }
+
 }

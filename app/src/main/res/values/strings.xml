@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">WhereWeAre - Troviamoci</string>
+    <string name="app_name">WhereWeAre</string>
     <string name="welcome">Close, even at a distance.</string>
     <string name="welcome_detail">Share your location only with the people you choose.</string>
     <string name="login">Sign in</string>
@@ -90,7 +90,7 @@
     <string name="group_not_found">Group not found</string>
     <string name="connection_absent">No connection</string>
     <string name="positions_stale">Locations are out of date</string>
-    <string name="sync_waiting">Reconnecting to the server</string>
+    <string name="sync_waiting">Updating…</string>
     <string name="local_position_stale">Your location is not recent</string>
     <string name="location_upload_pending">Location update waiting to be sent to the server</string>
     <string name="meeting_created">%1$s set a meeting point.</string>

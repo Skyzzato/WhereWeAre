@@ -78,8 +78,9 @@ import io.github.jan.supabase.auth.status.SessionStatus
     val session by auth.session.collectAsStateWithLifecycle()
     val boot by bootstrap.repository.state.collectAsStateWithLifecycle()
     val onboarding by appearance.onboarding.collectAsStateWithLifecycle()
-    LaunchedEffect(lifecycle,boot.gate,session,onboarding) {
-        if(onboarding && boot.gate==BootstrapGate.READY && session is SessionStatus.Authenticated) {
+    val online by appearance.sharing.online.collectAsStateWithLifecycle()
+    LaunchedEffect(lifecycle,boot.gate,session,onboarding,online) {
+        if(online && onboarding && boot.gate==BootstrapGate.READY && session is SessionStatus.Authenticated) {
             lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 appearance.controller.resumeFromVisibleActivity()
             }
@@ -91,7 +92,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
     if(boot.gate!=BootstrapGate.READY || session is SessionStatus.Initializing) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
             Image(painterResource(R.drawable.ic_location),null,Modifier.padding(vertical=12.dp).sizeIn(maxWidth=160.dp,maxHeight=160.dp).size(96.dp),contentScale=ContentScale.Fit)
-            Text("WhereWeAre - Troviamoci",style=MaterialTheme.typography.headlineLarge)
+            Text("WhereWeAre",style=MaterialTheme.typography.headlineLarge)
             Text("v${BuildConfig.VERSION_NAME}")
             Spacer(Modifier.height(24.dp))
             when(boot.gate) {

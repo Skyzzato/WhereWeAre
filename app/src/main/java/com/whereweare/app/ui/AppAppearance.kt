@@ -29,3 +29,7 @@ fun appColors(theme: String): ColorScheme=when(theme) {
     "dark" -> darkColorScheme(primary=Color(0xFF75DAC8),onPrimary=Color(0xFF00382F),primaryContainer=Color(0xFF005047),onPrimaryContainer=Color(0xFF94F7E3),background=Color(0xFF141A19),surface=Color(0xFF141A19),secondary=Color(0xFFB0CCC5))
     else -> lightColorScheme(primary=Color(0xFF147D73),secondary=Color(0xFF4F635F),tertiary=Color(0xFF52618C),primaryContainer=Color(0xFFA3F2E6),onPrimaryContainer=Color(0xFF00201B),secondaryContainer=Color(0xFFD2E8E2))
 }
+
+/** Shared semantic token for starting sharing and map actions, independent of accent theme. */
+fun sharingActionColor(dark: Boolean)=appColors(if(dark) "dark" else "default").primary
+@androidx.compose.runtime.Composable fun sharingActionColor()=sharingActionColor(MaterialTheme.colorScheme.background == appColors("dark").background)

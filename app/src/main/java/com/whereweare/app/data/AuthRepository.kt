@@ -17,9 +17,13 @@ import javax.inject.Singleton
     val userId get() = client.auth.currentUserOrNull()?.id
     val email get() = client.auth.currentUserOrNull()?.email.orEmpty()
     val createdAt get() = client.auth.currentUserOrNull()?.createdAt?.toString()
-    suspend fun awaitSession() { session.first { it !is SessionStatus.Initializing } }
+    suspend fun awaitSession() {
+        val restored=session.first { it !is SessionStatus.Initializing }
+        if(restored !is SessionStatus.Authenticated || userId==null) throw SessionUnavailableException()
+    }
     private val recovery=SessionRefreshGate()
     suspend fun recoverSession() {
+        if(client.auth.currentSessionOrNull()==null) throw SessionUnavailableException()
         recovery.refresh({client.auth.currentSessionOrNull()?.accessToken}) {client.auth.refreshCurrentSession()}
     }
     fun checkConfiguration() { check(BuildConfig.SUPABASE_URL.startsWith("https://") && BuildConfig.SUPABASE_ANON_KEY.isNotBlank()) { "configuration" } }
