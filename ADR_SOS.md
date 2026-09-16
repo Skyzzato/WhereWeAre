@@ -103,3 +103,7 @@ Verifica remota transazionale PASS con fixture temporanee e rollback: default OF
 adesione, selezione anonima, accettazione, revoca e retry. Nessun SOS di prova è
 stato inviato ad altri utenti. I test non certificano ricezione su telefoni,
 background o notifiche push. Stato operativo e blocchi FCM: SETUP_v0.42.md.
+
+## v0.43: recupero e rinnovo disponibilità
+
+L’intento SOS è conservato per account prima della scrittura; il singleton sopravvive alla navigazione, il riavvio verifica solo l’ID. Nessun reinvio tardivo: retry esplicito entro 5 minuti. Rifiuti certi e risposte perse sono distinti e persistenti. Adesione permanente invariata; rinnovo puntuale 300 s in primo piano e riuso di fix già prodotti in background. TTL disponibilità/fix 900 s, limiti antiabuso invariati. Migrazione 020 applicata e verificata con rollback; dettagli in SETUP_v0.43.md.

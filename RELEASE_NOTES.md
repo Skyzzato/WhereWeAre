@@ -1,6 +1,6 @@
-# Versione corrente v0.42
+# Versione corrente v0.43
 
-Note attuali: [RELEASE_NOTES_v0.42.md](RELEASE_NOTES_v0.42.md). Deploy e limiti: [SETUP_v0.42.md](SETUP_v0.42.md).
+Note attuali: [RELEASE_NOTES_v0.43.md](RELEASE_NOTES_v0.43.md). Deploy e limiti: [SETUP_v0.43.md](SETUP_v0.43.md).
 
 La sezione seguente conserva la ricostruzione storica.
 

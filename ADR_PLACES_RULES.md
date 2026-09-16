@@ -39,3 +39,7 @@ contiene solo identificatori; lettura dell’evento e controllo account precedon
 la notifica. Gli eventi durano 24 ore nella inbox, come i Check-in. Applicare la
 014 e distribuire il dispatcher aggiornato prima del collaudo su due telefoni.
 La consegna remota FCM non è stata verificata durante lo sviluppo locale.
+
+## v0.43: luoghi dinamici
+
+Superato il limite di quattro slot. Icona privata persistente e selettore riutilizzato dai gruppi, con stato bozza indipendente. Nomi normalizzati univoci per proprietario, indice e guardia server con conservazione dei duplicati storici. Regole modificabili senza rimuovere il luogo; resta il limite tecnico di 20 regole. Rimozione atomica di luogo, regole e push collegati ancora in coda. Nessuna Geofencing API aggiunta. Migrazione 020 applicata; dettagli in SETUP_v0.43.md.

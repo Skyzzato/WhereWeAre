@@ -20,8 +20,8 @@ android {
         applicationId = "com.whereweare.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 11
-        versionName = "0.42"
+        versionCode = 12
+        versionName = "0.43"
         buildConfigField("String", "INVITE_BASE_URL", "\"${setting("INVITE_BASE_URL")}\"")
         buildConfigField("String", "ROUTING_PROVIDER", "\"${setting("ROUTING_PROVIDER")}\"")
         buildConfigField("String", "ROUTING_ENDPOINT", "\"${setting("ROUTING_ENDPOINT")}\"")
