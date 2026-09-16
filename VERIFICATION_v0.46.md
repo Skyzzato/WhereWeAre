@@ -12,7 +12,7 @@ La prova verifica rimozione del destinatario e mittente, ricaricamento tramite m
 
 - `node supabase/tests/run-v044.mjs`: regressioni storiche 001–020 e suite v0.4 superate sul loro schema storico. La suite è ora ancorata a 020, così non ripropone quota/default vecchi sul nuovo schema.
 - `node supabase/tests/run-v046.mjs`: migrazioni 001–021 e dodici suite superate, comprese condivisione, revoche, precisione, richieste posizione, check-in, gruppi temporanei, Bengala, luoghi e test v046.
-- Android: `gradlew.bat -I tools/isolated-v044-build.gradle :app:build`: **PASS, 129 test JVM/Compose, zero fallimenti/errori/skipped; lint zero errori, 66 warning**. Risultati riportati anche in BUILD_REPORT.json allegato alla prerelease.
+- Android: `gradlew.bat -I tools/isolated-v044-build.gradle :app:build`: **PASS, 129 test JVM/Compose, zero fallimenti/errori/skipped; lint zero errori, 69 warning nel report XML finale**. Risultati riportati anche in BUILD_REPORT.json allegato alla prerelease.
 - Test mirati: quattro stati della card SOS, bidone accessibile su SOS ricevuto con conferma separata, deduplicazione e ordine, verifica iniziale condivisione e rispetto OFF, distinzione errori schema, rinnovo concorrente sessione, timeout persistente e impossibilità di reinvio dopo verifica fallita anche chiudendo l’avviso.
 - `node tools/verify-v033-migrations.mjs`: PASS, migrazioni 001–007 inalterate rispetto alla baseline recuperata. Ispezionato anche il rendering Robolectric italiano della card incerta con font 160%: titolo, testo e azioni leggibili senza tagli.
 
