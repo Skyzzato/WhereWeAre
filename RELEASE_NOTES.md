@@ -1,6 +1,6 @@
-# Versione corrente v0.44 — prerelease di collaudo
+# Versione corrente v0.45 — prerelease di collaudo
 
-Note attuali: [RELEASE_NOTES_v0.44.md](RELEASE_NOTES_v0.44.md). Audit: [AUDIT_v0.44.md](AUDIT_v0.44.md). Configurazione e limiti: [SETUP_v0.44.md](SETUP_v0.44.md).
+Note attuali: [RELEASE_NOTES_v0.45.md](RELEASE_NOTES_v0.45.md). Verifiche: [VERIFICATION_v0.45.md](VERIFICATION_v0.45.md). Audit precedente: [AUDIT_v0.44.md](AUDIT_v0.44.md). Configurazione e limiti: [SETUP_v0.44.md](SETUP_v0.44.md).
 
 La sezione seguente conserva la ricostruzione storica.
 

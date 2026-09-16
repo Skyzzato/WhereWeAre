@@ -1,0 +1,122 @@
+{
+  "names": [
+    {
+      "user_id": "f0440000-0000-0000-0000-000000000001",
+      "display_name": "v044 test A"
+    },
+    {
+      "user_id": "f0440000-0000-0000-0000-000000000002",
+      "display_name": "v044 test B"
+    }
+  ],
+  "events": [
+    {
+      "id": "f0440000-0000-0000-0000-000000000020",
+      "kind": "sos",
+      "payload": {
+        "accuracy": null,
+        "category": "help",
+        "latitude": null,
+        "longitude": null,
+        "recorded_at": null
+      },
+      "sender_id": "f0440000-0000-0000-0000-000000000001",
+      "created_at": "2026-09-16T12:43:35.043+01:00",
+      "expires_at": "2026-09-16T18:43:35.043+01:00",
+      "recipients": [
+        "f0440000-0000-0000-0000-000000000002"
+      ],
+      "sender_name": "v044 test A"
+    }
+  ],
+  "groups": [
+    {
+      "id": "f0440000-0000-0000-0000-000000000010",
+      "name": "v044 test",
+      "emoji": "T",
+      "created_at": "2026-09-16T12:43:35.043+01:00",
+      "creator_id": "f0440000-0000-0000-0000-000000000001",
+      "expires_at": "2026-09-16T13:43:35.043+01:00",
+      "invite_code": "V44-XYZ"
+    }
+  ],
+  "shares": [],
+  "members": [
+    {
+      "user_id": "f0440000-0000-0000-0000-000000000001",
+      "group_id": "f0440000-0000-0000-0000-000000000010",
+      "joined_at": "2026-09-16T12:43:35.043+01:00",
+      "sharing_enabled": true,
+      "shared_precision": null
+    },
+    {
+      "user_id": "f0440000-0000-0000-0000-000000000002",
+      "group_id": "f0440000-0000-0000-0000-000000000010",
+      "joined_at": "2026-09-16T12:43:35.043+01:00",
+      "sharing_enabled": true,
+      "shared_precision": null
+    }
+  ],
+  "profile": {
+    "id": "f0440000-0000-0000-0000-000000000001",
+    "deleting": false,
+    "created_at": "2026-09-16T12:43:35.043+01:00",
+    "updated_at": "2026-09-16T12:43:35.043+01:00",
+    "avatar_path": null,
+    "invite_code": "GJT-ZXC",
+    "display_name": "v044 test A",
+    "shared_precision": 0,
+    "avatar_updated_at": null,
+    "visibility_seconds": 86400,
+    "update_interval_seconds": 60
+  },
+  "contacts": [
+    {
+      "user_id": "f0440000-0000-0000-0000-000000000001",
+      "can_view": true,
+      "avatar_path": null,
+      "common_group": true,
+      "display_name": "v044 test A",
+      "visibility_seconds": 86400,
+      "update_interval_seconds": 60
+    },
+    {
+      "user_id": "f0440000-0000-0000-0000-000000000002",
+      "can_view": true,
+      "avatar_path": null,
+      "common_group": true,
+      "display_name": "v044 test B",
+      "visibility_seconds": 86400,
+      "update_interval_seconds": 60
+    }
+  ],
+  "meetings": [],
+  "requests": [],
+  "statuses": [
+    {
+      "user_id": "f0440000-0000-0000-0000-000000000001",
+      "revision": 0,
+      "is_sharing": false,
+      "session_id": null,
+      "updated_at": "2026-09-16T12:43:35.043+01:00"
+    },
+    {
+      "user_id": "f0440000-0000-0000-0000-000000000002",
+      "revision": 0,
+      "is_sharing": false,
+      "session_id": null,
+      "updated_at": "2026-09-16T12:43:35.043+01:00"
+    }
+  ],
+  "server_time": "2026-09-16T12:43:35.144+01:00",
+  "saved_people": [],
+  "sos_available": true,
+  "group_requests": [],
+  "events_available": true,
+  "places_available": true,
+  "shared_precision": true,
+  "location_requests": [],
+  "nearby_sos_available": true,
+  "temporary_groups_available": true,
+  "location_requests_available": true
+}

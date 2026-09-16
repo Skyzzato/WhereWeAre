@@ -2,7 +2,7 @@
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-**Versione v0.44 (versionCode=13), prerelease di collaudo.** Correzioni SOS, diagnostica e retry; restano da verificare sfarfallio nativo, telefoni e push. Vedi [note v0.44](RELEASE_NOTES_v0.44.md), [matrice e cause](AUDIT_v0.44.md), [configurazione](SETUP_v0.44.md) e [verifiche](VERIFICATION_v0.44.md).
+**Versione v0.45 (versionCode=14), prerelease di collaudo.** Corretto il blocco della sincronizzazione causato da destinatari evento null nella risposta server. Vedi [note v0.45](RELEASE_NOTES_v0.45.md) e [verifiche](VERIFICATION_v0.45.md). Configurazione e limiti precedenti: [SETUP_v0.44.md](SETUP_v0.44.md).
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
@@ -14,7 +14,7 @@ Il server verificato il 16/09/2026 restituisce bootstrap **0.43/12**, prossimit�
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
 3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Per le funzioni di questo branch applica poi 008–020 secondo [SETUP v0.43](SETUP_v0.43.md), verificando prima le migrazioni già presenti. Il progetto configurato ha già ricevuto 018–020.
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. APK installabile: [WhereWeAre-v0.44-debug.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.44/WhereWeAre-v0.44-debug.apk), firma debug precedente. Artefatto `.tools/release-v0.44/WhereWeAre-v0.44-debug.apk`; checksum e provenienza negli allegati della prerelease.
+5. APK installabile: [WhereWeAre-v0.45-debug.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.45/WhereWeAre-v0.45-debug.apk), firma debug precedente. Artefatto `.tools/release-v0.45/WhereWeAre-v0.45-debug.apk`; checksum e provenienza negli allegati della prerelease.
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
