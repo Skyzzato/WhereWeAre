@@ -14,4 +14,3 @@ try {
  }
  console.log('ALL v0.44 SQL REGRESSIONS PASSED (001-020)');
 } catch(e) {console.error(e.message,e.where??'',e.detail??'');process.exitCode=1;} finally {await db.close();}
-
