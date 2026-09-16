@@ -125,6 +125,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
 @HiltViewModel class PeopleViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor,val location: LocationRepository,private val controller: SharingController): OperationViewModel() {
     val online=network.online
     val state=sharing.state
+    fun refresh() { sharing.refresh() }
     val userId get()=auth.userId
     val hidden=preferences.hidden(auth.userId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),emptySet())
     fun hide(ids: Set<String>,value: Boolean) { perform { preferences.hide(requireNotNull(userId),ids,value) } }
@@ -230,6 +231,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
 @HiltViewModel class GroupsViewModel @Inject constructor(private val sharing: SharingRepository,private val auth: AuthRepository,private val preferences: PreferencesRepository,val avatars: AvatarRepository,network: NetworkMonitor): OperationViewModel() {
     val now=flow {while(true) {emit(sharing.now());delay(1_000)}}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),sharing.now())
     val online=network.online
+    fun refresh() { sharing.refresh() }
     fun savePerson(id: String) {perform(R.string.saved) {sharing.savePerson(id)}}
     val state=sharing.state
     val userId get()=auth.userId

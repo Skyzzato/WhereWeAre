@@ -20,8 +20,8 @@ android {
         applicationId = "com.whereweare.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 12
-        versionName = "0.43"
+        versionCode = 13
+        versionName = "0.44"
         buildConfigField("String", "INVITE_BASE_URL", "\"${setting("INVITE_BASE_URL")}\"")
         buildConfigField("String", "ROUTING_PROVIDER", "\"${setting("ROUTING_PROVIDER")}\"")
         buildConfigField("String", "ROUTING_ENDPOINT", "\"${setting("ROUTING_ENDPOINT")}\"")
@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.ktor.okhttp)
     implementation(libs.maplibre)
     runtimeOnly(libs.maplibre.runtime)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.mockito)

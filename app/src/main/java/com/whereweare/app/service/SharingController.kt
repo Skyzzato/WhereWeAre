@@ -15,7 +15,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val publishedFix: UserLocation?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val publishedFix: UserLocation?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null,val retrying: Boolean=false,val failure: String?=null)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
@@ -58,7 +58,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
             var remoteEnded=false
             var ownedSession: TrackingSession?=null
             try {
-                auth.awaitSession()
+                withTimeout(12_000) {auth.awaitSession()}
                 var saved: TrackingSession
                 mutex.withLock {
                     check(preferences.pendingStop.first()==null) { "stop_pending" }
@@ -91,6 +91,8 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                         .collect { latest.value=it; mutableState.value=state.value.copy(fix=it,pendingUpload=true); signals.trySend(Unit) }
                 }
                 try {
+                    var failures=0
+                    var recoveredSession=false
                     var started=false
                     var revision: Long?=saved.revision
                     var sent: UserLocation?=null
@@ -99,6 +101,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                     var lastDeviceReport=0L
                     var reportedDevice: DeviceStatus?=null
                     while(isActive) {
+                        mutableState.value=state.value.copy(retrying=true)
                         try {
                             if(!location.hasPermission()) break
                             if(bootstrap.state.value.gate!=BootstrapGate.READY) break
@@ -136,21 +139,36 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                                 mutableState.value=state.value.copy(deviceStatus=DeviceStatusObservation(device,java.time.Instant.now()))
                                 if(bootstrap.state.value.config?.features?.device_status==true && (sent!=null || restarting) &&
                                     shouldPublishDeviceStatus(reportedDevice,device,elapsed-lastDeviceReport)) {
-                                    if(withTimeout(12_000) {repository.deviceStatus(session,device)}) {reportedDevice=device;lastDeviceReport=elapsed}
+                                    try {
+                                        if(withTimeout(12_000) {repository.deviceStatus(session,device)}) {reportedDevice=device;lastDeviceReport=elapsed}
+                                    } catch(e: CancellationException) {if(e !is TimeoutCancellationException) throw e}
+                                    catch(_: Exception) { /* Device telemetry has separate diagnostics; sharing is still operational. */ }
                                 }
                             }
+                            failures=0
+                            recoveredSession=false
+                            mutableState.value=state.value.copy(waiting=false,failure=null)
                         } catch(_: TimeoutCancellationException) {
-                            mutableState.value=state.value.copy(waiting=true)
+                            failures=(failures+1).coerceAtMost(5)
+                            mutableState.value=state.value.copy(waiting=true,failure="unreachable")
                         } catch(e: CancellationException) { throw e
                         } catch(e: Exception) {
                             if("sharing_stopped" in e.message.orEmpty()) { remoteEnded=true; break }
-                            mutableState.value=state.value.copy(waiting=true)
-                        }
-                        withTimeoutOrNull(3_000) { signals.receive() }
+                            mutableState.value=state.value.copy(waiting=true,failure=connectionFailure(e))
+                            if(e is io.github.jan.supabase.exceptions.RestException && e.statusCode==401 && !recoveredSession) {
+                                recoveredSession=true
+                                try {withTimeout(12_000) {auth.recoverSession()}}
+                                catch(cancel: CancellationException) {if(cancel !is TimeoutCancellationException) throw cancel;break}
+                                catch(_: Exception) {break}
+                            } else if(!retryableRead(e)) break
+                            failures=(failures+1).coerceAtMost(5)
+                        } finally {mutableState.value=state.value.copy(retrying=false)}
+                        if(failures>0) delay((1_000L shl failures).coerceAtMost(30_000))
+                        else withTimeoutOrNull(3_000) { signals.receive() }
                     }
                 } finally { updates.cancel() }
             } catch(e: CancellationException) { throw e
-            } catch(_: Exception) { mutableState.value=state.value.copy(waiting=true)
+            } catch(e: Exception) { mutableState.value=state.value.copy(waiting=true,failure=connectionFailure(e))
             } finally {
                 // Destruction cancels the scope: preserve the session for Android's sticky restart.
                 // A normal termination (remote stop, revoked permission, blocked bootstrap) clears it.

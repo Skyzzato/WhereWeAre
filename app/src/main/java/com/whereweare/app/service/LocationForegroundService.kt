@@ -39,7 +39,7 @@ import javax.inject.Inject
             notificationUpdates?.cancel()
             notificationUpdates=scope.launch {
                 controller.state.map { when {
-                    it.waiting -> R.string.sync_waiting
+                    it.waiting -> com.whereweare.app.ui.trackingFailureMessage(it)
                     it.active -> R.string.sharing_active
                     it.starting -> R.string.sharing_starting
                     else -> null

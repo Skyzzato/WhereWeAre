@@ -127,7 +127,7 @@ import java.time.format.DateTimeFormatter
     }
     Column(Modifier.fillMaxSize()) {
         if(!online) Notice(R.string.connection_absent)
-        else if(state.snapshot.syncFailed && !state.snapshot.loading) Notice(R.string.sync_waiting)
+        else if(state.snapshot.syncFailed && !state.snapshot.loading) SyncFailureNotice(state.snapshot,vm::refresh)
         else if(state.snapshot.realtimeUnavailable) Notice(R.string.realtime_unavailable)
         if(state.visible.any {stalePosition(it.location,state.snapshot.contacts[it.location.userId],state.now,config.config?.defaults?.stale_grace_seconds?.coerceIn(30,3600) ?: 180)}) Notice(R.string.positions_stale)
         if(local?.recordedAt?.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))==true) Notice(R.string.local_position_stale)
@@ -143,7 +143,7 @@ import java.time.format.DateTimeFormatter
         Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
             MaplibreMap(
                 modifier=Modifier.fillMaxSize(),state=camera,
-                uiOptions=MapUiOptions { renderMode=AndroidRenderMode.Texture },
+                uiOptions=remember { MapUiOptions { renderMode=AndroidRenderMode.Texture } },
                 overlay={
                     include(MapOverlay.Default)
                     val checkins=events.filter {it.checkin()!=null}
@@ -225,6 +225,7 @@ import java.time.format.DateTimeFormatter
             if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
                 FloatingActionButton(onClick={actions=true}) {Icon(Icons.Default.MoreVert,Strings.text(R.string.map_actions))}
                 DropdownMenu(actions,{actions=false}) {
+                    DropdownMenuItem(text={Text(Strings.text(R.string.sos_updates))},onClick={actions=false;checkinInbox=true})
                     DropdownMenuItem(text={Text(Strings.text(R.string.fit_all))},onClick={
                         actions=false;follow=false
                         val fixes=state.visible.map {it.location}+listOfNotNull(local)+events.mapNotNull {it.checkin()?.location(it.id)?:it.sos()?.location(it.id)}
@@ -236,17 +237,15 @@ import java.time.format.DateTimeFormatter
                         }
                     })
                     if(config.config?.features?.meeting_points!=false) DropdownMenuItem(text={Text(Strings.text(R.string.ui_046))},onClick={actions=false;follow=false;creatingMeeting=true})
-                    if(state.snapshot.placesAvailable) DropdownMenuItem(text={Text(Strings.text(R.string.places_title))},leadingIcon={Icon(Icons.Default.Place,null)},onClick={actions=false;onPlaces()})
+                    DropdownMenuItem(text={Text(Strings.text(R.string.places_title))},leadingIcon={Icon(Icons.Default.Place,null)},onClick={actions=false;onPlaces()})
                     if(state.snapshot.eventsAvailable) {
                         DropdownMenuItem(text={Text(Strings.text(R.string.checkin_title))},leadingIcon={Icon(Icons.Default.Check,null)},onClick={actions=false;vm.message(null);checkinEditor=true})
                         DropdownMenuItem(text={Text(Strings.text(R.string.checkin_inbox))},onClick={actions=false;checkinInbox=true})
                     }
                 }
             }
-            if(state.snapshot.sosAvailable && !creatingMeeting) Button(
-                onClick={vm.message(null);val active=events.firstOrNull {it.kind=="sos" && it.sender_id==state.snapshot.profile?.id};if(active!=null) selectedEvent=active.id else sosEditor=true},
-                modifier=Modifier.align(Alignment.TopEnd).padding(top=84.dp,end=12.dp),
-                colors=ButtonDefaults.buttonColors(containerColor=androidx.compose.ui.graphics.Color(0xFFB3261E))) {Text("SOS")}
+            if(!creatingMeeting) SosMapButton(state.snapshot,events,Modifier.align(Alignment.TopEnd).padding(top=84.dp,end=12.dp),
+                openEditor={vm.message(null);sosEditor=true},openEvent={selectedEvent=it})
             if(creatingMeeting) {
                 Icon(Icons.Default.Flag,Strings.text(R.string.ui_047),Modifier.align(Alignment.Center).size(48.dp),tint=MaterialTheme.colorScheme.primary)
                 Surface(Modifier.align(Alignment.BottomCenter)) {Column {Text(Strings.text(R.string.ui_048));Row {
@@ -327,7 +326,7 @@ import java.time.format.DateTimeFormatter
                 val warning=when {
                     pending!=null -> R.string.stop_pending
                     sharingState==SharingUiState.REMOTE_ACTIVE -> R.string.process_stopped
-                    tracking.waiting -> R.string.sync_waiting
+                    tracking.waiting -> trackingFailureMessage(tracking)
                     significantDelay -> R.string.location_upload_pending
                     else -> null
                 }

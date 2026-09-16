@@ -105,7 +105,7 @@ import java.util.Locale
                             NetworkTransport.OTHER->R.string.diag_network_other
                         }))
                         DiagnosticRow(R.string.diag_server,if(connection.serverReachable==null) stringResource(R.string.connection_checking) else bool(connection.serverReachable))
-                        connection.failure?.let {Text(stringResource(when(it) {"session" -> R.string.error_auth;"forbidden" -> R.string.error_forbidden;"service" -> R.string.connection_service;else -> R.string.connection_unreachable}))}
+                        connection.failure?.let {Text(stringResource(when(it) {"session" -> R.string.error_auth;"forbidden" -> R.string.error_forbidden;"service" -> R.string.connection_service;"response" -> R.string.connection_response;else -> R.string.connection_unreachable}))}
                         DiagnosticRow(R.string.diag_session,bool(connection.sessionVerified))
                         DiagnosticRow(R.string.diag_realtime,bool(connection.realtimeConnected))
                         DiagnosticRow(R.string.diag_last_write,timestamp(connection.lastWrite))

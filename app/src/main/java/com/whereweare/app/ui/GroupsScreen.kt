@@ -52,7 +52,7 @@ import java.time.format.DateTimeFormatter
     LaunchedEffect(group?.id) {if(group==null) editing=false}
     LaunchedEffect(members) {selected=selected.intersect(members.toSet())}
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item {if(!joining) Busy(operation);if(!online) Notice(R.string.connection_absent) else if(state.syncFailed) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)}
+        item {if(!joining) Busy(operation);if(!online) Notice(R.string.connection_absent) else if(state.syncFailed) SyncFailureNotice(state,vm::refresh) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)}
         if(group==null) {
             item {SearchHeader(Strings.text(R.string.ui_119),query,searching,{searching=it},{query=it})}
             items(state.groupRequests.filter {it.status=="pending" && (it.kind=="join" || it.user_id==vm.userId)},key={"request-${it.id}"}) {request ->

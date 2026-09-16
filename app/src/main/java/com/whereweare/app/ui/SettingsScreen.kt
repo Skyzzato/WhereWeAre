@@ -101,11 +101,11 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
                 Column(Modifier.padding(16.dp)) {DetailLine(Icons.Default.Visibility,Strings.text(R.string.precision_audience));Text(Strings.text(R.string.audience_card_hint))}
             }
         }
-        if(state.sosAvailable) SettingsSection("SOS") {
+        SettingsSection("SOS") {
             NearbySettings(vm)
         }
         }
-        if(state.placesAvailable) OutlinedCard(onClick={places=true},modifier=Modifier.fillMaxWidth()) {
+        OutlinedCard(onClick={places=true},modifier=Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {DetailLine(Icons.Default.Place,Strings.text(R.string.places_title));Text(Strings.text(R.string.places_entry_hint))}
         }
         SettingsSection(Strings.text(R.string.appearance),initiallyExpanded=false) {

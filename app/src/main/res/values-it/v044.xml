@@ -1,0 +1,5 @@
+<resources>
+    <string name="connection_response">La risposta del server non è leggibile. Riprova o verifica gli aggiornamenti dell’app.</string>
+    <string name="sos_updates">Aggiornamenti SOS</string>
+    <string name="sos_setup_unavailable">La disponibilità SOS non è stata confermata dal server. Aggiorna per caricare destinatari e disponibilità.</string>
+</resources>

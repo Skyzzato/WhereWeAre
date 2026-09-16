@@ -45,9 +45,11 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
 
     LaunchedEffect(counting) {if(counting) sosCountdown({remaining=it}) {counting=false;vm.sendSos(id,category,people.toSet(),groups.toSet(),nearby)}}
     LifecycleResumeEffect(Unit) {onPauseOrDispose {counting=false}}
+    LaunchedEffect(snapshot.sosAvailable) {if(!snapshot.sosAvailable) counting=false}
     val editable=!counting && status==SosSendState.IDLE
     AlertDialog(onDismissRequest={if(status!=SosSendState.SENDING) close()},title={Text("SOS",color=Color(0xFFB3261E))},text={Column(Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         SosOutcomeCard(status,sendError,vm.sos::verify,vm.sos::dismiss)
+        if(!snapshot.sosAvailable) {Text(Strings.text(R.string.sos_setup_unavailable));TextButton(onClick=vm::refresh) {Text(Strings.text(R.string.ui_124))}}
         Text(Strings.text(R.string.sos_emergency))
         Button(onClick={runCatching {context.startActivity(Intent(Intent.ACTION_DIAL,"tel:112".toUri()))}.onFailure {vm.message(R.string.error_generic)}}) {Text(Strings.text(R.string.sos_dial))}
         Text(Strings.text(R.string.sos_position_consent))
@@ -70,7 +72,7 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
             Row {Checkbox(nearby,{nearby=it},enabled=editable);Text(Strings.text(R.string.nearby_send))}
             Text(Strings.text(R.string.nearby_sender_consent),style=MaterialTheme.typography.bodySmall)
         } else Text(Strings.text(R.string.nearby_setup_required),style=MaterialTheme.typography.bodySmall)
-    }},confirmButton={if(status!=SosSendState.CONFIRMED) TextButton(enabled=!counting && status!=SosSendState.SENDING && (status==SosSendState.UNKNOWN || status==SosSendState.FAILED || people.isNotEmpty()||groups.isNotEmpty()||nearby),onClick={counting=true}) {
+    }},confirmButton={if(status!=SosSendState.CONFIRMED) TextButton(enabled=snapshot.sosAvailable && !counting && status!=SosSendState.SENDING && (status==SosSendState.UNKNOWN || status==SosSendState.FAILED || people.isNotEmpty()||groups.isNotEmpty()||nearby),onClick={counting=true}) {
         Text(Strings.text(if(status==SosSendState.UNKNOWN) R.string.sos_retry else R.string.sos_send),color=Color(0xFFB3261E))
     }},dismissButton={TextButton(enabled=status!=SosSendState.SENDING,onClick={if(status==SosSendState.CONFIRMED) vm.sos.dismiss();close()}) {Text(Strings.text(R.string.close))}})
     if(choosing) SosRecipients(snapshot,vm.avatars,people,groups,close={choosing=false},confirm={p,g -> people=p;groups=g;choosing=false})

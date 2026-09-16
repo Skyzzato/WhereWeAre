@@ -48,7 +48,7 @@ import com.whereweare.app.domain.normalizeInviteCode
     val connections=(state.shares.flatMap { listOf(it.owner,it.viewer) }+state.savedPeople).distinct().filter { it!=id }
     LaunchedEffect(connections) { selected=selected.intersect(connections.toSet()) }
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        item {if(!adding) Busy(operation); if(!online) Notice(R.string.connection_absent) else if(state.syncFailed) Notice(R.string.sync_waiting) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)
+        item {if(!adding) Busy(operation); if(!online) Notice(R.string.connection_absent) else if(state.syncFailed) SyncFailureNotice(state,vm::refresh) else if(state.realtimeUnavailable) Notice(R.string.realtime_unavailable)
             SearchHeader(Strings.text(R.string.people),query,searching,{searching=it},{query=it})
             Button(onClick={ adding=true; vm.clearLookup() }) { Text(Strings.text(R.string.qr_enter_code)) }
             OutlinedButton(onClick=onScan) {Text(Strings.text(R.string.qr_scan))} }

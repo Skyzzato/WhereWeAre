@@ -27,7 +27,7 @@ import android.util.Log
             "resolve_invite_link" -> params["confirm"]?.jsonPrimitive?.booleanOrNull==true
             else -> true
         }
-    ) { auth.awaitSession();withTimeout(12_000) {client.postgrest.rpc(name,params)} }
+    ) { withTimeout(12_000) {auth.awaitSession();client.postgrest.rpc(name,params)} }
     suspend fun testConnection() { withTimeout(12_000) {ownSharingStatus()} }
     private val refreshes=MutableSharedFlow<Unit>(extraBufferCapacity=1)
     private data class AvatarChange(val user: String,val path: String?)
@@ -48,6 +48,7 @@ import android.util.Log
 
     private fun observe(id: String): Flow<Snapshot> = channelFlow {
         var last=state.value.takeIf {it.profile?.id==id}?:Snapshot()
+        var sessionRecoveryAttempted=false
         var failures=0
         var automaticBlocked=false
         var realtimeFailures=0
@@ -72,21 +73,28 @@ import android.util.Log
         launch {
             for(signal in signals) {
                 try {
-                    auth.awaitSession()
+                    if(automaticBlocked) continue
+                    if(!network.state.value.online) {last=last.copy(syncInProgress=false);send(last);continue}
+                    last=last.copy(syncInProgress=true);send(last)
+                    withTimeout(12_000) {auth.awaitSession()}
                     val readingGeneration=generation.get()
                     val readMetadata=metadataDirty
                     val requestStarted=SystemClock.elapsedRealtime()
-                    val metadata=if(readMetadata) serverRpc("app_metadata").decodeAs<MetadataDto>() else null
-                    if(metadata!=null) clock=ClockAnchor(Instant.parse(metadata.server_time),requestStarted)
+                    val metadata=if(readMetadata) connectionDiagnostics.measure(false,"metadata_decode") {serverRpc("app_metadata").decodeAs<MetadataDto>()} else null
+                    if(metadata!=null) {
+                        clock=ClockAnchor(Instant.parse(metadata.server_time),requestStarted)
+                        if(readingGeneration!=generation.get()) {signals.trySend(Unit);continue}
+                        last=applyMetadata(last,metadata).copy(syncInProgress=true);send(last)
+                    }
                     val profile=metadata?.profile?.domain() ?: last.profile
                     val names=metadata?.names?.associate {it.user_id to it.display_name} ?: last.names
-                    val requests=if(metadata?.location_requests_available==true) connectionDiagnostics.measure(write=false) {
-                        client.from("share_requests").select().decodeList<RequestDto>().map {it.domain()}
+                    val requests=if(metadata?.location_requests_available==true) connectionDiagnostics.measure(false,"share_requests") {
+                        withTimeout(12_000) {client.from("share_requests").select().decodeList<RequestDto>().map {it.domain()}}
                     } else metadata?.requests?.map {it.domain()} ?: last.requests
                     val shares=metadata?.shares?.map {it.domain()} ?: last.shares
                     val statuses=metadata?.statuses?.map {it.domain()} ?: last.statuses
                     val precisionAvailable=metadata?.shared_precision ?: last.sharedPrecisionAvailable
-                    val locations=if(precisionAvailable) serverRpc("visible_locations").decodeList<LocationDto>().map {it.domain()}
+                    val locations=if(precisionAvailable) connectionDiagnostics.measure(false,"locations_decode") {serverRpc("visible_locations").decodeList<LocationDto>().map {it.domain()}}
                         else connectionDiagnostics.measure(write=false) {client.from("latest_locations").select().decodeList<LocationDto>().map {it.domain()}}
                     val contacts=metadata?.contacts?.map {it.domain()}?.associateBy {it.id} ?: last.contacts
                     val groups=metadata?.groups?.map {it.domain()} ?: last.groups
@@ -99,19 +107,26 @@ import android.util.Log
                     last=Snapshot(profile,names,requests,shares,statuses,locations,loading=false,offline=false,contacts=contacts,groups=groups,members=members,groupRequests=groupRequests,meetings=meetings,syncFailed=false,realtimeUnavailable=last.realtimeUnavailable,savedPeople=metadata?.saved_people?.toSet() ?: last.savedPeople,sharedPrecisionAvailable=precisionAvailable,locationRequestsAvailable=metadata?.location_requests_available ?: last.locationRequestsAvailable,locationRequests=metadata?.location_requests ?: last.locationRequests,eventsAvailable=metadata?.events_available ?: last.eventsAvailable,events=metadata?.events ?: last.events,temporaryGroupsAvailable=metadata?.temporary_groups_available ?: last.temporaryGroupsAvailable,placesAvailable=metadata?.places_available ?: last.placesAvailable,sosAvailable=metadata?.sos_available ?: last.sosAvailable,nearbySosAvailable=metadata?.nearby_sos_available ?: last.nearbySosAvailable)
                     locations.firstOrNull { it.userId==id }?.let { saveOwn(it) }
                     failures=0
+                    sessionRecoveryAttempted=false
                     send(last)
                 } catch(e: CancellationException) {
                     if(e !is TimeoutCancellationException) throw e
-                    last=last.copy(loading=false,syncFailed=true);send(last)
+                    last=last.copy(loading=false,syncFailed=true,syncInProgress=false,syncError="unreachable");send(last)
                     failures=(failures+1).coerceAtMost(4)
                     delay((1000L shl failures)+kotlin.random.Random.nextLong(1000));if(failures<=3) signals.trySend(Unit)
                 } catch(e: Exception) {
                     if(com.whereweare.app.BuildConfig.DEBUG) Log.w("WhereWeAreRealtime","REST refresh failed: ${e.javaClass.simpleName}")
-                    last=last.copy(loading=false,offline=true,syncFailed=true); send(last)
+                    last=last.copy(loading=false,offline=connectionFailure(e)=="unreachable",syncFailed=true,syncInProgress=false,syncError=connectionFailure(e)); send(last)
                     failures=(failures+1).coerceAtMost(4)
-                    delay((1000L shl failures)+kotlin.random.Random.nextLong(1000))
+                    if(retryableRead(e)) delay((1000L shl failures)+kotlin.random.Random.nextLong(1000))
                     // Stop automatic retries on authentication/authorization failures; resume/network/manual refresh can retry.
-                    automaticBlocked=e is io.github.jan.supabase.exceptions.RestException && e.statusCode in listOf(400,401,403,404)
+                    automaticBlocked=!retryableRead(e)
+                    if(e is io.github.jan.supabase.exceptions.RestException && e.statusCode==401 && !sessionRecoveryAttempted) {
+                        sessionRecoveryAttempted=true
+                        try {withTimeout(12_000) {auth.recoverSession()};automaticBlocked=false;signals.trySend(Unit)}
+                        catch(cancel: CancellationException) {if(cancel !is TimeoutCancellationException) throw cancel}
+                        catch(_: Exception) { /* Keep the actionable session error. */ }
+                    }
                     if(!automaticBlocked && failures<=3) signals.trySend(Unit)
                 }
             }
@@ -135,7 +150,8 @@ import android.util.Log
                                 if(tableName=="location_shares" || tableName=="sharing_status" || tableName=="account_events") {
                                     generation.incrementAndGet()
                                     // Invalidate first: an older in-memory fix must not survive revocation.
-                                    last=last.copy(locations=last.locations.filter { it.userId==id },events=last.events.filter {it.sender_id==id}); send(last)
+                                    val record=when(it) {is PostgresAction.Update -> it.record;is PostgresAction.Insert -> it.record;else -> buildJsonObject {}}
+                                    last=invalidateRealtime(last,tableName,record,id); send(last)
                                 }
                                 signals.trySend(Unit)
                             }

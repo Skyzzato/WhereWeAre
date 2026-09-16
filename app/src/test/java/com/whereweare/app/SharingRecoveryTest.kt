@@ -80,6 +80,42 @@ class SharingRecoveryTest {
         }
     }
 
+    @Test fun nonTransientFailureStopsInsteadOfRetryingEveryThreeSeconds() = runTest {
+        // Robolectric's plain Application does not run the AndroidX startup provider.
+        androidx.work.WorkManager.initialize(RuntimeEnvironment.getApplication(),androidx.work.Configuration.Builder().build())
+        scenario { controller,prefs,repo,service,_ ->
+            doAnswer {throw IllegalStateException("invalid server contract")}.`when`(repo).sharing(eq(true),any(),any())
+            var stopped=false
+            controller.attach(service,stopService={stopped=true})
+            runCurrent()
+            advanceTimeBy(60_000);runCurrent()
+            verify(repo,times(1)).sharing(eq(true),any(),any())
+            assertTrue(stopped)
+            assertFalse(controller.state.value.active)
+            assertFalse(controller.state.value.retrying)
+            assertEquals("service",controller.state.value.failure)
+            assertEquals("owner",prefs.pendingStop.first())
+        }
+    }
+
+    @Test fun transientFailureUsesBackoffWithoutClaimingAnActiveAttemptWhileWaiting() = runTest {
+        scenario { controller,_,repo,service,stop ->
+            doAnswer {throw IOException("offline")}.`when`(repo).sharing(eq(true),any(),any())
+            controller.attach(service,stopService=stop)
+            runCurrent()
+            verify(repo,times(1)).sharing(eq(true),any(),any())
+            assertFalse(controller.state.value.retrying)
+            advanceTimeBy(1_999);runCurrent()
+            verify(repo,times(1)).sharing(eq(true),any(),any())
+            advanceTimeBy(1);runCurrent()
+            verify(repo,times(2)).sharing(eq(true),any(),any())
+            advanceTimeBy(3_999);runCurrent()
+            verify(repo,times(2)).sharing(eq(true),any(),any())
+            advanceTimeBy(1);runCurrent()
+            verify(repo,times(3)).sharing(eq(true),any(),any())
+        }
+    }
+
     @Test fun stickyRecreationPreservesSessionAndDoesNotCallOldStopCallback() = runTest {
         scenario { controller,prefs,repo,service,_ ->
             var oldStops=0

@@ -1,0 +1,5 @@
+<resources>
+    <string name="connection_response">The server response could not be read. Retry or check for an app update.</string>
+    <string name="sos_updates">SOS updates</string>
+    <string name="sos_setup_unavailable">SOS availability has not been confirmed by the server. Refresh to load recipients and availability.</string>
+</resources>
