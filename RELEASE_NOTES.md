@@ -1,6 +1,6 @@
-# Versione corrente v0.43
+# Versione corrente v0.44 — prerelease di collaudo
 
-Note attuali: [RELEASE_NOTES_v0.43.md](RELEASE_NOTES_v0.43.md). Deploy e limiti: [SETUP_v0.43.md](SETUP_v0.43.md).
+Note attuali: [RELEASE_NOTES_v0.44.md](RELEASE_NOTES_v0.44.md). Audit: [AUDIT_v0.44.md](AUDIT_v0.44.md). Configurazione e limiti: [SETUP_v0.44.md](SETUP_v0.44.md).
 
 La sezione seguente conserva la ricostruzione storica.
 
