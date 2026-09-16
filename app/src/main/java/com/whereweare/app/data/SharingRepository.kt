@@ -57,13 +57,13 @@ import android.util.Log
         var metadataDirty=true
         val generation=AtomicLong(0)
         val signals=Channel<Unit>(Channel.CONFLATED)
-        launch { refreshes.collect { metadataDirty=true; signals.trySend(Unit) } }
+        launch { refreshes.collect { metadataDirty=true; generation.incrementAndGet(); signals.trySend(Unit) } }
         launch {while(isActive) {
             delay(5_000)
             val time=SystemClock.elapsedRealtime()
             val unavailable=!realtimeOnline && time-disconnectedAt>=20_000
             if(last.realtimeUnavailable!=unavailable) {last=last.copy(realtimeUnavailable=unavailable);send(last)}
-            if((!realtimeOnline || last.sharedPrecisionAvailable) && time-lastPoll>=30_000) {lastPoll=time;metadataDirty=true;signals.trySend(Unit)}
+            if((!realtimeOnline || last.sharedPrecisionAvailable || last.eventsAvailable || last.locationRequestsAvailable) && time-lastPoll>=30_000) {lastPoll=time;metadataDirty=true;signals.trySend(Unit)}
         }}
         launch {
             for(signal in signals) {
@@ -75,7 +75,9 @@ import android.util.Log
                     if(metadata!=null) clock=ClockAnchor(Instant.parse(metadata.server_time),requestStarted)
                     val profile=metadata?.profile?.domain() ?: last.profile
                     val names=metadata?.names?.associate {it.user_id to it.display_name} ?: last.names
-                    val requests=metadata?.requests?.map {it.domain()} ?: last.requests
+                    val requests=if(metadata?.location_requests_available==true) connectionDiagnostics.measure(write=false) {
+                        client.from("share_requests").select().decodeList<RequestDto>().map {it.domain()}
+                    } else metadata?.requests?.map {it.domain()} ?: last.requests
                     val shares=metadata?.shares?.map {it.domain()} ?: last.shares
                     val statuses=metadata?.statuses?.map {it.domain()} ?: last.statuses
                     val precisionAvailable=metadata?.shared_precision ?: last.sharedPrecisionAvailable
@@ -221,7 +223,7 @@ import android.util.Log
     suspend fun groupSharing(group: String,enabled: Boolean)=mutate({s -> s.copy(members=s.members.map {if(it.groupId==group && it.userId==auth.userId) it.copy(sharingEnabled=enabled) else it}) },{s -> s.members.any {it.groupId==group && it.userId==auth.userId && it.sharingEnabled==enabled} }) { rpc("set_group_sharing",buildJsonObject { put("gid",group); put("enabled",enabled) }) }
     suspend fun inviteMember(group: String,person: String)=rpc("invite_group_member",buildJsonObject { put("gid",group); put("person",person) })
     suspend fun respondGroup(request: String,accept: Boolean)=mutate({s -> s.copy(groupRequests=s.groupRequests.map {if(it.id==request) it.copy(status=if(accept) "accepted" else "rejected") else it}) },{s -> s.groupRequests.none {it.id==request && it.status=="pending"} }) { rpc("respond_group_request",buildJsonObject { put("request_id",request); put("accept",accept) }) }
-    suspend fun createMeeting(id: String,lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>,styleId: Int=1)=rpc("create_meeting_styled",buildJsonObject {
+    suspend fun createMeeting(id: String,lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>,styleId: Int=FlareStyles.DEFAULT_ID)=rpc("create_meeting_styled",buildJsonObject {
         put("flare_style",com.whereweare.app.domain.FlareStyles.normalize(styleId))
         put("mid",id); put("lat",lat); put("lon",lon); put("all_people",all)
         putJsonArray("people") {people.forEach {add(it)}}; putJsonArray("group_ids") {groups.forEach {add(it)}}

@@ -150,6 +150,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     }
     fun send(completed: ()->Unit={}) { val code=found.value?.inviteCode ?: return; perform(R.string.request_sent) { sharing.sendRequest(code); found.value=null;completed() } }
     fun respond(id: String,accept: Boolean) { perform { sharing.respond(id,accept) } }
+    fun currentTime()=sharing.now()
     fun cancel(id: String) { perform { sharing.cancel(id) } }
     fun permission(viewer: String,enabled: Boolean) { perform { sharing.permission(viewer,enabled) } }
     fun precision(viewer: String,value: Int?) {perform {sharing.sharedPrecision("person",viewer,value)}}
@@ -192,7 +193,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     val userId get()=auth.userId
     val state=sharing.state
     val email get()=auth.email
-    val flareStyle=preferences.flareStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1)
+    val flareStyle=preferences.flareStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),FlareStyles.DEFAULT_ID)
     val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     fun flareStyle(id: Int) {perform {preferences.flareStyle(id)}}
     fun flareSound(enabled: Boolean) {perform {preferences.flareSound(enabled)}}

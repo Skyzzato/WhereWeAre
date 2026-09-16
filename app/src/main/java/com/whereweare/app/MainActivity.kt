@@ -161,14 +161,15 @@ import io.github.jan.supabase.auth.status.SessionStatus
         } } }) { padding ->
             NavHost(nav,startDestination="map",modifier=Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background),
                 enterTransition={ EnterTransition.None },exitTransition={ ExitTransition.None },popEnterTransition={ EnterTransition.None },popExitTransition={ ExitTransition.None }) {
-                composable("map") { MapScreen(hiltViewModel(),focus,{focus=null}) }
+                composable("map") { MapScreen(hiltViewModel(),focus,{focus=null},onPlaces={nav.navigate("places")}) }
                 composable("people") { Surface(Modifier.fillMaxSize()) {val current=invite?.takeIf {it.type=="person"};PeopleScreen(hiltViewModel(),onShow={id -> focus=MapFocus(person=id);nav.navigate("map") {launchSingleTop=true}},initialCode=current?.code,inviteId=current?.id,inviteHandled={current?.let {appearance.invites.consume(it.id)}},onScan={scanning=true}) } }
                 composable("groups") { Surface(Modifier.fillMaxSize()) {val current=invite?.takeIf {it.type=="group"}; GroupsScreen(hiltViewModel(),initialCode=current?.code,inviteId=current?.id,inviteHandled={current?.let {appearance.invites.consume(it.id)}},onScan={scanning=true}) } }
                 composable("settings") { Surface(Modifier.fillMaxSize()) { SettingsScreen(hiltViewModel(),onPrivacy={ nav.navigate("privacy") }) } }
+                composable("places") { PlacesScreen(hiltViewModel<SettingsViewModel>()) {nav.popBackStack()} }
                 composable("privacy") { Surface(Modifier.fillMaxSize()) { PrivacyScreen { nav.popBackStack() } } }
             }
         }
-        FlareAnimation(flare?.id?.removeSuffix(":created"),flare?.styleId ?: 1,flareSound) {appearance.finishFlare(flare)}
+        FlareAnimation(flare?.id?.removeSuffix(":created"),flare?.styleId ?: com.whereweare.app.domain.FlareStyles.DEFAULT_ID,flareSound) {appearance.finishFlare(flare)}
         if(scanning) QrScanner(onInvite={type,code -> appearance.invites.accept(android.net.Uri.parse(qrInvitePayload(type,code))).also {if(it) scanning=false}},close={scanning=false})
         }
         invitation?.let {details -> AlertDialog(onDismissRequest={appearance.invite.value=null},title={Text(Strings.text(R.string.ui_127))},text={Text(details["name"].toString().trim('"'))},confirmButton={TextButton(onClick={inviteToken?.let {appearance.resolve(it,true)}}) {Text(Strings.text(R.string.send_request))}},dismissButton={TextButton(onClick={appearance.invite.value=null}) {Text(Strings.text(R.string.ui_006))}}) }

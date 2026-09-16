@@ -13,9 +13,10 @@ insert into public.group_members(group_id,user_id) values
 update public.profiles set shared_precision=1000;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
-select public.send_sos('80000000-0000-0000-0000-000000000001','help','{}',array['20000000-0000-0000-0000-000000000001']::uuid[],46,11,150,now());
+select public.send_sos('80000000-0000-0000-0000-000000000001','help',array['00000000-0000-0000-0000-000000000002']::uuid[],array['20000000-0000-0000-0000-000000000001']::uuid[],46,11,150,now());
 select public.send_sos('80000000-0000-0000-0000-000000000001','help','{}','{}');
 select pg_temp.assert_true(jsonb_array_length(public.event_inbox())=1,'retry creates no duplicate SOS');
+select pg_temp.assert_true(jsonb_array_length(public.sos_status('80000000-0000-0000-0000-000000000001')->'recipients')=1,'person selected directly and through group is deduplicated');
 select pg_temp.assert_true((public.sos_status('80000000-0000-0000-0000-000000000001')->'recipients'->0->>'push_accepted')::boolean=false,'server registration does not claim delivery');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
 select pg_temp.assert_true((public.event_inbox()->0->'payload'->>'latitude')::float8=46,'explicit SOS uses best fix despite default approximation');
@@ -33,6 +34,9 @@ do $$ begin
 end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 select pg_temp.assert_true(public.sos_status('80000000-0000-0000-0000-000000000001')->'recipients'->0->>'response'='can_help','sender sees authorized response');
+reset role;
+select pg_temp.assert_true((select count(*)=1 from private.push_outbox where kind='sos'),'one original SOS notification for overlapping recipients');
+set local role authenticated;
 select public.close_sos('80000000-0000-0000-0000-000000000001','accidental');
 select public.close_sos('80000000-0000-0000-0000-000000000001','accidental');
 select public.send_sos('80000000-0000-0000-0000-000000000001','help','{}','{}');

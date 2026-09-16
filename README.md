@@ -2,12 +2,13 @@
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-**Versione v0.4 (versionCode=9), pubblicata su richiesta con limitazioni note.** Lo scheduler per gli avvisi di mancato arrivo non è verificato; routing reale e rilevamento sperimentale non sono attivi. Vedi [stato e note v0.4](RELEASE_NOTES_v0.4.md), [distribuzione incrementale](SETUP_v0.4.md) e [verifiche](VERIFICATION_v0.4.md). La baseline rimane documentata in [SETUP v0.33](SETUP_v0.33.md).
+**Versione v0.41 (versionCode=10), APK debug con limitazioni documentate.** Lo scheduler per gli avvisi di mancato arrivo non è verificato; routing reale e rilevamento sperimentale non sono attivi. Vedi [stato e note v0.41](RELEASE_NOTES_v0.41.md), [distribuzione incrementale](SETUP_v0.4.md) e [verifiche](VERIFICATION_v0.41.md). La baseline rimane documentata in [SETUP v0.33](SETUP_v0.33.md).
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
-Il backend verificato risponde ancora con bootstrap 0.33/8. Le nuove funzioni
-server richiedono deploy separato: [stato di scheduler e routing](INFRASTRUCTURE_v0.4.md).
+Il controllo remoto del 16/09/2026 restituisce bootstrap 0.4/9 con capability SOS,
+check-in, precisione e richieste attive; prossimità SOS disattivata. Nessun deploy
+server nella v0.41. Scheduler/FCM restano da verificare: [dettagli](RELEASE_NOTES_v0.41.md).
 
 ## Avvio
 
@@ -15,7 +16,7 @@ server richiedono deploy separato: [stato di scheduler e routing](INFRASTRUCTURE
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
 3. Applica le migrazioni Supabase in ordine: `001_initial_schema.sql` … `007_v0_33.sql`. Per le funzioni incrementali di questo branch applica poi 008–017 secondo [SETUP v0.4](SETUP_v0.4.md). Le nuove migrazioni non sono state distribuite da questo sviluppo.
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. APK installabile: [WhereWeAre-v0.4-debug.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.4/WhereWeAre-v0.4-debug.apk), con firma debug. Sorgente locale: `app/build/outputs/apk/debug/app-debug.apk`. Non è firmato con una chiave di produzione.
+5. APK installabile: [WhereWeAre-v0.41-debug.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.41/WhereWeAre-v0.41-debug.apk), con firma debug. Sorgente locale: `app/build/outputs/apk/debug/app-debug.apk`. Non è firmato con una chiave di produzione.
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 

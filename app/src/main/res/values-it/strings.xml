@@ -213,7 +213,7 @@
     <string name="ui_104">Data registrazione non disponibile</string>
     <string name="ui_105">Esci</string>
     <string name="ui_106">Elimina account</string>
-    <string name="ui_107">Privacy, informazioni e copyright &gt;</string>
+    <string name="ui_107">Privacy, informazioni e copyright</string>
     <string name="ui_108">Privacy, informazioni e copyright</string>
     <string name="ui_109">L\'operazione è definitiva: saranno cancellati account, foto, posizione, relazioni e gruppi creati da te. Confermi?</string>
     <string name="ui_110">La condivisione parte soltanto quando la attivi. OFF ferma subito l\'acquisizione sul dispositivo. Senza rete lo stop remoto rimane in attesa: gli autorizzati possono leggere l\'ultimo punto fino alla scadenza scelta dal proprietario, massimo 24 ore.</string>

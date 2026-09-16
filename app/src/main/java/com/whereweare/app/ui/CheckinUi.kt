@@ -23,7 +23,7 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 fun checkinLabel(type: String)=Strings.text(when(type) {"arrived"->R.string.checkin_arrived;"okay"->R.string.checkin_okay;else->R.string.checkin_here})
-fun eventTime(at: String)=runCatching {DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.systemDefault()).format(Instant.parse(at))}.getOrDefault("")
+fun eventTime(at: String)=runCatching {DateTimeFormatter.ofPattern(if(Strings.locale.language=="it") "dd/MM/yyyy HH:mm" else "MM/dd/yyyy h:mm a",Strings.locale).withZone(ZoneId.systemDefault()).format(Instant.parse(at))}.getOrDefault("")
 @Composable fun CheckinEditor(snapshot: Snapshot,operation: OperationState,hasPermission: Boolean,permission: ()->Unit,
     send: (String,String,String,Set<String>,Set<String>,String?)->Unit,close: ()->Unit) {
     var type by rememberSaveable {mutableStateOf("here")}

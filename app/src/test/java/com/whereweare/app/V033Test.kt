@@ -88,8 +88,8 @@ class V033Test {
             assertEquals(style.burstTime,FlareStyles.get(style.id).ascent*style.duration/1000f,.001f)
             assertTrue(style.count in 72..196)
         }
-        assertEquals(1,FlareStyles.normalize(51))
-        assertEquals(1,FlareStyles.normalize(null))
+        assertEquals(46,FlareStyles.normalize(51))
+        assertEquals(46,FlareStyles.normalize(null))
     }
     @Test fun particlesAreDeterministicBoundedAndSlowDown() {
         for(style in RocketStyles.all) {

@@ -48,7 +48,7 @@ import java.time.format.DateTimeFormatter
     val group=groups.find {it.id==selectedGroup}
     val members=state.members.filter {it.groupId==selectedGroup}.map {it.userId}
     val invitations=state.groupRequests.filter {it.group_id==selectedGroup && it.kind=="invite" && it.status=="pending" && it.user_id !in members}
-    val date=DateTimeFormatter.ofPattern(Strings.text(R.string.ui_013)).withZone(ZoneId.systemDefault())
+    val date=DateTimeFormatter.ofPattern(if(Strings.locale.language=="it") "dd/MM/yyyy HH:mm" else "MM/dd/yyyy h:mm a",Strings.locale).withZone(ZoneId.systemDefault())
     LaunchedEffect(group?.id) {if(group==null) editing=false}
     LaunchedEffect(members) {selected=selected.intersect(members.toSet())}
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -78,7 +78,7 @@ import java.time.format.DateTimeFormatter
                         IconButton(onClick={vm.hideGroup(g.id,g.id !in hiddenGroups)}) {Icon(if(g.id in hiddenGroups) Icons.Default.VisibilityOff else Icons.Default.Visibility,Strings.text(R.string.ui_020))}
                     }
                     Text(Strings.text(R.string.ui_021,state.members.count {it.groupId==g.id}.toString()))
-                    Text(date.format(g.createdAt),style=MaterialTheme.typography.bodySmall)
+                    Text(g.createdAt?.let {Strings.text(R.string.created_at,date.format(it))} ?: Strings.text(R.string.group_created_unknown),style=MaterialTheme.typography.bodySmall)
                     Text(g.expiresAt?.let {Strings.text(R.string.group_ends,date.format(it))}?:Strings.text(R.string.group_permanent),style=MaterialTheme.typography.bodySmall)
                 }
             }}
@@ -86,7 +86,7 @@ import java.time.format.DateTimeFormatter
             item {
                 TextButton(onClick={selectedGroup=null}) {Text(Strings.text(R.string.ui_022))}
                 Row(verticalAlignment=Alignment.Top) {
-                    Column(Modifier.weight(1f)) {GroupIdentity(group.emoji,group.name);Text(Strings.text(R.string.created_at,date.format(group.createdAt)),style=MaterialTheme.typography.bodySmall)}
+                    Column(Modifier.weight(1f)) {GroupIdentity(group.emoji,group.name);Text(group.createdAt?.let {Strings.text(R.string.created_at,date.format(it))} ?: Strings.text(R.string.group_created_unknown),style=MaterialTheme.typography.bodySmall)}
                     if(group.creator==vm.userId) TextButton(onClick={vm.message(null);editing=true},enabled=!operation.busy) {Text(Strings.text(R.string.ui_026))}
                 }
                 Text(group.expiresAt?.let {Strings.text(R.string.group_ends,date.format(it))}?:Strings.text(R.string.group_permanent))

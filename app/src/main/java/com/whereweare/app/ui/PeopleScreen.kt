@@ -42,6 +42,8 @@ import com.whereweare.app.domain.normalizeInviteCode
         if(vm.location.hasPermission()) locationRequest?.let {id -> vm.respondLocation(id,true) {locationRequest=null}}
         else vm.message(R.string.location_permission)
     }
+    var now by remember {mutableStateOf(vm.currentTime())}
+    LaunchedEffect(Unit) {while(true) {now=vm.currentTime();kotlinx.coroutines.delay(1000)}}
     val id=vm.userId
     val connections=(state.shares.flatMap { listOf(it.owner,it.viewer) }+state.savedPeople).distinct().filter { it!=id }
     LaunchedEffect(connections) { selected=selected.intersect(connections.toSet()) }
@@ -50,15 +52,6 @@ import com.whereweare.app.domain.normalizeInviteCode
             SearchHeader(Strings.text(R.string.people),query,searching,{searching=it},{query=it})
             Button(onClick={ adding=true; vm.clearLookup() }) { Text(Strings.text(R.string.qr_enter_code)) }
             OutlinedButton(onClick=onScan) {Text(Strings.text(R.string.qr_scan))} }
-        items(state.locationRequests,key={"location-request-${it.id}"}) {request ->
-            OutlinedCard(Modifier.fillMaxWidth()) {Column(Modifier.padding(12.dp)) {
-                Text(Strings.text(R.string.location_request_received,request.sender_name))
-                Row {
-                    TextButton(onClick={vm.respondLocation(request.id,false)},enabled=!operation.busy) {Text(Strings.text(R.string.reject))}
-                    Button(onClick={locationRequest=request.id},enabled=!operation.busy) {Text(Strings.text(R.string.location_request_share))}
-                }
-            }}
-        }
         item { Row(verticalAlignment=Alignment.CenterVertically) { Text(Strings.text(R.string.connected_people),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge); TextButton(onClick={ selecting=!selecting; selected=emptySet() }) { Text(if(selecting) Strings.text(R.string.ui_010) else Strings.text(R.string.ui_063)) } } }
         if(selecting) item { TextButton(onClick={ selected=if(selected.size==connections.size) emptySet() else connections.toSet() }) { Text(if(selected.size==connections.size) Strings.text(R.string.ui_064) else Strings.text(R.string.ui_065)) } }
         if(selected.isNotEmpty()) item { SelectionActions(selected.size,
@@ -95,10 +88,17 @@ import com.whereweare.app.domain.normalizeInviteCode
             item { Text(if(received) Strings.text(R.string.received) else Strings.text(R.string.sent),style=MaterialTheme.typography.titleLarge) }
             val requests=state.requests.filter { if(received) it.receiver==id else it.sender==id }
             if(requests.isEmpty()) item { Text(Strings.text(R.string.no_requests)) }
-            items(requests,key={"$received-${it.id}"}) { r -> OutlinedCard { Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text(state.names[if(received) r.sender else r.receiver].orEmpty()); Text(when(r.status) { "accepted"->Strings.text(R.string.accepted); "rejected"->Strings.text(R.string.rejected); "cancelled"->Strings.text(R.string.cancelled); else->Strings.text(R.string.pending) }) }
-                if(received && r.status=="pending") TextButton(onClick={ vm.respond(r.id,true) },enabled=!operation.busy) { Text(Strings.text(R.string.accept)) }
-                IconButton(onClick={ vm.dismiss(r.id) },enabled=!operation.busy) { Icon(Icons.Default.Delete,if(r.status!="pending") Strings.text(R.string.ui_072) else if(received) Strings.text(R.string.ui_073) else Strings.text(R.string.cancel_request)) }
+            items(requests.sortedByDescending {it.createdAt},key={"$received-${it.id}"}) { r ->
+                val requestStatus=r.displayStatus(now)
+                OutlinedCard { Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(Strings.text(if(r.purpose=="location") R.string.request_location_kind else R.string.request_connection_kind),style=MaterialTheme.typography.titleSmall)
+                    Text(state.names[if(received) r.sender else r.receiver] ?: state.locationRequests.firstOrNull {it.id==r.id}?.sender_name.orEmpty())
+                    r.createdAt?.let {Text(eventTime(it),style=MaterialTheme.typography.bodySmall)}
+                    if(r.purpose=="location" && requestStatus=="accepted") Text(Strings.text(R.string.request_accepted_hint),style=MaterialTheme.typography.bodySmall)
+                    Text(when(requestStatus) { "accepted"->Strings.text(R.string.accepted); "rejected"->Strings.text(R.string.rejected); "expired"->Strings.text(R.string.request_expired_state); "cancelled"->Strings.text(R.string.cancelled); else->Strings.text(R.string.pending) }) }
+                if(received && requestStatus=="pending") TextButton(onClick={ if(r.purpose=="location") locationRequest=r.id else vm.respond(r.id,true) },enabled=!operation.busy) { Text(Strings.text(R.string.accept)) }
+                IconButton(onClick={ if(r.purpose=="location" && received && requestStatus=="pending") vm.respondLocation(r.id,false) else if(!received && requestStatus=="pending") vm.cancel(r.id) else vm.dismiss(r.id) },enabled=!operation.busy) { Icon(Icons.Default.Delete,if(requestStatus!="pending") Strings.text(R.string.ui_072) else if(received) Strings.text(R.string.ui_073) else Strings.text(R.string.cancel_request)) }
             } } }
         }
     }

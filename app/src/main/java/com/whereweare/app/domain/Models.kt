@@ -6,7 +6,7 @@ import java.util.Locale
 
 data class UserProfile(val id: String, val displayName: String, val inviteCode: String, val avatarPath: String?=null, val visibilitySeconds: Int=86400,val sharedPrecision: Int=0)
 data class ContactProfile(val id: String,val name: String,val avatarPath: String?,val visibilitySeconds: Int,val commonGroup: Boolean,val canView: Boolean=true,val updateInterval: Int=60)
-data class Group(val id: String,val name: String,val emoji: String,val code: String,val creator: String,val createdAt: Instant,val expiresAt: Instant?=null) {
+data class Group(val id: String,val name: String,val emoji: String,val code: String,val creator: String,val createdAt: Instant?,val expiresAt: Instant?=null) {
     fun active(now: Instant)=expiresAt?.isAfter(now) ?: true
 }
 data class GroupMember(val groupId: String,val userId: String,val sharingEnabled: Boolean=true,val sharedPrecision: Int?=null)
@@ -18,7 +18,10 @@ val visibilityTimeouts = listOf(600,1800,3600,7200,14400,43200,86400)
 fun lowAccuracy(accuracy: Double,threshold: Int) = accuracy>threshold
 fun withinVisibility(at: Instant,now: Instant,seconds: Int) = !at.isBefore(now.minusSeconds(seconds.toLong()))
 fun validGroupName(name: String) = name.trim().codePointCount(0,name.trim().length) in 1..24
-data class ShareRequest(val id: String, val sender: String, val receiver: String, val status: String)
+data class ShareRequest(val id: String, val sender: String, val receiver: String, val status: String,val purpose: String="connection",val createdAt: String?=null) {
+    fun displayStatus(now: Instant): String = if(purpose=="location" && status=="pending" &&
+        createdAt?.let {runCatching { !Instant.parse(it).plusSeconds(86400).isAfter(now) }.getOrDefault(false)}==true) "expired" else status
+}
 data class LocationShare(val owner: String, val viewer: String, val enabled: Boolean,val sharedPrecision: Int?=null)
 data class SharingStatus(val userId: String, val sharing: Boolean)
 data class UserLocation(val userId: String, val latitude: Double, val longitude: Double,
@@ -68,7 +71,7 @@ data class Snapshot(val profile: UserProfile? = null, val names: Map<String,Stri
 @kotlinx.serialization.Serializable data class AudienceMember(val user_id: String,val name: String,val precision_m: Int,val sources: List<PrecisionSource>)
 
 @kotlinx.serialization.Serializable data class GroupRequest(val id: String,val group_id: String,val group_name: String,val user_id: String,val name: String,val kind: String,val status: String,val can_respond: Boolean,val group_emoji: String="📍",val can_cancel: Boolean=false)
-@kotlinx.serialization.Serializable data class MeetingPoint(val id: String,val creator_id: String,val creator_name: String,val latitude: Double,val longitude: Double,val active: Boolean,val created_at: String,val removed_at: String?=null,val recipients: List<String> = emptyList(),val flare_style_id: Int?=1,val radius_m: Int=100,val completed_at: String?=null,val progress: List<FlareProgress> = emptyList())
+@kotlinx.serialization.Serializable data class MeetingPoint(val id: String,val creator_id: String,val creator_name: String,val latitude: Double,val longitude: Double,val active: Boolean,val created_at: String,val removed_at: String?=null,val recipients: List<String> = emptyList(),val flare_style_id: Int?=FlareStyles.DEFAULT_ID,val radius_m: Int=100,val completed_at: String?=null,val progress: List<FlareProgress> = emptyList())
 fun stalePosition(fix: UserLocation,profile: ContactProfile?,now: Instant,graceSeconds: Int)=
     Duration.between(fix.recordedAt,now).seconds>((profile?.updateInterval ?: 60)+graceSeconds).toLong()
 

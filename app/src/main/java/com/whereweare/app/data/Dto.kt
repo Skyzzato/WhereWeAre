@@ -12,16 +12,16 @@ import java.time.Instant
 @Serializable data class ContactDto(val user_id: String,val display_name: String,val avatar_path: String?=null,val visibility_seconds: Int=86400,val common_group: Boolean=false,val can_view: Boolean=true,val update_interval_seconds: Int=60) {
     fun domain()=ContactProfile(user_id,display_name,SafeAvatar.reference(avatar_path),visibility_seconds,common_group,can_view,update_interval_seconds)
 }
-@Serializable data class GroupDto(val id: String,val name: String,val emoji: String,val invite_code: String,val creator_id: String,val created_at: String,val expires_at: String?=null) {
-    fun domain()=Group(id,name,emoji,invite_code,creator_id,Instant.parse(created_at),expires_at?.let(Instant::parse))
+@Serializable data class GroupDto(val id: String,val name: String,val emoji: String,val invite_code: String,val creator_id: String,val created_at: String?=null,val expires_at: String?=null) {
+    fun domain()=Group(id,name,emoji,invite_code,creator_id,created_at?.let {runCatching {Instant.parse(it)}.getOrNull()},expires_at?.let(Instant::parse))
 }
 @Serializable data class MemberDto(val group_id: String,val user_id: String,val sharing_enabled: Boolean=true,val shared_precision: Int?=null) { fun domain()=GroupMember(group_id,user_id,sharing_enabled,shared_precision) }
 @Serializable data class NameDto(val user_id: String, val display_name: String)
 @Serializable data class LookupDto(val user_id: String, val display_name: String, val invite_code: String) {
     fun domain() = UserProfile(user_id, display_name, invite_code)
 }
-@Serializable data class RequestDto(val id: String, val sender_id: String, val receiver_id: String, val status: String) {
-    fun domain() = ShareRequest(id, sender_id, receiver_id, status)
+@Serializable data class RequestDto(val id: String, val sender_id: String, val receiver_id: String, val status: String,val purpose: String="connection",val created_at: String?=null) {
+    fun domain() = ShareRequest(id, sender_id, receiver_id, status,purpose,created_at)
 }
 @Serializable data class ShareDto(val owner_id: String, val viewer_id: String, val enabled: Boolean,val shared_precision: Int?=null) {
     fun domain() = LocationShare(owner_id, viewer_id, enabled,shared_precision)

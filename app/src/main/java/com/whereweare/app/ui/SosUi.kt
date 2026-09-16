@@ -32,6 +32,7 @@ fun eventReceivedText(event: AppEvent)=Strings.text(when(event.kind) {"place" ->
     var category by rememberSaveable {mutableStateOf("help")}
     var people by rememberSaveable {mutableStateOf(emptyList<String>())}
     var groups by rememberSaveable {mutableStateOf(emptyList<String>())}
+    var choosing by rememberSaveable {mutableStateOf(false)}
     var counting by remember {mutableStateOf(false)}
     var remaining by remember {mutableIntStateOf(5)}
     LaunchedEffect(Unit) {vm.resetSos()}
@@ -47,14 +48,9 @@ fun eventReceivedText(event: AppEvent)=Strings.text(when(event.kind) {"place" ->
             listOf("help","injured","lost","vehicle","accident").forEach {value -> Row {
                 RadioButton(category==value,{category=value},enabled=editable);Text(sosCategory(value))
             }}
-            Text(Strings.text(R.string.people),style=MaterialTheme.typography.titleSmall)
-            snapshot.contacts.values.filter {it.id!=snapshot.profile?.id}.forEach {person -> Row {
-                Checkbox(person.id in people,{people=if(it) people+person.id else people-person.id},enabled=editable);Text(person.name)
-            }}
-            Text(Strings.text(R.string.ui_119),style=MaterialTheme.typography.titleSmall)
-            snapshot.groups.forEach {group -> Row {
-                Checkbox(group.id in groups,{groups=if(it) groups+group.id else groups-group.id},enabled=editable);Text(group.name)
-            }}
+            Text(Strings.text(R.string.recipients_summary,people.size,groups.size))
+            OutlinedButton(onClick={choosing=true},enabled=editable) {Text(Strings.text(R.string.recipients_title))}
+
         }
         if(counting) {
             Text(Strings.text(R.string.sos_countdown,remaining.toString()),style=MaterialTheme.typography.headlineMedium)
@@ -62,10 +58,11 @@ fun eventReceivedText(event: AppEvent)=Strings.text(when(event.kind) {"place" ->
         }
         if(status!=SosSendState.IDLE) Text(Strings.text(when(status) {SosSendState.SENDING -> R.string.sos_sending;SosSendState.CONFIRMED -> R.string.sos_confirmed;else -> R.string.sos_unknown}))
         if(status==SosSendState.SENDING) LinearProgressIndicator(Modifier.fillMaxWidth())
-        Row {Switch(checked=false,onCheckedChange={},enabled=false);Text(Strings.text(R.string.sos_nearby_disabled))}
+        Text(Strings.text(R.string.sos_nearby_disabled),style=MaterialTheme.typography.bodySmall)
     }},confirmButton={if(status!=SosSendState.CONFIRMED) TextButton(enabled=!counting && status!=SosSendState.SENDING && (people.isNotEmpty()||groups.isNotEmpty()),onClick={counting=true}) {
         Text(Strings.text(if(status==SosSendState.UNKNOWN) R.string.sos_retry else R.string.sos_send),color=Color(0xFFB3261E))
     }},dismissButton={TextButton(enabled=status!=SosSendState.SENDING,onClick=close) {Text(Strings.text(R.string.close))}})
+    if(choosing) SosRecipients(snapshot,vm.avatars,people,groups,close={choosing=false},confirm={p,g -> people=p;groups=g;choosing=false})
 }
 
 @Composable fun SosDetail(vm: MapViewModel,event: AppEvent,owner: Boolean,close: ()->Unit) {

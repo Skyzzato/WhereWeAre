@@ -8,7 +8,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +37,20 @@ import kotlinx.coroutines.CancellationException
             if(path!=null && bitmap!=null) Image(bitmap!!.asImageBitmap(),name,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
             else Text(com.whereweare.app.domain.avatarInitial(name),color=Color.White,style=MaterialTheme.typography.titleMedium)
         }
-        if(star) Icon(Icons.Default.Star,Strings.text(R.string.ui_003),tint=Color(0xFFFFC107),modifier=Modifier.size((size.value*.28f).coerceIn(7f,22f).dp).align(Alignment.TopStart).offset(x=(-size.value*.04f).dp,y=(-size.value*.04f).dp))
+        if(star) {
+            val description=Strings.text(R.string.ui_003)
+            Canvas(Modifier.size((size.value*.34f).coerceIn(11f,24f).dp).align(Alignment.TopEnd).semantics {contentDescription=description}) {
+                val path=Path()
+                val radius=(this.size.minDimension-2.dp.toPx())/2f
+                repeat(10) {i ->
+                    val angle=-Math.PI/2+i*Math.PI/5
+                    val r=if(i%2==0) radius else radius*.45f
+                    val x=this.size.width/2+(kotlin.math.cos(angle)*r).toFloat()
+                    val y=this.size.height/2+(kotlin.math.sin(angle)*r).toFloat()
+                    if(i==0) path.moveTo(x,y) else path.lineTo(x,y)
+                }
+                path.close();drawPath(path,Color(0xFFFFC107));drawPath(path,Color.Black,style=Stroke(1.dp.toPx()))
+            }
+        }
     }
 }

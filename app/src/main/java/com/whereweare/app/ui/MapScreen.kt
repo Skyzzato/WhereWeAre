@@ -16,7 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.clickable
@@ -41,7 +41,8 @@ import org.maplibre.spatialk.geojson.BoundingBox
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@Composable fun MapScreen(vm: MapViewModel,focus: MapFocus?=null,focused: ()->Unit={}) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun MapScreen(vm: MapViewModel,focus: MapFocus?=null,focused: ()->Unit={},onPlaces: ()->Unit={}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val local by vm.local.collectAsStateWithLifecycle()
     val tracking by vm.controller.state.collectAsStateWithLifecycle()
@@ -145,12 +146,26 @@ import java.time.format.DateTimeFormatter
                 uiOptions=MapUiOptions { renderMode=AndroidRenderMode.Texture },
                 overlay={
                     include(MapOverlay.Default)
-                    events.forEach {event -> event.checkin()?.let {payload ->
-                        Surface(onClick={selectedId=null;selectedEvent=event.id},modifier=Modifier.placedAt(Position(payload.longitude,payload.latitude)),shape=MaterialTheme.shapes.small) {
-                            if(payload.precision_m>0) Text("${Strings.text(R.string.checkin_title)} · ${event.sender_name}\n${precisionLabel(payload.precision_m)}",Modifier.padding(6.dp),style=MaterialTheme.typography.labelSmall)
-                            else Icon(Icons.Default.CheckCircle,"${event.sender_name}: ${checkinLabel(payload.checkin_type)}",Modifier.size(40.dp).padding(6.dp),tint=MaterialTheme.colorScheme.tertiary)
+                    val checkins=events.filter {it.checkin()!=null}
+                    val checkinPoints=checkins.mapIndexed {index,event ->
+                        val payload=event.checkin()!!
+                        val at=camera.screenLocationFromPosition(Position(payload.longitude,payload.latitude))
+                        MarkerScreenPoint(index,at?.x?.value ?: (index*10000).toFloat(),at?.y?.value ?: 0f)
+                    }
+                    clusterMarkers(checkinPoints,48f).forEach {cluster ->
+                        val first=checkins[cluster.first()].checkin()!!
+                        Box(Modifier.placedAt(Position(first.longitude,first.latitude))) {
+                            var expanded by remember {mutableStateOf(false)}
+                            FilledTonalButton(onClick={if(cluster.size==1) {selectedId=null;selectedEvent=checkins[cluster.first()].id} else expanded=true},contentPadding=PaddingValues(8.dp)) {
+                                Icon(Icons.Default.CheckCircle,Strings.text(R.string.checkin_title))
+                                if(cluster.size>1) Text(cluster.size.toString())
+                                else if(first.precision_m>0) Text(precisionLabel(first.precision_m))
+                            }
+                            DropdownMenu(expanded,{expanded=false}) {cluster.forEach {index -> val event=checkins[index]
+                                DropdownMenuItem(text={Text(event.sender_name+" · "+eventTime(event.created_at))},onClick={selectedId=null;selectedEvent=event.id;expanded=false})
+                            }}
                         }
-                    }}
+                    }
                     events.forEach {event -> event.sos()?.location(event.id)?.let {fix ->
                         Surface(onClick={selectedId=null;selectedEvent=event.id},modifier=Modifier.placedAt(Position(fix.longitude,fix.latitude)),shape=MaterialTheme.shapes.small) {
                             Text("SOS · ${event.sender_name}",Modifier.padding(8.dp),color=androidx.compose.ui.graphics.Color(0xFFB3261E))
@@ -195,10 +210,17 @@ import java.time.format.DateTimeFormatter
                 })
             ApproximateAreas(camera,state.visible.map {it.location}+events.mapNotNull {it.checkin()?.location(it.id)?:it.sos()?.location(it.id)})
             MeetingConnections(camera,state.snapshot.meetings,state.visible.map {it.location}.filter {it.precisionMeters==0}+listOfNotNull(local))
-            Column(Modifier.align(Alignment.TopStart).padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                FilledTonalButton(enabled=local!=null,colors=ButtonDefaults.filledTonalButtonColors(containerColor=if(follow) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer),onClick={ if(local!=null) { follow=true; scope.launch { camera.animateCameraPosition(CameraPosition(target=Position(local!!.longitude,local!!.latitude),zoom=15.0)) } } }) {
-                    Text(stringResource(R.string.center_me))
+            if(!creatingMeeting) Box(Modifier.align(Alignment.BottomEnd).padding(end=12.dp,bottom=36.dp)) {
+                TooltipBox(positionProvider=TooltipDefaults.rememberPlainTooltipPositionProvider(),tooltip={PlainTooltip {Text(Strings.text(R.string.center_me))}},state=rememberTooltipState()) {
+                    FilledIconButton(enabled=local!=null,onClick={local?.let {fix ->
+                        if(fix.recordedAt.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))) vm.message(R.string.local_position_stale)
+                        follow=true;scope.launch {camera.animateCameraPosition(CameraPosition(target=Position(fix.longitude,fix.latitude),zoom=15.0))}
+                    }},modifier=Modifier.size(48.dp)) {Icon(Icons.Default.MyLocation,Strings.text(R.string.center_me))}
                 }
+            }
+            if(!creatingMeeting) Column(Modifier.align(Alignment.TopStart).padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                if(config.config?.features?.meeting_points!=false) FloatingActionButton(onClick={follow=false;creatingMeeting=true}) {Icon(Icons.Default.Flag,Strings.text(R.string.ui_046))}
+                if(state.snapshot.eventsAvailable) FloatingActionButton(onClick={vm.message(null);checkinEditor=true}) {Icon(Icons.Default.Check,Strings.text(R.string.checkin_title))}
             }
             if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
                 FloatingActionButton(onClick={actions=true}) {Icon(Icons.Default.MoreVert,Strings.text(R.string.map_actions))}
@@ -214,8 +236,9 @@ import java.time.format.DateTimeFormatter
                         }
                     })
                     if(config.config?.features?.meeting_points!=false) DropdownMenuItem(text={Text(Strings.text(R.string.ui_046))},onClick={actions=false;follow=false;creatingMeeting=true})
+                    if(state.snapshot.placesAvailable) DropdownMenuItem(text={Text(Strings.text(R.string.places_title))},leadingIcon={Icon(Icons.Default.Place,null)},onClick={actions=false;onPlaces()})
                     if(state.snapshot.eventsAvailable) {
-                        DropdownMenuItem(text={Text(Strings.text(R.string.checkin_title))},onClick={actions=false;vm.message(null);checkinEditor=true})
+                        DropdownMenuItem(text={Text(Strings.text(R.string.checkin_title))},leadingIcon={Icon(Icons.Default.Check,null)},onClick={actions=false;vm.message(null);checkinEditor=true})
                         DropdownMenuItem(text={Text(Strings.text(R.string.checkin_inbox))},onClick={actions=false;checkinInbox=true})
                     }
                 }
@@ -231,7 +254,7 @@ import java.time.format.DateTimeFormatter
                     Button(onClick={choosingRecipients=true}) {Text(Strings.text(R.string.ui_049))}
                 }}}
             }
-            if(state.visible.isEmpty() && events.isEmpty() && !creatingMeeting) Surface(modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=48.dp),shape=MaterialTheme.shapes.medium) {
+            if(state.visible.isEmpty() && events.isEmpty() && !creatingMeeting) Surface(modifier=Modifier.align(Alignment.BottomCenter).padding(start=12.dp,end=72.dp,bottom=48.dp),shape=MaterialTheme.shapes.medium) {
                 Text(stringResource(R.string.empty_map),Modifier.padding(8.dp),style=MaterialTheme.typography.labelMedium)
             }
             val selected=(state.visible+listOfNotNull(local?.let { VisiblePerson(Strings.text(R.string.you),it,freshness(it.recordedAt,state.now)) })).firstOrNull { it.location.userId==selectedId }
@@ -241,19 +264,19 @@ import java.time.format.DateTimeFormatter
                 val stale=if(own) person.location.recordedAt.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))
                     else stalePosition(person.location,state.snapshot.contacts[person.location.userId],state.now,config.config?.defaults?.stale_grace_seconds ?: 180)
                 if(stale) Text(stringResource(R.string.person_position_stale),color=MaterialTheme.colorScheme.error)
-                Text(freshnessText(person.freshness,person.location.recordedAt,state.now))
+                Text(Strings.text(R.string.position_block),style=MaterialTheme.typography.titleSmall)
+                DetailLine(Icons.Default.Schedule,freshnessText(person.freshness,person.location.recordedAt,state.now))
                 if(person.location.precisionMeters>0) Text(precisionLabel(person.location.precisionMeters),color=MaterialTheme.colorScheme.tertiary)
-                else Text(Strings.text(R.string.ui_050, (person.location.accuracy.toLong()).toString()))
+                else DetailLine(Icons.Default.GpsFixed,Strings.text(R.string.ui_050, (person.location.accuracy.toLong()).toString()))
                 val deviceAt=if(own) tracking.deviceStatus?.observedAt else person.location.deviceStatusAt
                 val deviceRecent=deviceStatusRecent(deviceAt,if(own) java.time.Instant.now() else state.now)
                 val battery=(if(own) tracking.deviceStatus?.status?.batteryLevel else person.location.batteryLevel).takeIf {deviceRecent}
                 val services=(if(own) tracking.deviceStatus?.status?.locationEnabled else person.location.locationEnabled).takeIf {deviceRecent}
-                Text(battery?.let {stringResource(R.string.person_battery,it)} ?: stringResource(R.string.person_battery_unknown))
-                Text(stringResource(when(services) {true->R.string.person_location_on;false->R.string.person_location_off;null->R.string.person_location_unknown}))
-                deviceAt?.let {Text(stringResource(R.string.person_device_updated,DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(it)),style=MaterialTheme.typography.bodySmall)}
-                Text(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(person.location.recordedAt))
+                DetailLine(Icons.Default.Schedule,eventTime(person.location.recordedAt.toString()))
                 if(person.location.precisionMeters==0) {
-                Text(coordinateLabel(person.location.latitude,person.location.longitude)?.let { Strings.text(R.string.ui_051, (it).toString()) } ?: Strings.text(R.string.ui_052))
+                person.location.speed?.let {DetailLine(Icons.Default.Speed,Strings.text(R.string.movement_speed,"%.1f".format(it)))}
+                person.location.bearing?.let {DetailLine(Icons.Default.Explore,Strings.text(R.string.movement_bearing,"%.0f".format(it)))}
+                DetailLine(Icons.Default.Place,coordinateLabel(person.location.latitude,person.location.longitude)?.let { Strings.text(R.string.ui_051, (it).toString()) } ?: Strings.text(R.string.ui_052))
                 openStreetMapUrl(person.location.latitude,person.location.longitude)?.let { url ->
                     TextButton(onClick={
                         try { context.startActivity(Intent(Intent.ACTION_VIEW,url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE)) }
@@ -267,6 +290,11 @@ import java.time.format.DateTimeFormatter
                     }) {Text(stringResource(R.string.person_open_google))}
                 }
                 }
+                HorizontalDivider(Modifier.padding(vertical=8.dp))
+                Text(Strings.text(R.string.device_block),style=MaterialTheme.typography.titleSmall)
+                DetailLine(Icons.Default.BatteryStd,battery?.let {stringResource(R.string.person_battery,it)} ?: stringResource(R.string.person_battery_unknown))
+                DetailLine(Icons.Default.LocationOn,stringResource(when(services) {true->R.string.person_location_on;false->R.string.person_location_off;null->R.string.person_location_unknown}))
+                deviceAt?.let {Text(stringResource(R.string.person_device_updated,DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.systemDefault()).format(it)),style=MaterialTheme.typography.bodySmall)}
             } } }
             events.firstOrNull {it.id==selectedEvent}?.let {event -> event.checkin()?.let {payload ->
                 ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp).heightIn(max=300.dp)) {Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
@@ -295,10 +323,17 @@ import java.time.format.DateTimeFormatter
                     }),Modifier.padding(start=8.dp),color=if(tracking.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                 }
                 if(tracking.active) Text(if(tracking.waiting) Strings.text(R.string.ui_055) else Strings.text(R.string.ui_056, (tracking.fix?.accuracy?.toLong()).toString()),style=MaterialTheme.typography.bodySmall)
-                if(pending!=null) Notice(R.string.stop_pending)
-                if(tracking.pendingUpload) Notice(R.string.location_upload_pending)
-                if(tracking.waiting) Notice(R.string.sync_waiting)
-                if(sharingState==SharingUiState.REMOTE_ACTIVE) Notice(R.string.process_stopped)
+                val significantDelay=tracking.pendingUpload && (tracking.lastAcknowledged?.isBefore(state.now.minusSeconds(maxOf(60L,updateInterval.toLong()+30))) ?: tracking.waiting)
+                val warning=when {
+                    pending!=null -> R.string.stop_pending
+                    sharingState==SharingUiState.REMOTE_ACTIVE -> R.string.process_stopped
+                    tracking.waiting -> R.string.sync_waiting
+                    significantDelay -> R.string.location_upload_pending
+                    else -> null
+                }
+                Box(Modifier.fillMaxWidth().height(48.dp).verticalScroll(rememberScrollState()),contentAlignment=Alignment.CenterStart) {
+                    warning?.let {Text(Strings.text(it),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)}
+                }
                 Button(onClick={ if(sharingState==SharingUiState.OFF) requestPermission(true) else vm.stop() },enabled=sharingState!=SharingUiState.STOPPING,modifier=Modifier.fillMaxWidth()) {
                     Text(stringResource(when(sharingState) {SharingUiState.ON -> R.string.stop; SharingUiState.REMOTE_ACTIVE -> R.string.reconcile_stop; SharingUiState.STARTING -> R.string.ui_006; SharingUiState.STOPPING -> R.string.sharing_stopping; SharingUiState.OFF -> R.string.start}))
                 }

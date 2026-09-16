@@ -16,7 +16,7 @@
   <string name="sos_confirmed">SOS registered and confirmed by the server. It has not been sent to 112 or emergency services.</string>
   <string name="sos_unknown">Unable to confirm registration. Retry or contact your recipients directly.</string>
   <string name="sos_retry">Retry same SOS</string>
-  <string name="sos_nearby_disabled">Receive nearby SOS: OFF. Experimental service not available.</string>
+  <string name="sos_nearby_disabled">Nearby users: unavailable. Revocable enrolment, recent availability and abuse-protected search are missing. SOS to selected people and groups is separate.</string>
   <string name="sos_received">SOS from %1$s</string>
   <string name="sos_closed_received">%1$s closed the SOS</string>
   <string name="sos_active">Active SOS</string>

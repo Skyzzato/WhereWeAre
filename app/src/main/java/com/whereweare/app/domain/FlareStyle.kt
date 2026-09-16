@@ -9,7 +9,8 @@ data class FlareStyle(val id: Int,val duration: Int=1800,val ascent: Float=.55f,
     val name: String="") { fun nameOrFallback()=name.ifBlank {"Flare $id"} }
 
 object FlareStyles {
-    fun normalize(id: Int?)=id?.takeIf {it in 1..50} ?: 1
+    const val DEFAULT_ID = 46
+    fun normalize(id: Int?)=id?.takeIf {it in 1..50} ?: DEFAULT_ID
     val all=listOf(
         FlareStyle(1,1300,ascent=.65f,radius=.16f,particles=10),
         FlareStyle(2,1000,ascent=.42f,radius=.14f,particles=22,speedCurve=.65f),

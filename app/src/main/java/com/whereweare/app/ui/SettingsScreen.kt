@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,9 +25,9 @@ import com.whereweare.app.BuildConfig
 import com.whereweare.app.domain.*
 
 fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_114, (seconds).toString()); seconds==60 -> Strings.text(R.string.ui_115); seconds<3600 -> Strings.text(R.string.ui_116, (seconds/60).toString()); seconds==3600 -> Strings.text(R.string.ui_117); else -> Strings.text(R.string.ui_118, (seconds/3600).toString()) }
-@Composable fun <T> Choice(label: String,value: T,options: List<T>,text: (T)->String,onChoose: (T)->Unit) {
+@Composable fun <T> Choice(label: String,value: T,options: List<T>,text: (T)->String,onChoose: (T)->Unit,info: String?=null) {
     var expanded by remember { mutableStateOf(false) }
-    Column { Text(label,style=MaterialTheme.typography.titleSmall); Box {
+    Column { InfoLabel(label,info); Box {
         OutlinedButton(onClick={expanded=true},modifier=Modifier.fillMaxWidth()) {Text(text(value))}
         DropdownMenu(expanded,{expanded=false}) { options.forEach { option -> DropdownMenuItem(text={Text(text(option))},onClick={expanded=false;onChoose(option)}) } }
     } }
@@ -55,18 +58,15 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Busy(operation)
         SettingsSection(Strings.text(R.string.ui_078),initiallyExpanded=true) {
-        state.profile?.let { Avatar(it.id,it.displayName,it.avatarPath,false,vm.avatars,64.dp) }
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+            state.profile?.let { Avatar(it.id,it.displayName,it.avatarPath,false,vm.avatars,56.dp) }
+            OutlinedTextField(name,{name=it},label={Text(Strings.text(R.string.name))},singleLine=true,modifier=Modifier.weight(1f),
+                trailingIcon={IconButton(onClick={vm.rename(name)},enabled=!operation.busy && validName(name) && name.trim()!=state.profile?.displayName) {
+                    Icon(Icons.Default.Save,Strings.text(R.string.save_name))
+                }})
+        }
         vm.userId?.let {user -> AvatarEditor(user,vm.avatarDrafts,operation.busy,state.profile?.avatarPath!=null,
             onSave=vm::avatar,onRemove=vm::removeAvatar,onError={vm.message(R.string.error_generic)},error=operation.message) }
-        OutlinedTextField(name,{name=it},label={Text(Strings.text(R.string.name))},singleLine=true,modifier=Modifier.fillMaxWidth())
-        TextButton(onClick={vm.rename(name)},enabled=!operation.busy){Text(Strings.text(R.string.save))}
-        Text(Strings.text(R.string.ui_093),style=MaterialTheme.typography.titleSmall)
-        val scales=listOf(.75f,1f,1.25f,1.5f)
-        val sizes=listOf(Strings.text(R.string.ui_094),Strings.text(R.string.ui_095),Strings.text(R.string.ui_096),Strings.text(R.string.ui_097))
-        var sizeIndex by remember(scale) {mutableFloatStateOf(scales.indexOf(scale).coerceAtLeast(0).toFloat())}
-        Slider(sizeIndex,{sizeIndex=it},valueRange=0f..3f,steps=2,onValueChangeFinished={vm.avatarScale(scales[kotlin.math.round(sizeIndex).toInt()])})
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {sizes.forEach {Text(it,style=MaterialTheme.typography.labelSmall)}}
-        }
         val code=state.profile?.inviteCode.orEmpty()
         Card(modifier=Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerHighest)) {
             Column(Modifier.padding(16.dp)) {
@@ -81,6 +81,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
                 }
             }
         }
+        }
         SettingsSection(Strings.text(R.string.settings_location_sharing),initiallyExpanded=false) {
         val serverSharing=state.statuses.any {it.userId==state.profile?.id && it.sharing}
         val sharingState=sharingUiState(tracking.active,tracking.starting,serverSharing,pending!=null)
@@ -91,55 +92,51 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         Row { FilterChip(!high || !precise,{vm.accuracy(false)},label={Text(Strings.text(R.string.balanced))}); Spacer(Modifier.width(8.dp)); FilterChip(high && precise,{vm.accuracy(true)},enabled=precise,label={Text(Strings.text(R.string.high_accuracy))}) }
         if(!precise) { Text(Strings.text(R.string.ui_085),color=MaterialTheme.colorScheme.error)
             TextButton(onClick={context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri()))}){Text(Strings.text(R.string.ui_086))} }
-        Choice(Strings.text(R.string.ui_087),interval,updateIntervals,::durationLabel,vm::interval)
-        Choice(Strings.text(R.string.ui_088),threshold,accuracyThresholds,{"$it m"},vm::threshold)
+        Choice(Strings.text(R.string.ui_087),interval,updateIntervals,::durationLabel,vm::interval,Strings.text(R.string.interval_info))
+        Choice(Strings.text(R.string.ui_088),threshold,accuracyThresholds,{"$it m"},vm::threshold,Strings.text(R.string.threshold_info))
         Choice(Strings.text(R.string.ui_089),state.profile?.visibilitySeconds ?: 86400,visibilityTimeouts,::durationLabel,vm::visibility)
         if(state.sharedPrecisionAvailable) {
             PrecisionChoice(state.profile?.sharedPrecision ?: 0,false,!operation.busy,vm::precision)
-            Text(Strings.text(R.string.precision_explanation),style=MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick={audience=true},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.precision_audience))}
         }
+        if(state.sosAvailable) SettingsSection("SOS") {
+            Text(Strings.text(R.string.sos_nearby_disabled))
         }
-        SettingsSection(Strings.text(R.string.map),initiallyExpanded=false) {
+        }
+        if(state.placesAvailable) OutlinedCard(onClick={places=true},modifier=Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {DetailLine(Icons.Default.Place,Strings.text(R.string.places_title));Text(Strings.text(R.string.places_entry_hint))}
+        }
+        SettingsSection(Strings.text(R.string.appearance),initiallyExpanded=false) {
+        Text(Strings.text(R.string.ui_093),style=MaterialTheme.typography.titleSmall)
+        val scales=listOf(.75f,1f,1.25f,1.5f)
+        val sizes=listOf(Strings.text(R.string.ui_094),Strings.text(R.string.ui_095),Strings.text(R.string.ui_096),Strings.text(R.string.ui_097))
+        var sizeIndex by remember(scale) {mutableFloatStateOf(scales.indexOf(scale).coerceAtLeast(0).toFloat())}
+        Slider(sizeIndex,{sizeIndex=it},valueRange=0f..3f,steps=2,onValueChangeFinished={vm.avatarScale(scales[kotlin.math.round(sizeIndex).toInt()])})
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {sizes.forEach {Text(it,style=MaterialTheme.typography.labelSmall)}}
+
         Choice(Strings.text(R.string.ui_090),MapStyle.fromId(style).id,MapStyle.entries.map { it.id },{MapStyle.fromId(it).label},vm::mapStyle)
         Choice(Strings.text(R.string.ui_092),theme,listOf("default","ocean","sunset","lavender","graphite","dark"),{it.replaceFirstChar(Char::uppercase)},vm::theme)
-        }
-        SettingsSection(Strings.text(R.string.flare_section),initiallyExpanded=false) {
+
         Choice(Strings.text(R.string.flare_style),flareStyle,(1..50).toList(),{Strings.text(if(it<=30) R.string.flare_number else R.string.rocket_number,it)},vm::flareStyle)
         Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {Text(Strings.text(R.string.flare_sound),Modifier.weight(1f));Switch(flareSound,vm::flareSound)}
-        }
-        if(state.placesAvailable) OutlinedButton(onClick={places=true},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.places_title))}
-        if(state.sosAvailable) SettingsSection("SOS") {
-            Row {Switch(checked=false,onCheckedChange={},enabled=false);Text(Strings.text(R.string.sos_nearby_disabled))}
-        }
-        SettingsSection(Strings.text(R.string.ui_098),initiallyExpanded=false) {
         Choice(Strings.text(R.string.ui_098),language,listOf("system","it","en"),{when(it) {"it"->Strings.text(R.string.ui_099);"en"->Strings.text(R.string.ui_100);else->Strings.text(R.string.ui_101)}},vm::language)
-        }
-        SettingsSection(Strings.text(R.string.diag_title),initiallyExpanded=false) {
-        OutlinedButton(onClick={diagnostic="location"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_location))}
-        OutlinedButton(onClick={diagnostic="connection"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_connection))}
+
         }
         SettingsSection(Strings.text(R.string.ui_102),initiallyExpanded=false) {
         Text(vm.registeredSince?.let { Strings.text(R.string.ui_103, (it).toString()) } ?: Strings.text(R.string.ui_104))
         OutlinedButton(onClick=vm::logout,enabled=!operation.busy,modifier=Modifier.fillMaxWidth()){Text(Strings.text(R.string.ui_105))}
         TextButton(onClick={delete=true},enabled=!operation.busy){Text(Strings.text(R.string.ui_106),color=MaterialTheme.colorScheme.error)}
         }
-        TextButton(onClick=onPrivacy) {Text(Strings.text(R.string.ui_107))}
+        SettingsSection(Strings.text(R.string.diag_title),initiallyExpanded=false) {
+        OutlinedButton(onClick={diagnostic="location"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_location))}
+        OutlinedButton(onClick={diagnostic="connection"},modifier=Modifier.fillMaxWidth()) {Text(Strings.text(R.string.diag_connection))}
+        }
+
         SettingsSection(Strings.text(R.string.settings_information)) {
             Text("WhereWeAre — Troviamoci.")
             Text("v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         }
-        SettingsSection("Copyright") {
-            Text("© WhereWeAre")
-            val uri=LocalUriHandler.current
-            TextButton(onClick={uri.openUri("https://www.openstreetmap.org/copyright")}) {Text("© OpenStreetMap contributors")}
-            TextButton(onClick={uri.openUri("https://maplibre.org/")}) {Text("MapLibre Compose / Native")}
-            TextButton(onClick={uri.openUri("https://openfreemap.org/")}) {Text("OpenFreeMap · OpenMapTiles")}
-            TextButton(onClick={uri.openUri("https://opentopomap.org/about")}) {Text("OpenTopoMap · SRTM · CC-BY-SA")}
-            TextButton(onClick={uri.openUri("https://www.cyclosm.org/")}) {Text("CyclOSM · OpenStreetMap France")}
-            TextButton(onClick={uri.openUri("https://github.com/zxing/zxing")}) {Text("ZXing · Apache 2.0")}
-            TextButton(onClick={uri.openUri("https://developer.android.com/jetpack/androidx/releases/camera")}) {Text("AndroidX CameraX · Apache 2.0")}
-        }
+        TextButton(onClick=onPrivacy) {Text(Strings.text(R.string.ui_107))}
     }
     if(delete) ConfirmDestructive(Strings.text(R.string.ui_106),Strings.text(R.string.ui_109),{delete=false}) {delete=false;vm.deleteAccount()}
     diagnostic?.let {DiagnosticScreen(vm,it=="location",close={diagnostic=null})}
@@ -162,6 +159,8 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         TextButton(onClick={uri.openUri("https://maplibre.org/")}){Text("MapLibre Compose / Native")}
         TextButton(onClick={uri.openUri("https://opentopomap.org/about")}){Text("OpenTopoMap · SRTM · CC-BY-SA")}
         TextButton(onClick={uri.openUri("https://www.cyclosm.org/")}){Text("CyclOSM · OpenStreetMap France")}
+        TextButton(onClick={uri.openUri("https://github.com/zxing/zxing")}) {Text("ZXing · Apache 2.0")}
+        TextButton(onClick={uri.openUri("https://developer.android.com/jetpack/androidx/releases/camera")}) {Text("AndroidX CameraX · Apache 2.0")}
         Text(Strings.text(R.string.ui_113))
     }
 }

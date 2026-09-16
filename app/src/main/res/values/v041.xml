@@ -1,0 +1,23 @@
+<resources>
+    <string name="save_name">Save name</string>
+    <string name="appearance">Appearance</string>
+    <string name="interval_info">Controls the requested GPS acquisition frequency. At 5 minutes or longer, GPS is released between single acquisitions. New fixes are published when available; the operating system, signal and network can delay them. Exact intervals and notifications are not guaranteed.</string>
+    <string name="threshold_info">Compares the estimated GPS accuracy with a threshold in metres. An alert appears when accuracy exceeds it; this setting does not improve GPS or change shared precision.</string>
+    <string name="places_entry_hint">Manage your private places and arrival and departure rules.</string>
+    <string name="recipients_title">SOS recipients</string>
+    <string name="recipients_summary">People: %1$d · Groups: %2$d</string>
+    <string name="recipients_empty">No recipients available in this section.</string>
+    <string name="request_location_kind">Location request</string>
+    <string name="request_connection_kind">Connection invitation</string>
+    <string name="request_expired_state">Expired</string>
+    <string name="request_accepted_hint">Consent accepted; the location may not be available yet.</string>
+    <string name="audience_stale">Verification failed. The data below is from the last successful check.</string>
+    <string name="info_action">Information: %1$s</string>
+    <string name="position_block">Location</string>
+    <string name="device_block">Device</string>
+    <string name="movement_speed">Speed: %1$s m/s</string>
+    <string name="movement_bearing">Bearing: %1$s°</string>
+    <string name="group_created_unknown">Creation date unavailable</string>
+    <string name="recipients_confirm">Confirm recipients</string>
+    <string name="group_save_changes">Save</string>
+</resources>

@@ -9,7 +9,7 @@
     <string name="checkin_meeting">Participants in %1$s’s flare</string>
     <string name="checkin_send">Send check-in</string>
     <string name="checkin_allow_location">Allow location</string>
-    <string name="checkin_inbox">Check-ins and updates</string>
+    <string name="checkin_inbox">Check-in updates</string>
     <string name="checkin_retention">Snapshots remain visible for 24 hours. They are not live locations.</string>
     <string name="checkin_empty">No current check-ins.</string>
     <string name="checkin_recipients">Recipients: %1$d</string>

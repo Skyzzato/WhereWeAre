@@ -13,16 +13,19 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 select pg_temp.assert_true(public.request_location('00000000-0000-0000-0000-000000000002')=public.request_location('00000000-0000-0000-0000-000000000002'),'retries reuse request identifier');
 select pg_temp.assert_true((select count(*)=1 from public.share_requests where purpose='location'),'one pending request');
+select pg_temp.assert_true((select count(*)=1 from public.share_requests where sender_id=auth.uid() and purpose='location' and created_at is not null),'sender can read dated location request with RLS');
 select pg_temp.assert_true(public.app_metadata()->'requests'='[]','legacy inbox excludes location requests');
 select pg_temp.assert_true(public.app_metadata()->>'location_requests_available'='true','capability exposed');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',true);
 select pg_temp.assert_true(public.location_request_inbox()='[]','stranger cannot read inbox');
+select pg_temp.assert_true((select count(*)=0 from public.share_requests),'stranger cannot enumerate requests with direct SELECT');
 do $$ begin
  begin perform public.request_location('00000000-0000-0000-0000-000000000002');raise exception 'stranger request accepted';
  exception when raise_exception then if sqlerrm<>'not_authorized' then raise;end if;end;
 end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
 select pg_temp.assert_true(jsonb_array_length(public.location_request_inbox())=1,'recipient sees one request');
+select pg_temp.assert_true((select count(*)=1 from public.share_requests where receiver_id=auth.uid() and purpose='location'),'recipient sees same persistent request via SELECT');
 do $$ declare rid uuid:=(public.location_request_inbox()->0->>'id')::uuid;
 begin
  begin perform public.respond_to_share_request(rid,true);raise exception 'legacy acceptance allowed';
@@ -34,6 +37,7 @@ select pg_temp.assert_true((select enabled and shared_precision=500 from public.
 select pg_temp.assert_true((select not enabled and shared_precision=1000 from public.location_shares where viewer_id=auth.uid()),'no reciprocal grant');
 select pg_temp.assert_true((select not is_sharing from public.sharing_status where user_id=auth.uid()),'server does not silently start tracking');
 select pg_temp.assert_true(public.location_request_inbox()='[]','accepted request removed from inbox');
+select pg_temp.assert_true((select count(*)=1 from public.share_requests where purpose='location' and status='accepted'),'accepted remains in request history');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 do $$ begin
  begin perform public.request_location('00000000-0000-0000-0000-000000000002');raise exception 'duplicate accepted';
@@ -52,5 +56,11 @@ select public.request_location('00000000-0000-0000-0000-000000000002');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
 select pg_temp.assert_true(not public.respond_location_request((public.location_request_inbox()->0->>'id')::uuid,false),'rejection returns false');
 select pg_temp.assert_true(public.location_request_inbox()='[]','rejection clears inbox');
+reset role;
+update public.share_requests set receiver_hidden=true where purpose='location';
+set local role authenticated;
+select pg_temp.assert_true((select count(*)=0 from public.share_requests),'hidden receiver rows stay hidden with direct SELECT');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+select pg_temp.assert_true((select count(*)=2 from public.share_requests),'sender history unaffected by receiver hiding');
 reset role;
 rollback;

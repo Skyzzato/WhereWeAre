@@ -1,0 +1,23 @@
+<resources>
+    <string name="save_name">Salva nome</string>
+    <string name="appearance">Aspetto</string>
+    <string name="interval_info">Controlla la frequenza richiesta di acquisizione GPS. Da 5 minuti in su il GPS viene rilasciato tra acquisizioni singole. Le nuove posizioni vengono pubblicate quando disponibili; sistema operativo, segnale e rete possono ritardarle. Non garantisce intervalli esatti o notifiche.</string>
+    <string name="threshold_info">Confronta l’accuratezza stimata della posizione GPS con la soglia in metri. Se il valore supera la soglia compare un avviso; questa impostazione non migliora il GPS e non cambia la precisione condivisa.</string>
+    <string name="places_entry_hint">Gestisci i tuoi luoghi privati e le regole di arrivo e partenza.</string>
+    <string name="recipients_title">Destinatari SOS</string>
+    <string name="recipients_summary">Persone: %1$d · Gruppi: %2$d</string>
+    <string name="recipients_empty">Nessun destinatario disponibile in questa sezione.</string>
+    <string name="request_location_kind">Richiesta di posizione</string>
+    <string name="request_connection_kind">Invito di collegamento</string>
+    <string name="request_expired_state">Scaduta</string>
+    <string name="request_accepted_hint">Consenso accettato; la posizione potrebbe non essere ancora disponibile.</string>
+    <string name="audience_stale">Verifica non riuscita. I dati sotto si riferiscono all’ultima verifica riuscita.</string>
+    <string name="info_action">Informazioni: %1$s</string>
+    <string name="position_block">Posizione</string>
+    <string name="device_block">Dispositivo</string>
+    <string name="movement_speed">Velocità: %1$s m/s</string>
+    <string name="movement_bearing">Direzione: %1$s°</string>
+    <string name="group_created_unknown">Data di creazione non disponibile</string>
+    <string name="recipients_confirm">Conferma destinatari</string>
+    <string name="group_save_changes">Salva</string>
+</resources>

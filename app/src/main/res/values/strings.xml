@@ -213,8 +213,8 @@
     <string name="ui_104">Registration date unavailable</string>
     <string name="ui_105">Sign out</string>
     <string name="ui_106">Delete account</string>
-    <string name="ui_107">Privacy, about and copyright &gt;</string>
-    <string name="ui_108">Privacy, about and copyright</string>
+    <string name="ui_107">Privacy, information and copyright</string>
+    <string name="ui_108">Privacy, information and copyright</string>
     <string name="ui_109">This is permanent: your account, photo, location, connections and groups you created will be deleted. Continue?</string>
     <string name="ui_110">Sharing starts only when you enable it. OFF immediately stops acquisition on this device. Without a connection, the remote stop waits: authorized users may read the last point until its owner-selected expiry, up to 24 hours.</string>
     <string name="ui_111">We keep only the latest location, without a history. You can read your own location after expiry. Direct connections and groups are independent sharing channels. The eye only filters your map. Private photos are accessible to the owner and authorized contacts and temporarily cached in memory. Data already received cannot be recalled from other devices.</string>

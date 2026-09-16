@@ -23,7 +23,7 @@ import kotlin.random.Random
 
 private data class Spark(val angle: Float,val speed: Float,val size: Float,val delay: Float)
 
-@Composable fun FlareAnimation(id: String?,styleId: Int=1,sound: Boolean=true,modifier: Modifier=Modifier.fillMaxSize(),finished: ()->Unit) {
+@Composable fun FlareAnimation(id: String?,styleId: Int=FlareStyles.DEFAULT_ID,sound: Boolean=true,modifier: Modifier=Modifier.fillMaxSize(),finished: ()->Unit) {
     if(id==null) return
     val rocket=remember(id) {if(FlareStyles.normalize(styleId)>=31) RocketStyles.flight(styleId,id.hashCode()) else null}
     val style=remember(id) {FlareStyles.get(styleId).let {base -> rocket?.let {base.copy(ascent=it.burstTime/(it.duration/1000f))} ?: base}}

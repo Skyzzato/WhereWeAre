@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-  <string name="settings_location_sharing">Location and sharing</string>
-  <string name="settings_information">Information</string>
+  <string name="settings_location_sharing">Sharing and location</string>
+  <string name="settings_information">Version</string>
   <string name="settings_expand">Expand section</string>
   <string name="settings_collapse">Collapse section</string>
   <string name="privacy_v04">Check-ins are voluntary snapshots visible for 24 hours. Places are private; rules use active location sharing. An SOS separately authorizes the best available position for selected recipients until closure, for up to 6 hours. This app does not contact emergency services.</string>
