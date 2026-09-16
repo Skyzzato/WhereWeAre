@@ -24,29 +24,28 @@ Baseline locale v0.41/10, commit `8d68ebd`; nessun ripristino dal remoto.
 
 ## Push: configurazione ancora necessaria
 
-La console Firebase è accessibile dopo l'attivazione MFA da parte del titolare,
-ma non contiene un progetto Firebase. Nessun progetto è stato creato senza
-l'autorizzazione richiesta. I quattro parametri Android FCM sono assenti.
+Creato su autorizzazione il progetto Firebase `whereweare-c34e0` (WhereWeAre),
+piano gratuito Spark, senza Analytics. Registrata l'app `com.whereweare.app`;
+FCM HTTP v1 risulta abilitato nella console. I quattro parametri Android FCM
+sono stati salvati in `local.properties`, escluso da Git, e l'APK è stato
+ricompilato con successo. Il nuovo artefatto locale è descritto in VERIFICATION_v0.42.md.
 Nella dashboard server non risultano custom secret: mancano
 `FIREBASE_SERVICE_ACCOUNT` e `PUSH_DISPATCH_SECRET`. Non è stato configurato
 uno scheduler nuovo. Il deploy del codice **non equivale a push operative**.
 
-Per completare, dopo autorizzazione alla creazione del progetto Firebase:
+Per completare il collegamento server, in attesa della conferma specifica
+per la creazione dell'identità e il trasferimento della chiave nei secret Supabase:
 
-1. Creare Firebase WhereWeAre senza Analytics/fatturazione e registrare Android
-   con package `com.whereweare.app`.
-2. Dal client Android di `google-services.json` riportare in `local.properties`
-   solo `FIREBASE_APP_ID`, `FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`,
-   `FIREBASE_SENDER_ID`, come descritto in SETUP_v0.3.md.
-3. Abilitare FCM HTTP v1; creare un'identità server con permesso di invio FCM.
+1. Creare l'identità server dedicata `whereweare-push-dispatcher` con il solo
+   ruolo Firebase Cloud Messaging API Admin e generare la chiave privata.
    Salvare il JSON privato esclusivamente nel secret server
    `FIREBASE_SERVICE_ACCOUNT`. Creare un segreto casuale per `PUSH_DISPATCH_SECRET`
    e conservarne la copia per lo scheduler in Vault, mai nel client o nel Git.
-4. Configurare un POST ogni minuto al dispatcher del progetto verificato con
+2. Configurare un POST ogni minuto al dispatcher del progetto verificato con
    `Authorization: Bearer <segreto dispatcher>` usando Cron/Vault. Verificare
    HTTP 200, esecuzioni recenti, accettazione FCM e ricezione su account di test.
-5. Ricompilare l'APK dopo la configurazione pubblica Android e ricontrollare
-   versione, firma e checksum. Non sostituire silenziosamente asset già pubblicati.
+3. Completare le verifiche del nuovo APK prima della pubblicazione.
+   Non sostituire silenziosamente asset già pubblicati.
 
 La ricezione **nell'app aperta** usa già inbox, refresh/realtime esistenti e non
 richiede Firebase. Aprire gli aggiornamenti nella mappa per vedere il SOS.

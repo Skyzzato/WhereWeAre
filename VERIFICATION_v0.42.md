@@ -52,9 +52,9 @@ precisione durante GPS intermittente, invio/ricezione SOS, background, processo
 terminato, permessi negati, token reali e accettazione FCM. Il ciclo icone è
 verificato nei dati SQL e nel rendering, non come interazione fisica completa.
 
-La configurazione Firebase richiede l'autorizzazione alla creazione di un
-progetto dedicato e i passaggi descritti in SETUP_v0.42.md. La password di un
-account demo non sostituisce questo accesso amministrativo.
+Il progetto Firebase e la configurazione Android locale sono stati creati.
+Rimangono l'identità server, i secret e lo scheduler descritti in SETUP_v0.42.md.
+La ricezione push non è ancora verificata.
 
 ## Artefatto
 
@@ -70,7 +70,17 @@ account demo non sostituisce questo accesso amministrativo.
   RPC nearby_sos_status e send_sos_v042 con ruolo anonimo HTTP **401**.
 - APK e checksum fuori dal Git sorgente; asset previsti della release di sviluppo v0.42.
 
-Nessun codice/configurazione Android è stato modificato dopo questa build.
+Nessun codice/configurazione Android era stato modificato prima della pubblicazione di questa build.
 I tentativi intermedi hanno rilevato un avvio prematuro del client di sessione:
 corretto inizializzando la sincronizzazione in MainActivity, poi ripetuta l'intera
 build con successo. Non sono stati disabilitati controlli lint o test.
+
+## APK locale con Firebase (successivo alla release)
+
+- Configurati i quattro parametri pubblici Firebase in `local.properties`, escluso da Git.
+- `:app:assembleDebug` con `tools/isolated-v042-build.gradle`: BUILD SUCCESSFUL.
+- APK: `.tools/firebase-setup/WhereWeAre-v0.42-firebase-debug.apk`.
+- Dimensione: **74331565 byte**.
+- SHA-256: `ecd44bf3730cf5583e1e9c4df3a2cd9c4865f8c287ab0e145b8f8ef959e0f73f`.
+- Questa ricompilazione non costituisce una prova end-to-end delle notifiche.
+- Gli asset e il tag della release GitHub v0.42 restano quelli già pubblicati.
