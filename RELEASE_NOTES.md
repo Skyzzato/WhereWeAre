@@ -1,3 +1,7 @@
+# v0.46 — prerelease
+
+Versione 0.46/15: [note](RELEASE_NOTES_v0.46.md), [verifiche](VERIFICATION_v0.46.md), [migrazione e configurazione](SETUP_v0.46.md). Le nuove specifiche SOS prevalgono sulle indicazioni storiche incompatibili.
+
 # Versione corrente v0.45 — prerelease di collaudo
 
 Note attuali: [RELEASE_NOTES_v0.45.md](RELEASE_NOTES_v0.45.md). Verifiche: [VERIFICATION_v0.45.md](VERIFICATION_v0.45.md). Audit precedente: [AUDIT_v0.44.md](AUDIT_v0.44.md). Configurazione e limiti: [SETUP_v0.44.md](SETUP_v0.44.md).

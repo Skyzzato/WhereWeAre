@@ -1,5 +1,16 @@
 # SOS — consenso, conferme e limiti
 
+## Decisione vigente v0.46 (prevale sui paragrafi storici sotto)
+
+Quota funzionale OFF: unica autorità private.nearby_config.sos_quota_enabled=false nella migrazione 021. Contatori preservati; riattivazione e prove in SETUP_v0.46.md. Non ripristinare cooldown e quote funzionali senza una decisione esplicita. Restano RLS, autenticazione, idempotenza, un SOS attivo e limiti tecnici di fan-out.
+
+Ricezione vicini preselezionata ON solo quando manca una scelta, da confermare nel passaggio informativo. OFF salvati rispettati. Nessun rinnovo manuale o scadenza del consenso: freschezza del fix e raggiungibilità sono condizioni tecniche distinte. Non avviare condivisione ordinaria dal consenso vicini.
+
+Consultazione unica «Aggiornamenti check-in». Il bidone registra una rimozione personale sul server; non elimina eventi globali e non chiude SOS. Le quattro card distinguono registrazione in corso/confermata, fallimento certo e incertezza. Un tentativo incerto conserva il suo ID anche chiudendo l’avviso. Nessun reinvio automatico tardivo.
+
+Migrazione 021 applicata e test transazionale remoto passato. Nessuna prova su due telefoni o consegna FCM reale dichiarata. I paragrafi successivi descrivono decisioni storiche e non devono sovrascrivere queste specifiche.
+
+
 SOS è distinto dal Bengala. Il pulsante rosso apre una schermata: categoria,
 Persone/Gruppi, spiegazione del consenso alla migliore posizione disponibile,
 countdown 5 secondi e annullamento. Uscire o mandare in pausa la schermata durante
