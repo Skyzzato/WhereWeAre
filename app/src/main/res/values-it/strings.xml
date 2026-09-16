@@ -343,4 +343,15 @@
     <string name="nearby_push_not_configured">Questo APK non è ancora configurato per le notifiche push. Controlla gli aggiornamenti con l’app aperta.</string>
     <string name="nearby_push_denied">Le notifiche Android sono disattivate. Abilitale nelle impostazioni del telefono per ricevere gli avvisi.</string>
     <string name="nearby_revoke">Revoca adesione (anche senza rete)</string>
+    <string name="place_edit">Modifica luogo</string>
+    <string name="place_center">Centra sulla mappa</string>
+    <string name="place_hide">Nascondi luogo sulla mappa</string>
+    <string name="place_show">Mostra luogo sulla mappa</string>
+    <string name="place_choose_map">Scegli sulla mappa</string>
+    <string name="place_use_position">Usa questa posizione</string>
+    <string name="place_map_hint">Sposta e ingrandisci la mappa per posizionare il punto sotto il mirino.</string>
+    <string name="place_selected_point">Punto selezionato</string>
+    <string name="place_radius_info_title">Che cos’è il raggio?</string>
+    <string name="place_radius_info">Il raggio, espresso in metri, definisce l’area attorno al punto scelto per il luogo. Quest’area viene utilizzata dalle regole associate, per esempio quelle di ingresso, uscita o arrivo. Non modifica la dimensione dell’icona sulla mappa e non rappresenta la precisione del GPS.</string>
+    <string name="place_icon_size">Dimensione icona luogo</string>
 </resources>

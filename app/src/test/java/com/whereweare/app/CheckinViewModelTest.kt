@@ -35,6 +35,8 @@ class CheckinViewModelTest {
             `when`(controller.pendingStop).thenReturn(flowOf(null))
             `when`(prefs.hidden("sender")).thenReturn(flowOf(emptySet()))
             `when`(prefs.hiddenGroups("sender")).thenReturn(flowOf(emptySet()))
+            `when`(prefs.hiddenPlaces("sender")).thenReturn(flowOf(emptySet()))
+            `when`(prefs.placeIconScale).thenReturn(flowOf(1f))
             `when`(prefs.highAccuracy).thenReturn(flowOf(true))
             `when`(prefs.interval).thenReturn(flowOf(60));`when`(prefs.threshold).thenReturn(flowOf(100))
             `when`(prefs.avatarScale).thenReturn(flowOf(1f));`when`(prefs.mapStyle).thenReturn(flowOf("standard"))

@@ -19,7 +19,7 @@ import org.maplibre.compose.map.MapState
 import org.maplibre.spatialk.geojson.Position
 import kotlin.math.*
 
-data class MapFocus(val person: String?=null,val meeting: String?=null,val event: String?=null)
+data class MapFocus(val person: String?=null,val meeting: String?=null,val event: String?=null,val place: SavedPlace?=null)
 @Composable fun MeetingEditor(snapshot: Snapshot,confirm: (Boolean,Set<String>,Set<String>)->Unit,cancel: ()->Unit) {
     var all by remember {mutableStateOf(true)}
     var people by remember {mutableStateOf(emptySet<String>())}

@@ -31,6 +31,13 @@ import javax.inject.Singleton
     private fun defaults(p: Preferences)=p[bootstrapKey]?.let { runCatching { json.decodeFromString<BootstrapConfig>(it).defaults }.getOrNull() } ?: GlobalDefaults()
     val theme=store.data.map { it[themeKey] ?: defaults(it).theme }
     val avatarScale=store.data.map { it[scaleKey] ?: defaults(it).avatar_scale.takeIf { s -> s in listOf(.75f,1f,1.25f,1.5f) } ?: 1f }
+    private val placeScaleKey=floatPreferencesKey("place_icon_scale")
+    val placeIconScale=store.data.map {it[placeScaleKey] ?: 1f}
+    suspend fun placeIconScale(value: Float) {require(value in listOf(.75f,1f,1.25f,1.5f));store.edit {it[placeScaleKey]=value}}
+    fun hiddenPlaces(user: String)=store.data.map {it[stringSetPreferencesKey("hidden_places_$user")] ?: emptySet()}
+    suspend fun hidePlace(user: String,id: String,hide: Boolean) {store.edit {p ->
+        val key=stringSetPreferencesKey("hidden_places_$user");val old=p[key] ?: emptySet();p[key]=if(hide) old+id else old-id
+    }}
     val language=store.data.map { it[languageKey] ?: "system" }
     suspend fun theme(value: String) { require(value in listOf("default","ocean","sunset","lavender","graphite","dark")); store.edit { it[themeKey]=value } }
     suspend fun avatarScale(value: Float) { require(value in listOf(.75f,1f,1.25f,1.5f)); store.edit { it[scaleKey]=value } }
@@ -43,7 +50,8 @@ import javax.inject.Singleton
         if(value!=null) check(p[pending]==null) { "stop_pending" }
         if(value==null) p.remove(trackingKey) else p[trackingKey]=kotlinx.serialization.json.Json.encodeToString(TrackingSession.serializer(),value)
     } }
-    val interval=store.data.map { it[intervalKey] ?: defaults(it).gps_interval_seconds.takeIf { n -> n in com.whereweare.app.domain.updateIntervals } ?: 60 }
+    // A stored interval is an explicit or legacy choice; never overwrite it.
+    val interval=store.data.map { it[intervalKey] ?: 5 }
     val threshold=store.data.map { it[thresholdKey] ?: 100 }
     val mapStyle=store.data.map { it[styleKey] ?: "standard" }
     val bootstrap=store.data.map { it[bootstrapKey] }

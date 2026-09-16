@@ -11,3 +11,8 @@ fun duplicatePlaceName(name: String,id: String,places: List<SavedPlace>)=places.
 fun validPlace(name: String,latitude: String,longitude: String,radius: String)=name.trim().length in 1..60 &&
     latitude.toDoubleOrNull()?.let {it in -90.0..90.0}==true && longitude.toDoubleOrNull()?.let {it in -180.0..180.0}==true &&
     radius.toIntOrNull()?.let {it in 50..5000}==true
+
+fun mapPlaceIconDp(preference: Float): Float=when(preference) {.75f -> 24f;1.25f -> 52f;1.5f -> 72f;else -> 36f}
+fun placePickerInitial(latitude: Double?,longitude: Double?,fix: UserLocation?): Pair<Double,Double> =
+    if(latitude!=null && longitude!=null && latitude in -90.0..90.0 && longitude in -180.0..180.0) latitude to longitude
+    else fix?.let {it.latitude to it.longitude} ?: (41.9028 to 12.4964)

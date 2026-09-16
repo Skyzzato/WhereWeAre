@@ -57,6 +57,10 @@ import java.time.format.DateTimeFormatter
     val online by vm.online.collectAsStateWithLifecycle()
     val updateInterval by vm.updateInterval.collectAsStateWithLifecycle()
     val config by vm.config.collectAsStateWithLifecycle()
+    val places by vm.places.collectAsStateWithLifecycle()
+    val hiddenPlaces by vm.hiddenPlaces.collectAsStateWithLifecycle()
+    val placeScale by vm.placeIconScale.collectAsStateWithLifecycle()
+    var selectedPlace by remember {mutableStateOf<SavedPlace?>(null)}
     val avatarScale by vm.avatarScale.collectAsStateWithLifecycle()
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
@@ -72,7 +76,7 @@ import java.time.format.DateTimeFormatter
         if(Build.VERSION.SDK_INT>=33) permissions+=Manifest.permission.POST_NOTIFICATIONS
         permission.launch(permissions.toTypedArray())
     }
-    LifecycleResumeEffect(Unit) { vm.permissionsChanged(); onPauseOrDispose { } }
+    LifecycleResumeEffect(Unit) { vm.loadPlaces();vm.permissionsChanged(); onPauseOrDispose { } }
     val provider=MapStyle.fromId(style)
     val baseStyle=remember(provider) { provider.tileUrl?.let { BaseStyle.Json(provider.rasterJson()) } ?: BaseStyle.Uri(BuildConfig.MAP_STYLE_URL) }
     val camera=rememberMapState(baseStyle=baseStyle,
@@ -112,12 +116,17 @@ import java.time.format.DateTimeFormatter
         if(local!=null && (follow || !centered)) { camera.setCameraPosition(camera.cameraPosition.copy(target=Position(local!!.longitude,local!!.latitude),zoom=if(!centered) 14.0 else camera.cameraPosition.zoom)); centered=true }
     }
     LaunchedEffect(focus,state.snapshot.meetings,state.visible,events) {
+        focus?.place?.let {place ->
+            follow=false;centered=true;selectedId=null;selectedEvent=null;selectedMeeting=null
+            camera.setCameraPosition(CameraPosition(target=Position(place.longitude,place.latitude),zoom=16.0));focused();return@LaunchedEffect
+        }
         if(focus?.event!=null) {checkinInbox=true;selectedEvent=null;focused();return@LaunchedEffect}
         val point=state.snapshot.meetings.firstOrNull {it.id==focus?.meeting}
         val person=state.visible.firstOrNull {it.location.userId==focus?.person}
         if(point!=null || person!=null) {selectedMeeting=point?.id;follow=false;selectedEvent=null;selectedId=person?.location?.userId
             camera.setCameraPosition(CameraPosition(target=point?.let {Position(it.longitude,it.latitude)} ?: Position(person!!.location.longitude,person.location.latitude),zoom=if((person?.location?.precisionMeters ?: 0)>0) 12.0 else 16.0));focused()}
     }
+    selectedPlace?.let {place -> AlertDialog(onDismissRequest={selectedPlace=null},title={Text(place.name)},text={Text(Strings.text(R.string.place_radius_value,place.radius_m.toString()))},confirmButton={TextButton(onClick={selectedPlace=null}) {Text(Strings.text(R.string.close))}}) }
     Column(Modifier.fillMaxSize()) {
         if(!online) Notice(R.string.connection_absent)
         else if(state.snapshot.syncFailed && !state.snapshot.loading) SyncFailureNotice(state.snapshot,vm::refresh)
@@ -140,6 +149,11 @@ import java.time.format.DateTimeFormatter
                 uiOptions=remember { MapUiOptions { renderMode=AndroidRenderMode.Texture } },
                 overlay={
                     include(MapOverlay.Default)
+                    places.places.filter {it.id !in hiddenPlaces}.forEach {place -> key(place.id) {
+                        Box(Modifier.placedAt(Position(place.longitude,place.latitude))) {
+                            PlaceIcon(place.emoji,placeScale,place.name) {selectedPlace=place}
+                        }
+                    }}
                     val checkins=events.filter {it.checkin()!=null}
                     val checkinPoints=checkins.mapIndexed {index,event ->
                         val payload=event.checkin()!!
@@ -213,11 +227,11 @@ import java.time.format.DateTimeFormatter
                 }
             }
             if(!creatingMeeting) Column(Modifier.align(Alignment.TopStart).padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                if(config.config?.features?.meeting_points!=false) FloatingActionButton(onClick={follow=false;creatingMeeting=true}) {Icon(Icons.Default.Flag,Strings.text(R.string.ui_046),tint=sharingActionColor())}
-                if(state.snapshot.eventsAvailable) FloatingActionButton(onClick={vm.message(null);checkinEditor=true}) {Icon(Icons.Default.Check,Strings.text(R.string.checkin_title),tint=sharingActionColor())}
+                if(config.config?.features?.meeting_points!=false) MapActionButton(Icons.Default.Flag,Strings.text(R.string.ui_046)) {follow=false;creatingMeeting=true}
+                if(state.snapshot.eventsAvailable) MapActionButton(Icons.Default.Check,Strings.text(R.string.checkin_title)) {vm.message(null);checkinEditor=true}
             }
             if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
-                FloatingActionButton(onClick={actions=true}) {Icon(Icons.Default.MoreVert,Strings.text(R.string.map_actions),tint=sharingActionColor())}
+                MapActionButton(Icons.Default.MoreVert,Strings.text(R.string.map_actions)) {actions=true}
                 DropdownMenu(actions,{actions=false}) {
                     // SOS and check-ins share the single updates entry below.
                     DropdownMenuItem(text={Text(Strings.text(R.string.fit_all))},onClick={

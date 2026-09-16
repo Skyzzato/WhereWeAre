@@ -32,7 +32,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         DropdownMenu(expanded,{expanded=false}) { options.forEach { option -> DropdownMenuItem(text={Text(text(option))},onClick={expanded=false;onChoose(option)}) } }
     } }
 }
-@Composable fun SettingsScreen(vm: SettingsViewModel,onPrivacy: ()->Unit) {
+@Composable fun SettingsScreen(vm: SettingsViewModel,onCenterPlace: (SavedPlace)->Unit={},onPrivacy: ()->Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
     val tracking by vm.trackingDiagnostics.collectAsStateWithLifecycle()
@@ -42,6 +42,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     val threshold by vm.threshold.collectAsStateWithLifecycle()
     val style by vm.mapStyle.collectAsStateWithLifecycle()
     val theme by vm.theme.collectAsStateWithLifecycle()
+    val placeScale by vm.placeIconScale.collectAsStateWithLifecycle()
     val scale by vm.avatarScale.collectAsStateWithLifecycle()
     val language by vm.language.collectAsStateWithLifecycle()
     val flareStyle by vm.flareStyle.collectAsStateWithLifecycle()
@@ -119,6 +120,11 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {sizes.forEach {Text(it,style=MaterialTheme.typography.labelSmall)}}
         state.profile?.let { Avatar(it.id,it.displayName,it.avatarPath,true,vm.avatars,com.whereweare.app.domain.mapAvatarDp(scales[kotlin.math.round(sizeIndex).toInt()]).dp) }
 
+        Text(Strings.text(R.string.place_icon_size),style=MaterialTheme.typography.titleSmall)
+        var placeSizeIndex by remember(placeScale) {mutableFloatStateOf(scales.indexOf(placeScale).coerceAtLeast(0).toFloat())}
+        Slider(placeSizeIndex,{placeSizeIndex=it},valueRange=0f..3f,steps=2,onValueChangeFinished={vm.placeIconScale(scales[kotlin.math.round(placeSizeIndex).toInt()])})
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {sizes.forEach {Text(it,style=MaterialTheme.typography.labelSmall)}}
+        PlaceIcon("🏠",scales[kotlin.math.round(placeSizeIndex).toInt()],Strings.text(R.string.place_icon_size)) {}
         Choice(Strings.text(R.string.ui_090),MapStyle.fromId(style).id,MapStyle.entries.map { it.id },{MapStyle.fromId(it).label},vm::mapStyle)
         Choice(Strings.text(R.string.ui_092),theme,listOf("default","ocean","sunset","lavender","graphite","dark"),{it.replaceFirstChar(Char::uppercase)},vm::theme)
 
@@ -145,7 +151,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     }
     if(delete) ConfirmDestructive(Strings.text(R.string.ui_106),Strings.text(R.string.ui_109),{delete=false}) {delete=false;vm.deleteAccount()}
     diagnostic?.let {DiagnosticScreen(vm,it=="location",close={diagnostic=null})}
-    if(places) PlacesScreen(vm) {places=false}
+    if(places) PlacesScreen(vm,onCenter={places=false;onCenterPlace(it)}) {places=false}
     if(audience) AudienceScreen(vm) {audience=false}
     state.profile?.inviteCode?.takeIf {showQr && validInviteCode(it)}?.let {QrDisplay("person",it) {showQr=false}}
 }

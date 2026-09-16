@@ -15,7 +15,7 @@ import javax.inject.Singleton
     val defaults: GlobalDefaults=GlobalDefaults(),val features: FeatureFlags=FeatureFlags(),val api_version: Int=2) {
     fun valid()=minimum_supported_version_code>0 && latest_version_code>=minimum_supported_version_code && latest_version_name.isNotBlank()
 }
-@Serializable data class GlobalDefaults(val gps_interval_seconds: Int=60,val high_accuracy: Boolean=true,val theme: String="default",val avatar_scale: Float=1f,val stale_grace_seconds: Int=180)
+@Serializable data class GlobalDefaults(val gps_interval_seconds: Int=5,val high_accuracy: Boolean=true,val theme: String="default",val avatar_scale: Float=1f,val stale_grace_seconds: Int=180)
 @Serializable data class FeatureFlags(val meeting_points: Boolean=true,val invite_links: Boolean=false,val client_analytics: Boolean=false,val device_status: Boolean=false)
 enum class BootstrapGate { LOADING, READY, UPDATE, MAINTENANCE, FIRST_CONNECTION, BACKEND_UPDATE }
 fun bootstrapGate(config: BootstrapConfig?,installed: Int): BootstrapGate=when {

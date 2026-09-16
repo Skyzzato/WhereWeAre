@@ -80,7 +80,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                 val latest=MutableStateFlow<UserLocation?>(null)
                 val signals=kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
                 val updates=launch {
-                    combine(preferences.highAccuracy,preferences.interval) { high,seconds -> high to seconds }
+                    combine(preferences.highAccuracy,preferences.interval) { high,seconds -> high to seconds }.distinctUntilChanged()
                         .flatMapLatest { (high,seconds) -> location.fixes(high,seconds).retryWhen { cause,_ ->
                             if(cause is SecurityException || !location.hasPermission()) false
                             else { delay(30_000); true }

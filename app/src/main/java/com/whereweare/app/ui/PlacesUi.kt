@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -19,11 +21,12 @@ fun placePreset(slot: Int)=Strings.text(when(slot) {0 -> R.string.place_home;1 -
 fun placeRuleLabel(kind: String)=Strings.text(when(kind) {"enter" -> R.string.place_enter;"exit" -> R.string.place_exit;else -> R.string.place_arrival})
 fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter") R.string.place_entered else R.string.place_exited,event.subject_name,event.place_name)
 
-@Composable fun PlacesScreen(vm: SettingsViewModel,close: ()->Unit) {
+@Composable fun PlacesScreen(vm: SettingsViewModel,onCenter: (SavedPlace)->Unit={},close: ()->Unit) {
     val bundle by vm.places.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
-    var editingGroup by rememberSaveable {mutableStateOf<String?>(null)}
+    val hidden by vm.hiddenPlaces.collectAsStateWithLifecycle()
+    val mapStyle by vm.mapStyle.collectAsStateWithLifecycle()
     var editing by rememberSaveable {mutableStateOf<Int?>(null)}
     var editingRule by remember {mutableStateOf<PlaceRule?>(null)}
     var rulePlace by rememberSaveable {mutableStateOf<String?>(null)}
@@ -36,19 +39,22 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
             Text(Strings.text(R.string.arriving_disabled),style=MaterialTheme.typography.bodySmall)
             Busy(operation,inline=true)
             Button(enabled=!operation.busy,onClick={vm.message(null);editing=(bundle.places.maxOfOrNull {it.slot}?:-1)+1}) {Text(Strings.text(R.string.place_add))}
-            state.groups.filter {it.creator==vm.userId && it.active(vm.currentTime())}.forEach {group ->
-                OutlinedCard(onClick={editingGroup=group.id},modifier=Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {GroupIdentity(group.emoji,group.name);Text(Strings.text(R.string.group_edit_title))}
-                }
-            }
             Text(Strings.text(R.string.place_rule_limit),style=MaterialTheme.typography.bodySmall)
             bundle.places.sortedBy {it.slot}.forEach {place ->
                 val slot=place.slot
                 OutlinedCard(Modifier.fillMaxWidth()) {Column(Modifier.padding(12.dp)) {
-                    GroupIdentity(place.emoji.ifBlank {"📍"},place.name)
+                    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {Text(place.emoji);Text(place.name,style=MaterialTheme.typography.titleMedium)}
+                        Column(horizontalAlignment=androidx.compose.ui.Alignment.End) {
+                            TextButton(enabled=!operation.busy,onClick={vm.hidePlace(place.id,false) {onCenter(place)}}) {Text(Strings.text(R.string.place_center))}
+                            IconButton(enabled=!operation.busy,onClick={vm.hidePlace(place.id,place.id !in hidden)}) {
+                                Icon(if(place.id in hidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,Strings.text(if(place.id in hidden) R.string.place_show else R.string.place_hide))
+                            }
+                        }
+                    }
                     place.let {Text("${it.latitude}, ${it.longitude}");Text(Strings.text(R.string.place_radius_value,it.radius_m.toString()))}
                     Row {
-                        TextButton(enabled=!operation.busy,onClick={vm.message(null);editing=slot}) {Text(Strings.text(R.string.ui_026))}
+                        TextButton(enabled=!operation.busy,onClick={vm.message(null);editing=slot}) {Text(Strings.text(R.string.place_edit))}
                         run {
                             TextButton(enabled=!operation.busy,onClick={vm.message(null);editingRule=null;rulePlace=place.id}) {Text(Strings.text(R.string.place_add_rule))}
                             TextButton(enabled=!operation.busy,onClick={deleting=place}) {Text(Strings.text(R.string.place_delete))}
@@ -67,12 +73,8 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
             }
         }}
     }
-    state.groups.firstOrNull {it.id==editingGroup && it.creator==vm.userId}?.let {group ->
-        GroupEditor(true,group.name,group.emoji,operation.busy,state.temporaryGroupsAvailable,group.expiresAt,operation.message,
-            dismiss={editingGroup=null},save={name,emoji,expiry -> vm.editGroup(group.id,name,emoji,expiry) {editingGroup=null}})
-    }
     editing?.let {slot ->
-        PlaceEditor(bundle.places,slot,bundle.places.firstOrNull {it.slot==slot},state.locations.firstOrNull {it.userId==vm.userId},operation,{editing=null}) {vm.savePlace(it) {editing=null}}
+        PlaceEditor(bundle.places,slot,bundle.places.firstOrNull {it.slot==slot},state.locations.firstOrNull {it.userId==vm.userId},operation,mapStyle,{editing=null}) {vm.savePlace(it) {editing=null}}
     }
     bundle.places.firstOrNull {it.id==rulePlace}?.let {place ->
         PlaceRuleEditor(place,editingRule,state,operation,{rulePlace=null}) {vm.saveRule(it) {rulePlace=null}}
@@ -80,7 +82,9 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
     deleting?.let {place -> ConfirmDestructive(Strings.text(R.string.place_delete),place.name+"\n"+Strings.text(R.string.place_delete_confirm),{deleting=null}) {vm.removePlace(place.id);deleting=null}}
 }
 
-@Composable private fun PlaceEditor(places: List<SavedPlace>,slot: Int,place: SavedPlace?,fix: UserLocation?,operation: OperationState,close: ()->Unit,save: (SavedPlace)->Unit) {
+@Composable internal fun PlaceEditor(places: List<SavedPlace>,slot: Int,place: SavedPlace?,fix: UserLocation?,operation: OperationState,mapStyle: String,close: ()->Unit,save: (SavedPlace)->Unit) {
+    var picking by rememberSaveable {mutableStateOf(false)}
+    var radiusInfo by rememberSaveable {mutableStateOf(false)}
     val id=rememberSaveable {place?.id?:UUID.randomUUID().toString()}
     var name by rememberSaveable {mutableStateOf(place?.name?:"")}
     var emoji by rememberSaveable {mutableStateOf(place?.emoji?:"📍")}
@@ -88,19 +92,24 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
     var lat by rememberSaveable {mutableStateOf(place?.latitude?.toString().orEmpty())}
     var lon by rememberSaveable {mutableStateOf(place?.longitude?.toString().orEmpty())}
     var radius by rememberSaveable {mutableStateOf((place?.radius_m?:100).toString())}
-    AlertDialog(onDismissRequest={if(!operation.busy) close()},title={Text(Strings.text(if(place==null) R.string.place_add else R.string.ui_026))},text={Column(Modifier.verticalScroll(rememberScrollState())) {
+    AlertDialog(onDismissRequest={if(!operation.busy) close()},title={Text(Strings.text(if(place==null) R.string.place_add else R.string.place_edit))},text={Column(Modifier.verticalScroll(rememberScrollState())) {
         OutlinedTextField(name,{name=it},enabled=!operation.busy,label={Text(Strings.text(R.string.name))})
         if(duplicate) Text(Strings.text(R.string.place_duplicate),color=MaterialTheme.colorScheme.error)
-        GroupIdentity(emoji.ifBlank {"📍"},name)
+        Row {Text(emoji);Text(name)}
         TextButton(enabled=!operation.busy,onClick={emoji=""}) {Text(Strings.text(R.string.group_remove_icon))}
         EmojiPicker(emoji,operation.busy) {emoji=it}
         OutlinedTextField(lat,{lat=it},enabled=!operation.busy,label={Text(Strings.text(R.string.place_latitude))})
         OutlinedTextField(lon,{lon=it},enabled=!operation.busy,label={Text(Strings.text(R.string.place_longitude))})
-        OutlinedTextField(radius,{radius=it},enabled=!operation.busy,label={Text(Strings.text(R.string.place_radius))})
+        TextButton(enabled=!operation.busy,onClick={picking=true}) {Text(Strings.text(R.string.place_choose_map))}
+        OutlinedTextField(radius,{radius=it},enabled=!operation.busy,label={Text(Strings.text(R.string.place_radius))},suffix={Text("m")},trailingIcon={IconButton(onClick={radiusInfo=true}) {Icon(Icons.Default.Info,Strings.text(R.string.place_radius_info_title))}})
         TextButton(enabled=fix!=null&&!operation.busy,onClick={lat=fix?.latitude.toString();lon=fix?.longitude.toString()}) {Text(Strings.text(R.string.place_use_last))}
         fix?.let {Text(eventTime(it.recordedAt.toString()),style=MaterialTheme.typography.bodySmall)}
         Busy(operation,inline=true)
     }},confirmButton={TextButton(enabled=!operation.busy&&!duplicate&&validPlace(name,lat,lon,radius),onClick={save(SavedPlace(id,slot,name.trim(),lat.toDouble(),lon.toDouble(),radius.toInt(),emoji))}) {Text(Strings.text(R.string.save))}},dismissButton={TextButton(enabled=!operation.busy,onClick=close) {Text(Strings.text(R.string.close))}})
+    if(picking) PlaceLocationPicker(lat.toDoubleOrNull(),lon.toDoubleOrNull(),fix,mapStyle,{picking=false}) {latitude,longitude ->
+        lat=latitude.toString();lon=longitude.toString();picking=false
+    }
+    if(radiusInfo) AlertDialog(onDismissRequest={radiusInfo=false},title={Text(Strings.text(R.string.place_radius_info_title))},text={Text(Strings.text(R.string.place_radius_info))},confirmButton={TextButton(onClick={radiusInfo=false}) {Text(Strings.text(R.string.close))}})
 }
 
 @Composable private fun PlaceRuleEditor(place: SavedPlace,rule: PlaceRule?,snapshot: Snapshot,operation: OperationState,close: ()->Unit,save: (PlaceRule)->Unit) {
@@ -110,7 +119,7 @@ fun placeEventText(event: PlaceEvent)=Strings.text(if(event.transition=="enter")
     var recipients by remember {mutableStateOf(rule?.recipients?.toSet()?:emptySet<String>())}
     val owner=snapshot.profile?.id
     AlertDialog(onDismissRequest={if(!operation.busy) close()},title={Text(Strings.text(if(rule==null) R.string.place_add_rule else R.string.ui_026))},text={Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState())) {
-        Text(place.name);Text(Strings.text(R.string.places_monitoring))
+        Text(Strings.text(R.string.places_monitoring))
         listOf("enter","exit","arrival").forEach {value -> Row {
             RadioButton(kind==value,{kind=value},enabled=!operation.busy);Text(placeRuleLabel(value))
         }}

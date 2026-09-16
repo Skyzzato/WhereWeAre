@@ -30,7 +30,7 @@ class SharingRecoveryTest {
         override suspend fun updateData(transform: suspend (Preferences)->Preferences): Preferences = transform(data.value).also {data.value=it}
     }
 
-    private suspend fun TestScope.scenario(test: suspend TestScope.(SharingController,PreferencesRepository,SharingRepository,CoroutineScope,()->Unit)->Unit) {
+    private suspend fun TestScope.scenario(locationReady: (LocationRepository)->Unit={},test: suspend TestScope.(SharingController,PreferencesRepository,SharingRepository,CoroutineScope,()->Unit)->Unit) {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val service=CoroutineScope(SupervisorJob()+StandardTestDispatcher(testScheduler))
         try {
@@ -44,13 +44,14 @@ class SharingRecoveryTest {
             `when`(location.hasPermission()).thenReturn(true)
             `when`(location.enabled()).thenReturn(true)
             `when`(location.deviceStatus()).thenReturn(com.whereweare.app.domain.DeviceStatus(50,true))
-            `when`(location.fixes(true,60)).thenReturn(emptyFlow())
+            `when`(location.fixes(true,5)).thenReturn(emptyFlow())
             `when`(boot.state).thenReturn(MutableStateFlow(BootstrapState(BootstrapGate.READY)))
             `when`(repo.sharingRevision()).thenReturn(7L)
             `when`(repo.ownSharingStatus()).thenAnswer {
                 val saved=runBlocking { prefs.trackingSession.first() }
                 StatusDto("owner",true,8,saved?.sessionId)
             }
+            locationReady(location)
             val controller=SharingController(context,repo,auth,prefs,location,boot)
             runCurrent()
             test(controller,prefs,repo,service,{})
@@ -61,6 +62,19 @@ class SharingRecoveryTest {
         }
     }
 
+    @Test fun appearanceChangesDoNotRestartFiveSecondAcquisition()=runTest {
+        var acquisitions=0
+        scenario(locationReady={location ->
+            doAnswer {acquisitions++;emptyFlow<com.whereweare.app.domain.UserLocation>()}.`when`(location).fixes(true,5)
+        }) {controller,prefs,_,service,stop ->
+            controller.attach(service,stopService=stop);runCurrent()
+            assertEquals(1,acquisitions)
+            prefs.hidePlace("owner","home",true);runCurrent()
+            prefs.placeIconScale(1.5f);runCurrent()
+            prefs.avatarScale(.75f);runCurrent()
+            assertEquals(1,acquisitions)
+        }
+    }
     @Test fun failedStartDoesNotClaimOnAndRetryUsesPersistedRevision() = runTest {
         scenario { controller,prefs,repo,service,stop ->
             var available=false

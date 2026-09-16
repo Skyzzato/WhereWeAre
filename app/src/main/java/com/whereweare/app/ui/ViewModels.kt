@@ -105,9 +105,13 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)
     val threshold=preferences.threshold.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),100)
     val online=network.online
-    val updateInterval=preferences.interval.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),60)
+    val updateInterval=preferences.interval.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),5)
     val config=bootstrap.state
+    val hiddenPlaces=preferences.hiddenPlaces(auth.userId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),emptySet())
+    val placeIconScale=preferences.placeIconScale.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1f)
     val avatarScale=preferences.avatarScale.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1f)
+    val places=MutableStateFlow(PlacesBundle())
+    fun loadPlaces() {perform {places.value=sharing.places()}}
     fun meeting(lat: Double,lon: Double,all: Boolean,people: Set<String>,groups: Set<String>) { perform {
         val user=requireNotNull(auth.userId)
         val id=java.util.UUID.randomUUID().toString()
@@ -207,12 +211,16 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun flareSound(enabled: Boolean) {perform {preferences.flareSound(enabled)}}
     val registeredSince get()=registrationDate(auth.createdAt)
     val highAccuracy=preferences.highAccuracy.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
-    val interval=preferences.interval.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),60)
+    val interval=preferences.interval.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),5)
     val threshold=preferences.threshold.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),100)
     val mapStyle=preferences.mapStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"standard")
     val theme=preferences.theme.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"default")
+    val hiddenPlaces=preferences.hiddenPlaces(auth.userId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),emptySet())
+    val placeIconScale=preferences.placeIconScale.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1f)
     val avatarScale=preferences.avatarScale.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),1f)
     val language=preferences.language.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"system")
+    fun hidePlace(id: String,hide: Boolean,done: ()->Unit={}) {perform {preferences.hidePlace(requireNotNull(userId),id,hide);done()}}
+    fun placeIconScale(value: Float) {perform {preferences.placeIconScale(value)}}
     fun theme(value: String) {perform {preferences.theme(value); viewModelScope.launch {analytics.preferencesChanged()}}}
     fun avatarScale(value: Float) {perform {preferences.avatarScale(value); viewModelScope.launch {analytics.preferencesChanged()}}}
     fun language(value: String) {perform {preferences.language(value); viewModelScope.launch {analytics.preferencesChanged()}}}

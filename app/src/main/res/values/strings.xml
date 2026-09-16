@@ -343,4 +343,15 @@
     <string name="nearby_push_not_configured">This APK is not yet configured for push notifications. Check updates with the app open.</string>
     <string name="nearby_push_denied">Android notifications are disabled. Enable them in phone settings to receive alerts.</string>
     <string name="nearby_revoke">Revoke consent (also offline)</string>
+    <string name="place_edit">Edit place</string>
+    <string name="place_center">Center on map</string>
+    <string name="place_hide">Hide place on map</string>
+    <string name="place_show">Show place on map</string>
+    <string name="place_choose_map">Choose on map</string>
+    <string name="place_use_position">Use this location</string>
+    <string name="place_map_hint">Move and zoom the map to position the point under the crosshair.</string>
+    <string name="place_selected_point">Selected point</string>
+    <string name="place_radius_info_title">What is the radius?</string>
+    <string name="place_radius_info">The radius, in meters, defines the area around the selected place. Associated rules use this area, for example for entry, exit or arrival. It does not change the map icon size and does not represent GPS accuracy.</string>
+    <string name="place_icon_size">Place icon size</string>
 </resources>

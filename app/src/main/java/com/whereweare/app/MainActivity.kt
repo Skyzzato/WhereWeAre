@@ -178,8 +178,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
                 composable("map") { MapScreen(hiltViewModel(),focus,{focus=null},onPlaces={nav.navigate("places")}) }
                 composable("people") { Surface(Modifier.fillMaxSize()) {val current=invite?.takeIf {it.type=="person"};PeopleScreen(hiltViewModel(),onShow={id -> focus=MapFocus(person=id);nav.navigate("map") {launchSingleTop=true}},initialCode=current?.code,inviteId=current?.id,inviteHandled={current?.let {appearance.invites.consume(it.id)}},onScan={scanning=true}) } }
                 composable("groups") { Surface(Modifier.fillMaxSize()) {val current=invite?.takeIf {it.type=="group"}; GroupsScreen(hiltViewModel(),initialCode=current?.code,inviteId=current?.id,inviteHandled={current?.let {appearance.invites.consume(it.id)}},onScan={scanning=true}) } }
-                composable("settings") { Surface(Modifier.fillMaxSize()) { SettingsScreen(hiltViewModel(),onPrivacy={ nav.navigate("privacy") }) } }
-                composable("places") { PlacesScreen(hiltViewModel<SettingsViewModel>()) {nav.popBackStack()} }
+                composable("settings") { Surface(Modifier.fillMaxSize()) { SettingsScreen(hiltViewModel(),onCenterPlace={place -> focus=MapFocus(place=place);nav.navigate("map") {popUpTo("map") {inclusive=false};launchSingleTop=true}},onPrivacy={ nav.navigate("privacy") }) } }
+                composable("places") { PlacesScreen(hiltViewModel<SettingsViewModel>(),onCenter={place -> focus=MapFocus(place=place);nav.navigate("map") {popUpTo("map") {inclusive=false};launchSingleTop=true}}) {nav.popBackStack()} }
                 composable("privacy") { Surface(Modifier.fillMaxSize()) { PrivacyScreen { nav.popBackStack() } } }
             }
         }
