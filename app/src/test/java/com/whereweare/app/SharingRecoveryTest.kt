@@ -81,9 +81,11 @@ class SharingRecoveryTest {
     }
 
     @Test fun nonTransientFailureStopsInsteadOfRetryingEveryThreeSeconds() = runTest {
-        // Robolectric's plain Application does not run the AndroidX startup provider.
-        androidx.work.WorkManager.initialize(RuntimeEnvironment.getApplication(),androidx.work.Configuration.Builder().build())
-        scenario { controller,prefs,repo,service,_ ->
+        // This controller test verifies durable stop intent, not execution of the worker.
+        // A delegate avoids starting real scheduler/SQLite threads in the rendering JVM.
+        val scheduler=mock(androidx.work.impl.WorkManagerImpl::class.java)
+        androidx.work.impl.WorkManagerImpl.setDelegate(scheduler)
+        try {scenario { controller,prefs,repo,service,_ ->
             doAnswer {throw IllegalStateException("invalid server contract")}.`when`(repo).sharing(eq(true),any(),any())
             var stopped=false
             controller.attach(service,stopService={stopped=true})
@@ -95,7 +97,10 @@ class SharingRecoveryTest {
             assertFalse(controller.state.value.retrying)
             assertEquals("service",controller.state.value.failure)
             assertEquals("owner",prefs.pendingStop.first())
-        }
+            val scheduled=mockingDetails(scheduler).invocations.single {it.method.name=="enqueueUniqueWork"}
+            assertEquals("stop-owner",scheduled.arguments[0])
+            assertEquals(androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE,scheduled.arguments[1])
+        }} finally {androidx.work.impl.WorkManagerImpl.setDelegate(null)}
     }
 
     @Test fun transientFailureUsesBackoffWithoutClaimingAnActiveAttemptWhileWaiting() = runTest {
