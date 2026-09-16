@@ -1,0 +1,11 @@
+<resources>
+  <string name="sos_registered_title">SOS registered</string>
+  <string name="sos_registering_detail">Waiting for server confirmation. Do not send again.</string>
+  <string name="update_remove">Remove update</string>
+  <string name="update_remove_confirm">Remove this update from your list only?</string>
+  <string name="update_remove_sos">Remove this update from your list? An active SOS will not be cancelled.</string>
+  <string name="nearby_initial_title">Nearby SOS reception</string>
+  <string name="nearby_confirm">Confirm preference</string>
+  <string name="sharing_suspended">Sending paused: check network and permissions</string>
+  <string name="sharing_initializing">Checking sharing…</string>
+</resources>

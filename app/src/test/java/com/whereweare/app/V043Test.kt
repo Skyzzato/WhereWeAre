@@ -25,7 +25,8 @@ class V043Test {
         val location=mock(LocationRepository::class.java)
         `when`(auth.userId).thenReturn("owner")
         `when`(auth.session).thenReturn(MutableStateFlow<SessionStatus>(SessionStatus.Initializing))
-        `when`(sharing.state).thenReturn(MutableStateFlow(Snapshot()))
+          `when`(sharing.state).thenReturn(MutableStateFlow(Snapshot()))
+          `when`(sharing.sosRegistered(anyString())).thenReturn(false)
         `when`(location.snapshot(true)).thenAnswer {throw IOException()}
         val repository=SosOperationRepository(sharing,auth,location,store,backgroundScope)
         runCurrent()
@@ -93,5 +94,18 @@ class V043Test {
         assertEquals(SosSendState.UNKNOWN,repo.state.value)
         advanceTimeBy(60_000);runCurrent()
         verify(sharing,times(1)).sendSos("id","help",emptySet(),emptySet(),null,true)
+    }
+    @Test fun failedVerificationNeverResendsAndDismissalRetainsUncertainId()=runTest {
+        val (repo,sharing,store)=fixture()
+        doAnswer {throw IOException()}.`when`(sharing).sendSos("id","help",emptySet(),emptySet(),null,true)
+        doAnswer {throw IOException()}.`when`(sharing).sosRegistered("id")
+        repo.send("id","help",emptySet(),emptySet(),true);runCurrent()
+        repo.dismiss();runCurrent()
+        assertEquals(SosSendState.IDLE,repo.state.value)
+        assertNotNull(store.data.value[stringPreferencesKey("pending_sos_owner")])
+        repo.send("different","help",emptySet(),emptySet(),true);runCurrent()
+        assertEquals(SosSendState.UNKNOWN,repo.state.value)
+        verify(sharing,times(1)).sendSos("id","help",emptySet(),emptySet(),null,true)
+        verify(sharing,never()).sendSos("different","help",emptySet(),emptySet(),null,true)
     }
 }

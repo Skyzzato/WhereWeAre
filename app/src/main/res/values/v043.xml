@@ -13,5 +13,5 @@
   <string name="connection_checking">Checking connection…</string>
   <string name="connection_service">Server service error. Try updating again.</string>
   <string name="connection_unreachable">Server unreachable or request timed out. Check the connection and retry.</string>
-  <string name="nearby_refresh_policy">Availability uses a fresh position every 5 minutes while the app is open with location permission and Internet access. In the background it reuses updates from sharing, if active. After 15 minutes without a fresh position availability ends; your opt-in remains active.</string>
+  <string name="nearby_refresh_policy">Consent persists until revoked. Position refreshes automatically while the app is open with permission, or from existing background sharing fixes. Nearby search pauses without a recent position.</string>
 </resources>

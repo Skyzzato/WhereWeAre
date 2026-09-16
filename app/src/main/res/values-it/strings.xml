@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">WhereWeAre</string>
+    <string name="app_name">WhereWeAre - Troviamoci</string>
     <string name="welcome">Vicini, anche a distanza.</string>
     <string name="welcome_detail">Condividi la tua posizione solo con le persone che scegli.</string>
     <string name="login">Accedi</string>
@@ -330,8 +330,8 @@
     <string name="nearby_anonymous">Richiesta SOS nelle vicinanze</string>
     <string name="nearby_pending">Modifica in attesa di conferma server. Sarà ritentata alla riconnessione con questa app aperta.</string>
     <string name="nearby_sync_failed">Stato server non verificato: controlla la connessione e riprova.</string>
-    <string name="nearby_available">Adesione attiva · disponibilità confermata fino a:</string>
-    <string name="nearby_expired">Disponibilità da aggiornare</string>
+    <string name="nearby_available">Posizione recente disponibile per la ricerca vicina</string>
+    <string name="nearby_expired">Ricerca vicina sospesa: in attesa di una posizione recente e dei permessi</string>
     <string name="nearby_refresh">Aggiorna disponibilità e posizione</string>
     <string name="nearby_refresh_failed">Disponibilità non aggiornata. Consenti la posizione, attiva il GPS e verifica la rete; serve una nuova posizione con precisione utilizzabile.</string>
     <string name="nearby_notifications_hint">Le notifiche richiedono configurazione server e permesso Android. Senza push puoi controllare gli SOS aprendo gli aggiornamenti nella mappa. WhereWeAre non sostituisce i servizi di emergenza.</string>

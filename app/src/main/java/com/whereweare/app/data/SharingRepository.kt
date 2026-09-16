@@ -23,7 +23,7 @@ import android.util.Log
     init { scope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collect {connectionDiagnostics.reset()}} }
     private suspend fun serverRpc(name: String,params: JsonObject=buildJsonObject {})=connectionDiagnostics.measure(
         operation=name,write=when(name) {
-            "app_metadata","lookup_user_by_invite_code","visible_locations","location_audience","location_request_inbox","event_inbox","places_rules","sos_status","sos_registered" -> false
+            "app_metadata","lookup_user_by_invite_code","visible_locations","location_audience","location_request_inbox","event_inbox","places_rules","sos_status","sos_registered","own_active_sos" -> false
             "resolve_invite_link" -> params["confirm"]?.jsonPrimitive?.booleanOrNull==true
             else -> true
         }
@@ -211,6 +211,7 @@ import android.util.Log
         refresh()
     }
     suspend fun sosRegistered(id: String): Boolean=serverRpc("sos_registered",buildJsonObject {put("eid",id)}).decodeAs()
+    suspend fun ownActiveSos(): AppEvent?=serverRpc("own_active_sos").decodeAs()
     suspend fun sosStatus(id: String): SosStatus=serverRpc("sos_status",buildJsonObject {put("eid",id)}).decodeAs()
     suspend fun respondSos(id: String,response: String?)=rpc("respond_sos",buildJsonObject {put("eid",id);put("answer",response?.let(::JsonPrimitive)?:JsonNull)})
     suspend fun closeSos(id: String,reason: String)=rpc("close_sos",buildJsonObject {put("eid",id);put("closure_reason",reason)})
@@ -231,7 +232,7 @@ import android.util.Log
         put("eid",id);put("checkin_type",type);put("message",message);put("lat",fix.latitude);put("lon",fix.longitude);put("accuracy_m",fix.accuracy);put("fix_at",fix.recordedAt.toString())
         putJsonArray("people") {people.forEach {add(it)}};putJsonArray("group_ids") {groups.forEach {add(it)}};put("meeting",meeting?.let(::JsonPrimitive) ?: JsonNull)
     })
-    suspend fun removeEvent(id: String)=rpc("remove_event",buildJsonObject {put("eid",id)})
+    suspend fun removeEvent(id: String)=rpc("dismiss_event",buildJsonObject {put("eid",id)})
     suspend fun remove(person: String)=mutate({ s -> s.copy(shares=s.shares.filter { it.owner!=person && it.viewer!=person },savedPeople=s.savedPeople-person) },{ s -> person !in s.savedPeople && s.shares.none { it.owner==person || it.viewer==person } }) { rpc("remove_connection",buildJsonObject { put("other_user_id",person) }) }
     suspend fun savePerson(person: String)=mutate({it.copy(savedPeople=it.savedPeople+person)},{person in it.savedPeople}) {rpc("save_group_person",buildJsonObject {put("person",person)})}
     suspend fun dismiss(id: String)=rpc("dismiss_request",buildJsonObject { put("request_id",id) })

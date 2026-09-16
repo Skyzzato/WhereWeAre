@@ -15,7 +15,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val publishedFix: UserLocation?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null,val retrying: Boolean=false,val failure: String?=null)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val initializing: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val publishedFix: UserLocation?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null,val retrying: Boolean=false,val failure: String?=null)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
@@ -66,6 +66,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                     val previous=preferences.trackingSession.first()
                     if(restarting) check(previous?.userId==user) { "sharing_stopped" }
                     saved=if(restarting) requireNotNull(previous) else TrackingSession(user,UUID.randomUUID().toString())
+                    preferences.sharingIntent(user,true)
                     preferences.trackingSession(saved)
                     ownedSession=saved
                     mutableState.value=TrackingState(starting=true,waiting=true,recovering=restarting)
@@ -181,7 +182,10 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                                 // Persist stop and clear tracking in the same DataStore transaction.
                                 preferences.pendingStop(ended.userId,ended.sessionId)
                                 enqueueStop(ended.userId)
-                            } else preferences.trackingSession(null)
+                            } else {
+                                preferences.trackingSession(null)
+                                ended?.let {preferences.sharingIntent(it.userId,false)}
+                            }
                             mutableState.value=state.value.copy(active=false,starting=false)
                             stopService()
                         }
@@ -211,6 +215,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
     suspend fun stop() = mutex.withLock {
         val id=auth.userId ?: return@withLock
         // Persist intent before terminating the foreground service or making a network call.
+        preferences.sharingIntent(id,false)
         preferences.pendingStop(id)
         enqueueStop(id)
         // Cancel without holding a join on a job that may be awaiting this same mutex.
@@ -233,8 +238,24 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
         auth.awaitSession()
         if(state.value.active || state.value.starting || tracking?.isActive==true) return
         if(preferences.pendingStop.first()!=null) return
-        val saved=preferences.trackingSession.first() ?: return
-        if(saved.userId!=auth.userId || !location.hasPermission() || !location.enabled()) return
+        val user=auth.userId ?: return
+        val saved=preferences.trackingSession.first()
+        if(saved!=null && saved.userId!=user) return
+        if(!location.hasPermission() || !location.enabled()) return
+        if(saved==null) {
+            mutableState.value=state.value.copy(initializing=true)
+            try {
+                val intent=preferences.sharingIntent(user).first()
+                val remote=withTimeout(12_000) {repository.ownSharingStatus()}
+                // Revision zero means no start/stop choice has ever been saved on the server.
+                // A previous OFF, including one saved by older versions, must win.
+                if(!shouldInitializeSharing(intent,remote.revision,remote.is_sharing)) return
+                if(com.whereweare.app.MainActivity.visible && bootstrap.state.value.gate==BootstrapGate.READY) start()
+            } catch(e: CancellationException) {if(e !is TimeoutCancellationException) throw e}
+            catch(e: Exception) {mutableState.value=state.value.copy(failure=connectionFailure(e))}
+            finally {mutableState.value=state.value.copy(initializing=false)}
+            return
+        }
         if(bootstrap.state.value.gate!=BootstrapGate.READY) return
         if(!com.whereweare.app.MainActivity.visible) return
         mutableState.value=state.value.copy(starting=true)

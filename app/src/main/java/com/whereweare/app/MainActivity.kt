@@ -77,21 +77,21 @@ import io.github.jan.supabase.auth.status.SessionStatus
     LaunchedEffect(lifecycle,appearance) { lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {appearance.observeMeetings()} }
     val session by auth.session.collectAsStateWithLifecycle()
     val boot by bootstrap.repository.state.collectAsStateWithLifecycle()
-    LaunchedEffect(lifecycle,boot.gate,session) {
-        if(boot.gate==BootstrapGate.READY && session is SessionStatus.Authenticated) {
+    val onboarding by appearance.onboarding.collectAsStateWithLifecycle()
+    LaunchedEffect(lifecycle,boot.gate,session,onboarding) {
+        if(onboarding && boot.gate==BootstrapGate.READY && session is SessionStatus.Authenticated) {
             lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 appearance.controller.resumeFromVisibleActivity()
             }
         }
     }
     LifecycleResumeEffect(Unit) { bootstrap.refresh(); onPauseOrDispose {} }
-    val onboarding by appearance.onboarding.collectAsStateWithLifecycle()
     val onboardingOperation by appearance.operation.collectAsStateWithLifecycle()
     if(!onboarding) {OnboardingScreen(onboardingOperation,appearance::finishOnboarding);return}
     if(boot.gate!=BootstrapGate.READY || session is SessionStatus.Initializing) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
             Image(painterResource(R.drawable.ic_location),null,Modifier.padding(vertical=12.dp).sizeIn(maxWidth=160.dp,maxHeight=160.dp).size(96.dp),contentScale=ContentScale.Fit)
-            Text("WhereWeAre",style=MaterialTheme.typography.headlineLarge)
+            Text("WhereWeAre - Troviamoci",style=MaterialTheme.typography.headlineLarge)
             Text("v${BuildConfig.VERSION_NAME}")
             Spacer(Modifier.height(24.dp))
             when(boot.gate) {
@@ -106,6 +106,16 @@ import io.github.jan.supabase.auth.status.SessionStatus
         return
     }
     if(session !is SessionStatus.Authenticated) { Box(Modifier.safeDrawingPadding()) { AuthScreen(auth) }; return }
+    val nearbyState by appearance.nearby.state.collectAsStateWithLifecycle()
+    var receiveNearby by androidx.compose.runtime.saveable.rememberSaveable((session as SessionStatus.Authenticated).session.user?.id) {mutableStateOf(true)}
+    if(nearbyState.status?.consent_initialized==false && nearbyState.pending==null) {
+        AlertDialog(onDismissRequest={},title={Text(Strings.text(R.string.nearby_initial_title))},text={Column {
+            Text(Strings.text(R.string.nearby_optin_explanation))
+            Text(Strings.text(R.string.nearby_refresh_policy))
+            Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(receiveNearby,{receiveNearby=it});Text(Strings.text(R.string.nearby_receive))}
+            if(nearbyState.failed) Text(Strings.text(R.string.nearby_sync_failed))
+        }},confirmButton={TextButton(onClick={appearance.confirmNearby(receiveNearby)}) {Text(Strings.text(R.string.nearby_confirm))}})
+    }
     val invite by appearance.invites.pending.collectAsStateWithLifecycle()
     val notificationPermission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
     var notificationAsked by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}

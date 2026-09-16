@@ -5,7 +5,7 @@ import androidx.core.net.toUri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -66,8 +66,6 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
             Text(Strings.text(R.string.sos_countdown,remaining.toString()),style=MaterialTheme.typography.headlineMedium)
             Button(onClick={counting=false},modifier=Modifier.fillMaxWidth().heightIn(min=64.dp)) {Text(Strings.text(R.string.sos_cancel))}
         }
-        if(status==SosSendState.SENDING || status==SosSendState.CONFIRMED) Text(Strings.text(when(status) {SosSendState.SENDING -> R.string.sos_sending;SosSendState.CONFIRMED -> R.string.sos_confirmed;else -> R.string.sos_unknown}))
-        if(status==SosSendState.SENDING) LinearProgressIndicator(Modifier.fillMaxWidth())
         if(snapshot.nearbySosAvailable) {
             Row {Checkbox(nearby,{nearby=it},enabled=editable);Text(Strings.text(R.string.nearby_send))}
             Text(Strings.text(R.string.nearby_sender_consent),style=MaterialTheme.typography.bodySmall)
@@ -125,18 +123,20 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
 }
 
 @Composable fun SosOutcomeCard(status: SosSendState,sendError: Int?,verify: ()->Unit,dismiss: ()->Unit) {
-        if(status==SosSendState.UNKNOWN || status==SosSendState.FAILED) {
-            val uncertain=status==SosSendState.UNKNOWN
-            val foreground=if(uncertain) Color(0xFF653C00) else Color(0xFF8C1710)
-            Card(colors=CardDefaults.cardColors(containerColor=if(uncertain) Color(0xFFFFE6B3) else Color(0xFFFFDAD6)),border=BorderStroke(2.dp,foreground)) {
-                Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.Warning,null,tint=foreground)
-                    Text(Strings.text(if(uncertain) R.string.sos_unconfirmed_title else R.string.sos_failed),fontWeight=FontWeight.Bold,color=foreground)
-                    Text(Strings.text(if(uncertain) R.string.sos_unknown else R.string.sos_failed_detail),color=foreground)
-                    sendError?.let {Text(Strings.text(it),color=foreground)}
-                    TextButton(onClick=verify) {Text(Strings.text(R.string.sos_verify),color=foreground)}
-                    TextButton(onClick=dismiss) {Text(Strings.text(R.string.sos_dismiss),color=foreground)}
-                }
-            }
+    if(status==SosSendState.IDLE) return
+    val uncertain=status==SosSendState.UNKNOWN
+    val failed=status==SosSendState.FAILED
+    val foreground=when {uncertain -> Color(0xFF653C00);failed -> Color(0xFF8C1710);else -> Color(0xFF124D32)}
+    val background=when {uncertain -> Color(0xFFFFE6B3);failed -> Color(0xFFFFDAD6);else -> Color(0xFFD3F4DF)}
+    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=background),border=BorderStroke(2.dp,foreground)) {
+        Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Icon(if(status==SosSendState.CONFIRMED) Icons.Default.CheckCircle else if(status==SosSendState.SENDING) Icons.Default.CloudUpload else Icons.Default.Warning,null,tint=foreground)
+            Text(Strings.text(when(status) {SosSendState.SENDING -> R.string.sos_sending;SosSendState.CONFIRMED -> R.string.sos_registered_title;SosSendState.UNKNOWN -> R.string.sos_unconfirmed_title;else -> R.string.sos_failed}),fontWeight=FontWeight.Bold,color=foreground)
+            Text(Strings.text(when(status) {SosSendState.SENDING -> R.string.sos_registering_detail;SosSendState.CONFIRMED -> R.string.sos_confirmed;SosSendState.UNKNOWN -> R.string.sos_unknown;else -> R.string.sos_failed_detail}),color=foreground)
+            if(status==SosSendState.SENDING) LinearProgressIndicator(Modifier.fillMaxWidth(),color=foreground)
+            sendError?.let {Text(Strings.text(it),color=foreground)}
+            if(uncertain || failed) TextButton(onClick=verify) {Text(Strings.text(R.string.sos_verify),color=foreground)}
+            if(status!=SosSendState.SENDING) TextButton(onClick=dismiss) {Text(Strings.text(R.string.sos_dismiss),color=foreground)}
         }
+    }
 }

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">WhereWeAre</string>
+    <string name="app_name">WhereWeAre - Troviamoci</string>
     <string name="welcome">Close, even at a distance.</string>
     <string name="welcome_detail">Share your location only with the people you choose.</string>
     <string name="login">Sign in</string>
@@ -330,8 +330,8 @@
     <string name="nearby_anonymous">Nearby SOS request</string>
     <string name="nearby_pending">Change awaiting server confirmation. It will retry when this app reconnects.</string>
     <string name="nearby_sync_failed">Server status not verified: check your connection and retry.</string>
-    <string name="nearby_available">Opted in · availability confirmed until:</string>
-    <string name="nearby_expired">Availability needs updating</string>
+    <string name="nearby_available">Recent position available for nearby search</string>
+    <string name="nearby_expired">Nearby search paused: waiting for a fresh position and permissions</string>
     <string name="nearby_refresh">Refresh availability and location</string>
     <string name="nearby_refresh_failed">Availability not updated. Allow location, enable GPS and check the network; a fresh usable location is required.</string>
     <string name="nearby_notifications_hint">Notifications require server configuration and Android permission. Without push, check SOS requests in map updates. WhereWeAre does not replace emergency services.</string>

@@ -3,8 +3,8 @@
   <string name="place_add">Aggiungi luogo</string>
   <string name="place_duplicate">Esiste già un luogo con questo nome.</string>
   <string name="place_rule_limit">Fino a 20 regole di automazione per account; i luoghi possono esistere senza regole.</string>
-  <string name="sos_unconfirmed_title">Invio SOS non confermato</string>
-  <string name="sos_failed">SOS non inviato</string>
+  <string name="sos_unconfirmed_title">Registrazione non confermata</string>
+  <string name="sos_failed">SOS non registrato</string>
   <string name="sos_failed_detail">Il server ha rifiutato questa richiesta SOS. Controlla la sessione e i destinatari prima di riprovare.</string>
   <string name="sos_verify">Verifica stato</string>
   <string name="sos_dismiss">Chiudi questo esito</string>
@@ -13,5 +13,5 @@
   <string name="connection_checking">Verifica connessione…</string>
   <string name="connection_service">Errore del servizio server. Riprova ad aggiornare.</string>
   <string name="connection_unreachable">Server non raggiungibile o tempo di attesa scaduto. Controlla la connessione e riprova.</string>
-  <string name="nearby_refresh_policy">La disponibilità usa una posizione aggiornata ogni 5 minuti con app aperta, permessi posizione e rete. In background riutilizza gli aggiornamenti della condivisione, se attiva. Dopo 15 minuti senza una posizione recente la disponibilità termina; l’adesione resta attiva.</string>
+  <string name="nearby_refresh_policy">Adesione valida fino alla revoca. La posizione viene aggiornata automaticamente con app aperta e permessi concessi; in background usa i fix della condivisione, se già attiva. Senza posizione recente la ricerca vicina è sospesa.</string>
 </resources>

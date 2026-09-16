@@ -18,3 +18,6 @@ import java.time.Instant
     val accuracy: Double,val recorded_at: String,val precision_m: Int) {
     fun location(id: String)=runCatching {UserLocation("event:$id",latitude,longitude,accuracy,null,null,Instant.parse(recorded_at),precisionMeters=precision_m)}.getOrNull()
 }
+
+/** Stable identity across metadata, refresh and Realtime; newest first. */
+fun unifiedUpdates(events: List<AppEvent>)=events.distinctBy {it.id}.sortedWith(compareByDescending<AppEvent> {Instant.parse(it.created_at)}.thenBy {it.id})

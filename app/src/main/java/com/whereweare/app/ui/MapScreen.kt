@@ -45,6 +45,9 @@ import java.time.format.DateTimeFormatter
 @Composable fun MapScreen(vm: MapViewModel,focus: MapFocus?=null,focused: ()->Unit={},onPlaces: ()->Unit={}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val local by vm.local.collectAsStateWithLifecycle()
+    val hiddenActiveSos by vm.hiddenActiveSos.collectAsStateWithLifecycle()
+    val sosOutcome by vm.sosSendState.collectAsStateWithLifecycle()
+    val sosFailure by vm.sosError.collectAsStateWithLifecycle()
     val tracking by vm.controller.state.collectAsStateWithLifecycle()
     val pending by vm.pendingStop.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
@@ -92,8 +95,8 @@ import java.time.format.DateTimeFormatter
     var sosEditor by rememberSaveable {mutableStateOf(false)}
     var checkinEditor by rememberSaveable {mutableStateOf(false)}
     var checkinInbox by rememberSaveable {mutableStateOf(false)}
-    val events=state.snapshot.events.filter {it.active(state.now) && (it.checkin()!=null || it.place()!=null || it.kind in setOf("sos","sos_closed"))}
-    LaunchedEffect(events) {if(events.none {it.id==selectedEvent}) selectedEvent=null}
+    val events=unifiedUpdates(state.snapshot.events).filter {it.active(state.now) && (it.checkin()!=null || it.place()!=null || it.kind in setOf("sos","sos_closed"))}
+    LaunchedEffect(events,hiddenActiveSos) {if(events.none {it.id==selectedEvent} && hiddenActiveSos?.id!=selectedEvent) selectedEvent=null}
     var mapError by remember { mutableStateOf(false) }
     LaunchedEffect(camera) {
         camera.events.collect { event ->
@@ -109,17 +112,7 @@ import java.time.format.DateTimeFormatter
         if(local!=null && (follow || !centered)) { camera.setCameraPosition(camera.cameraPosition.copy(target=Position(local!!.longitude,local!!.latitude),zoom=if(!centered) 14.0 else camera.cameraPosition.zoom)); centered=true }
     }
     LaunchedEffect(focus,state.snapshot.meetings,state.visible,events) {
-        val event=events.firstOrNull {it.id==focus?.event}
-        if(event?.place()!=null || event?.kind=="sos_closed") {selectedEvent=event.id;focused()}
-        event?.sos()?.let {payload ->
-            selectedEvent=event.id;selectedId=null;follow=false
-            payload.location(event.id)?.let {fix -> camera.setCameraPosition(CameraPosition(target=Position(fix.longitude,fix.latitude),zoom=13.0))}
-            focused()
-        }
-        event?.checkin()?.let {payload ->
-            selectedEvent=event.id;selectedId=null;follow=false
-            camera.setCameraPosition(CameraPosition(target=Position(payload.longitude,payload.latitude),zoom=if(payload.precision_m>0) 12.0 else 16.0));focused()
-        }
+        if(focus?.event!=null) {checkinInbox=true;selectedEvent=null;focused();return@LaunchedEffect}
         val point=state.snapshot.meetings.firstOrNull {it.id==focus?.meeting}
         val person=state.visible.firstOrNull {it.location.userId==focus?.person}
         if(point!=null || person!=null) {selectedMeeting=point?.id;follow=false;selectedEvent=null;selectedId=person?.location?.userId
@@ -132,6 +125,7 @@ import java.time.format.DateTimeFormatter
         if(state.visible.any {stalePosition(it.location,state.snapshot.contacts[it.location.userId],state.now,config.config?.defaults?.stale_grace_seconds?.coerceIn(30,3600) ?: 180)}) Notice(R.string.positions_stale)
         if(local?.recordedAt?.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))==true) Notice(R.string.local_position_stale)
         Busy(operation)
+        if(!sosEditor && sosOutcome!=SosSendState.IDLE) SosOutcomeCard(sosOutcome,sosFailure,vm.sos::verify,vm.sos::dismiss)
         if(!vm.location.enabled()) Notice(R.string.location_disabled)
         if(permissionState==LocationPermission.APPROXIMATE) Surface(color=MaterialTheme.colorScheme.errorContainer) {
             Text(Strings.text(R.string.ui_044),Modifier.fillMaxWidth().padding(12.dp))
@@ -225,7 +219,7 @@ import java.time.format.DateTimeFormatter
             if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
                 FloatingActionButton(onClick={actions=true}) {Icon(Icons.Default.MoreVert,Strings.text(R.string.map_actions))}
                 DropdownMenu(actions,{actions=false}) {
-                    DropdownMenuItem(text={Text(Strings.text(R.string.sos_updates))},onClick={actions=false;checkinInbox=true})
+                    // SOS and check-ins share the single updates entry below.
                     DropdownMenuItem(text={Text(Strings.text(R.string.fit_all))},onClick={
                         actions=false;follow=false
                         val fixes=state.visible.map {it.location}+listOfNotNull(local)+events.mapNotNull {it.checkin()?.location(it.id)?:it.sos()?.location(it.id)}
@@ -237,15 +231,15 @@ import java.time.format.DateTimeFormatter
                         }
                     })
                     if(config.config?.features?.meeting_points!=false) DropdownMenuItem(text={Text(Strings.text(R.string.ui_046))},onClick={actions=false;follow=false;creatingMeeting=true})
-                    DropdownMenuItem(text={Text(Strings.text(R.string.places_title))},leadingIcon={Icon(Icons.Default.Place,null)},onClick={actions=false;onPlaces()})
+                    DropdownMenuItem(text={Text(Strings.text(R.string.places_title))},onClick={actions=false;onPlaces()})
                     if(state.snapshot.eventsAvailable) {
                         DropdownMenuItem(text={Text(Strings.text(R.string.checkin_title))},leadingIcon={Icon(Icons.Default.Check,null)},onClick={actions=false;vm.message(null);checkinEditor=true})
-                        DropdownMenuItem(text={Text(Strings.text(R.string.checkin_inbox))},onClick={actions=false;checkinInbox=true})
                     }
+                    DropdownMenuItem(text={Text(Strings.text(R.string.checkin_inbox))},onClick={actions=false;checkinInbox=true})
                 }
             }
             if(!creatingMeeting) SosMapButton(state.snapshot,events,Modifier.align(Alignment.TopEnd).padding(top=84.dp,end=12.dp),
-                openEditor={vm.message(null);sosEditor=true},openEvent={selectedEvent=it})
+                openEditor={vm.message(null);vm.openSos({sosEditor=true},{selectedEvent=it})},openEvent={selectedEvent=it})
             if(creatingMeeting) {
                 Icon(Icons.Default.Flag,Strings.text(R.string.ui_047),Modifier.align(Alignment.Center).size(48.dp),tint=MaterialTheme.colorScheme.primary)
                 Surface(Modifier.align(Alignment.BottomCenter)) {Column {Text(Strings.text(R.string.ui_048));Row {
@@ -310,10 +304,12 @@ import java.time.format.DateTimeFormatter
         Surface(tonalElevation=3.dp) {
             Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 val serverSharing=state.snapshot.statuses.any { it.userId==state.snapshot.profile?.id && it.sharing }
-                val sharingState=com.whereweare.app.domain.sharingUiState(tracking.active,tracking.starting,serverSharing,pending!=null)
+                val sharingState=com.whereweare.app.domain.sharingUiState(tracking.active,tracking.starting,serverSharing,pending!=null,tracking.initializing || state.snapshot.loading,tracking.waiting || !online || permissionState==LocationPermission.NONE)
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.sharing),style=MaterialTheme.typography.titleMedium)
                     Text(stringResource(when(sharingState) {
+                        SharingUiState.VERIFYING -> R.string.sharing_initializing
+                        SharingUiState.SUSPENDED -> R.string.sharing_suspended
                         SharingUiState.OFF -> R.string.off
                         SharingUiState.ON -> R.string.on
                         SharingUiState.STARTING -> R.string.sharing_starting
@@ -333,8 +329,8 @@ import java.time.format.DateTimeFormatter
                 Box(Modifier.fillMaxWidth().height(48.dp).verticalScroll(rememberScrollState()),contentAlignment=Alignment.CenterStart) {
                     warning?.let {Text(Strings.text(it),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)}
                 }
-                Button(onClick={ if(sharingState==SharingUiState.OFF) requestPermission(true) else vm.stop() },enabled=sharingState!=SharingUiState.STOPPING,modifier=Modifier.fillMaxWidth()) {
-                    Text(stringResource(when(sharingState) {SharingUiState.ON -> R.string.stop; SharingUiState.REMOTE_ACTIVE -> R.string.reconcile_stop; SharingUiState.STARTING -> R.string.ui_006; SharingUiState.STOPPING -> R.string.sharing_stopping; SharingUiState.OFF -> R.string.start}))
+                Button(onClick={ if(sharingState==SharingUiState.OFF) requestPermission(true) else vm.stop() },enabled=sharingState !in setOf(SharingUiState.STOPPING,SharingUiState.VERIFYING),modifier=Modifier.fillMaxWidth()) {
+                    Text(stringResource(when(sharingState) {SharingUiState.VERIFYING -> R.string.sharing_initializing; SharingUiState.SUSPENDED -> R.string.stop; SharingUiState.ON -> R.string.stop; SharingUiState.REMOTE_ACTIVE -> R.string.reconcile_stop; SharingUiState.STARTING -> R.string.ui_006; SharingUiState.STOPPING -> R.string.sharing_stopping; SharingUiState.OFF -> R.string.start}))
                 }
                 if(!vm.location.enabled()) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }) { Text(stringResource(R.string.open_location_settings)) }
                 if(permissionState!=LocationPermission.PRECISE) TextButton(onClick={ context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,"package:${context.packageName}".toUri())) }) { Text(Strings.text(R.string.ui_057)) }
@@ -342,7 +338,7 @@ import java.time.format.DateTimeFormatter
         }
     }
     if(sosEditor) SosEditor(vm,state.snapshot) {sosEditor=false}
-    events.firstOrNull {it.id==selectedEvent && it.kind=="sos"}?.let {event -> SosDetail(vm,event,event.sender_id==state.snapshot.profile?.id) {selectedEvent=null}}
+    (events+listOfNotNull(hiddenActiveSos)).firstOrNull {it.id==selectedEvent && it.kind=="sos"}?.let {event -> SosDetail(vm,event,event.sender_id==state.snapshot.profile?.id) {selectedEvent=null}}
     events.firstOrNull {it.id==selectedEvent && it.kind=="sos_closed"}?.let {event ->
         AlertDialog(onDismissRequest={selectedEvent=null},title={Text(eventReceivedText(event))},text={Column {Text(sosClosureText(event));Text(eventTime(event.created_at))}},confirmButton={TextButton(onClick={selectedEvent=null}) {Text(Strings.text(R.string.close))}})
     }
@@ -359,7 +355,7 @@ import java.time.format.DateTimeFormatter
     },cancel={choosingRecipients=false})
     if(checkinEditor) CheckinEditor(state.snapshot,operation,permissionState!=LocationPermission.NONE,{requestPermission(false)},
         send={id,type,message,people,groups,meeting -> vm.checkin(id,type,message,people,groups,meeting) {checkinEditor=false}},close={checkinEditor=false})
-    if(checkinInbox) CheckinInbox(events,state.snapshot,open={event -> checkinInbox=false;selectedId=null;selectedEvent=event.id;
+    if(checkinInbox) CheckinInbox(events,state.snapshot,operation=operation,remove={id,done -> vm.removeEvent(id,done)},open={event -> checkinInbox=false;selectedId=null;selectedEvent=event.id;
         event.sos()?.location(event.id)?.let {fix -> scope.launch {follow=false;camera.setCameraPosition(CameraPosition(target=Position(fix.longitude,fix.latitude),zoom=13.0))}}
         event.checkin()?.let {payload -> scope.launch {
         follow=false;camera.setCameraPosition(CameraPosition(target=Position(payload.longitude,payload.latitude),zoom=if(payload.precision_m>0) 12.0 else 16.0))

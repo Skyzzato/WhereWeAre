@@ -14,13 +14,13 @@ import kotlinx.serialization.json.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@Serializable data class NearbyStatus(val enabled: Boolean=false,val opted_in: Boolean=false,val available: Boolean=false,
+@Serializable data class NearbyStatus(val consent_initialized: Boolean=true,val enabled: Boolean=false,val opted_in: Boolean=false,val available: Boolean=false,
     val available_until: String?=null,val server_time: String="",val radius_m: Int=2000,val availability_seconds: Int=900)
 data class NearbyState(val status: NearbyStatus?=null,val pending: Boolean?=null,val failed: Boolean=false,
     val checkedElapsed: Long=android.os.SystemClock.elapsedRealtime()) {
     fun availableNow(elapsed: Long): Boolean {
         val confirmed=status ?: return false
-        return !failed && confirmed.available && runCatching {
+        return !failed && pending==null && confirmed.available && runCatching {
             java.time.Instant.parse(confirmed.available_until).isAfter(java.time.Instant.parse(confirmed.server_time).plusMillis((elapsed-checkedElapsed).coerceAtLeast(0)))
         }.getOrDefault(false)
     }
@@ -71,7 +71,7 @@ data class NearbyState(val status: NearbyStatus?=null,val pending: Boolean?=null
         val pending=store.data.first()[key(user)]
         try {
             if(pending!=null) {
-                client.postgrest.rpc("set_nearby_sos_consent",buildJsonObject {put("agree",pending)})
+                withTimeout(12_000) {client.postgrest.rpc("set_nearby_sos_consent",buildJsonObject {put("agree",pending)})}
                 if(auth.userId!=user) return@withLock
                 store.edit {it.remove(key(user))}
             }
@@ -83,9 +83,9 @@ data class NearbyState(val status: NearbyStatus?=null,val pending: Boolean?=null
     suspend fun refresh(fix: UserLocation) {
         mutex.withLock {
             check(!ending && auth.userId==fix.userId && store.data.first()[key(fix.userId)]!=false) {"not_authorized"}
-            client.postgrest.rpc("refresh_nearby_sos",buildJsonObject {
+            withTimeout(12_000) {client.postgrest.rpc("refresh_nearby_sos",buildJsonObject {
                 put("lat",fix.latitude);put("lon",fix.longitude);put("accuracy_m",fix.accuracy);put("fix_at",fix.recordedAt.toString())
-            })
+            })}
         }
         sync()
     }

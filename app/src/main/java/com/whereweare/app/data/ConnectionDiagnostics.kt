@@ -63,6 +63,7 @@ class ConnectionDiagnostics(
 fun connectionFailure(e: Exception): String = when {
     e is RestException && e.statusCode==401 -> "session"
     e is RestException && e.statusCode==403 -> "forbidden"
+    e is RestException && (e.statusCode==404 || listOf("PGRST202","PGRST204","42883","42P01","42703").any {it in e.message.orEmpty()}) -> "configuration"
     e is RestException -> "service"
     e is kotlinx.serialization.SerializationException || e is java.time.format.DateTimeParseException -> "response"
     e is java.io.IOException || e is TimeoutCancellationException -> "unreachable"

@@ -73,12 +73,20 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     val location: LocationRepository,private val preferences: PreferencesRepository,private val auth: AuthRepository,val avatars: AvatarRepository,
     network: NetworkMonitor,bootstrap: BootstrapRepository,private val feedback: MeetingFeedback,val sos: SosOperationRepository,val routing: ConfiguredRoutingRepository=ConfiguredRoutingRepository()
 ): OperationViewModel() {
+    val hiddenActiveSos=MutableStateFlow<AppEvent?>(null)
+    fun openSos(editor: ()->Unit,detail: (String)->Unit) {perform {
+        val active=try {sharing.ownActiveSos()} catch(e: CancellationException) {
+            if(e !is TimeoutCancellationException) throw e;null
+        } catch(_: Exception) {null}
+        hiddenActiveSos.value=active
+        if(active==null) editor() else detail(active.id)
+    }}
     val sosSendState=sos.state
     val sosError=sos.error
     fun sendSos(id: String,category: String,people: Set<String>,groups: Set<String>,nearby: Boolean=false)=sos.send(id,category,people,groups,nearby)
     suspend fun sosStatus(id: String)=sharing.sosStatus(id)
     fun respondSos(id: String,response: String?) {perform(if(response!=null) R.string.sos_response_confirmed else null) {sharing.respondSos(id,response)}}
-    fun closeSos(id: String,reason: String,done: ()->Unit) {perform {sharing.closeSos(id,reason);done()}}
+    fun closeSos(id: String,reason: String,done: ()->Unit) {perform {sharing.closeSos(id,reason);hiddenActiveSos.value=null;done()}}
     private val ticks=flow { while(true) { emit(sharing.now()); delay(1_000) } }
     val state=combine(sharing.state,ticks,preferences.hidden(auth.userId.orEmpty()),preferences.hiddenGroups(auth.userId.orEmpty())) { snapshot,now,hidden,hiddenGroups ->
         val groupHidden=snapshot.members.filter { it.groupId in hiddenGroups }.map {it.userId}.toSet()
@@ -113,7 +121,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
         sharing.checkin(id,type,message,fix,people,groups,meeting)
         completed()
     }}
-    fun removeEvent(id: String) {perform {sharing.removeEvent(id)}}
+    fun removeEvent(id: String,done: ()->Unit={}) {perform {sharing.removeEvent(id);done()}}
     val mapStyle=preferences.mapStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),"standard")
     val permission=permissionEpoch.map { location.permission() }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),location.permission())
     val pendingStop=controller.pendingStop.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),null)
@@ -256,11 +264,12 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     fun remove(group: String,ids: Set<String>) { perform { ids.forEach { sharing.removeMember(group,it) } } }
     fun delete(group: String) { perform { sharing.deleteGroup(group) } }
 }
-@HiltViewModel class AppearanceViewModel @Inject constructor(val invites: InviteStore,val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,val controller: SharingController,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,private val onboardingStore: OnboardingStore): OperationViewModel() {
+@HiltViewModel class AppearanceViewModel @Inject constructor(val invites: InviteStore,val preferences: PreferencesRepository, val sharing: SharingRepository,private val auth: AuthRepository,private val feedback: MeetingFeedback,val avatarDrafts: AvatarDraftStore,val controller: SharingController,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,private val onboardingStore: OnboardingStore,val nearby: NearbySosRepository): OperationViewModel() {
     val theme=preferences.theme.stateIn(viewModelScope,SharingStarted.Eagerly,"default")
     val language=preferences.language.stateIn(viewModelScope,SharingStarted.Eagerly,"system")
     val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     val notification=MutableStateFlow<MeetingPoint?>(null)
+    fun confirmNearby(agree: Boolean) {perform {nearby.consent(agree)}}
     val onboarding=onboardingStore.completed
     fun finishOnboarding() {perform {check(onboardingStore.complete())}}
     val eventNotice=MutableStateFlow<AppEvent?>(null)

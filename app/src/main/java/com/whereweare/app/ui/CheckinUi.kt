@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -57,7 +57,10 @@ fun eventTime(at: String)=runCatching {DateTimeFormatter.ofPattern(if(Strings.lo
         if(hasPermission) send(id,type,message,people.toSet(),groups.toSet(),meeting) else permission()
     }) {Text(Strings.text(if(hasPermission) R.string.checkin_send else R.string.checkin_allow_location))}},dismissButton={TextButton(onClick=close,enabled=!operation.busy) {Text(Strings.text(R.string.close))}})
 }
-@Composable fun CheckinInbox(events: List<AppEvent>,snapshot: Snapshot,open: (AppEvent)->Unit,close: ()->Unit) {
+@Composable fun CheckinInbox(events: List<AppEvent>,snapshot: Snapshot,open: (AppEvent)->Unit,close: ()->Unit,
+    operation: OperationState=OperationState(),remove: (String,()->Unit)->Unit={_,_ ->}) {
+    var deleting by remember {mutableStateOf<AppEvent?>(null)}
+    val removed=remember {mutableStateListOf<String>()}
     Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Surface(Modifier.fillMaxSize()) {Column(Modifier.safeDrawingPadding().padding(16.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
@@ -65,24 +68,32 @@ fun eventTime(at: String)=runCatching {DateTimeFormatter.ofPattern(if(Strings.lo
                 IconButton(onClick=close) {Icon(Icons.Default.Close,Strings.text(R.string.close))}
             }
             Text(Strings.text(R.string.checkin_retention))
+            Busy(operation,inline=true)
             LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 if(events.isEmpty()) item {Text(Strings.text(R.string.checkin_empty))}
-                items(events,key={it.id}) {event ->
-                    if(event.kind in setOf("sos","sos_closed")) OutlinedCard(onClick={open(event)},modifier=Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp)) {Text(eventReceivedText(event));Text(eventTime(event.created_at))}
+                items(unifiedUpdates(events).filter {it.id !in removed},key={it.id}) {event ->
+                    OutlinedCard(onClick={open(event)},modifier=Modifier.fillMaxWidth()) {
+                        Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically) {
+                            Icon(when(event.kind) {"sos","sos_closed" -> Icons.Default.Warning;"place" -> Icons.Default.Place;else -> Icons.Default.CheckCircle},null,Modifier.padding(end=8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(event.checkin()?.let {event.sender_name+" · "+checkinLabel(it.checkin_type)} ?: event.place()?.let(::placeEventText) ?: eventReceivedText(event),style=MaterialTheme.typography.titleMedium)
+                                Text(eventTime(event.created_at))
+                                event.checkin()?.let {payload ->
+                                    Text(precisionLabel(payload.precision_m))
+                                    if(payload.message.isNotBlank()) Text(payload.message)
+                                }
+                                if(event.sender_id==snapshot.profile?.id) Text(Strings.text(R.string.checkin_recipients,event.recipients.size))
+                            }
+                            IconButton(onClick={deleting=event},enabled=!operation.busy,modifier=Modifier.size(48.dp)) {Icon(Icons.Default.Delete,Strings.text(R.string.update_remove))}
+                        }
                     }
-                    event.place()?.let {notice -> OutlinedCard(onClick={open(event)},modifier=Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp)) {Text(placeEventText(notice));Text(eventTime(notice.observed_at))}
-                    }}
-                    event.checkin()?.let {payload ->
-                    OutlinedCard(onClick={open(event)},modifier=Modifier.fillMaxWidth()) {Column(Modifier.padding(12.dp)) {
-                        Text("${event.sender_name} · ${checkinLabel(payload.checkin_type)}",style=MaterialTheme.typography.titleMedium)
-                        Text(eventTime(payload.recorded_at));Text(precisionLabel(payload.precision_m))
-                        if(payload.message.isNotBlank()) Text(payload.message)
-                        if(event.sender_id==snapshot.profile?.id) Text(Strings.text(R.string.checkin_recipients,event.recipients.size))
-                    }}
-                }}
+                }
             }
         }}
+    }
+    deleting?.let {event -> AlertDialog(onDismissRequest={if(!operation.busy) deleting=null},title={Text(Strings.text(R.string.update_remove))},
+        text={Column {Text(Strings.text(if(event.kind=="sos") R.string.update_remove_sos else R.string.update_remove_confirm));Busy(operation,inline=true)}},
+        confirmButton={TextButton(enabled=!operation.busy,onClick={remove(event.id) {removed.add(event.id);deleting=null}}) {Text(Strings.text(R.string.update_remove))}},
+        dismissButton={TextButton(enabled=!operation.busy,onClick={deleting=null}) {Text(Strings.text(R.string.close))}})
     }
 }

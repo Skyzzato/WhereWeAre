@@ -13,8 +13,6 @@ import kotlinx.coroutines.*
     val snapshot by vm.state.collectAsStateWithLifecycle()
     val scope=rememberCoroutineScope()
     val context=androidx.compose.ui.platform.LocalContext.current
-    var busy by remember {mutableStateOf(false)}
-    var failure by remember {mutableStateOf(false)}
     var elapsed by remember {mutableLongStateOf(android.os.SystemClock.elapsedRealtime())}
     LaunchedEffect(Unit) {while(true) {elapsed=android.os.SystemClock.elapsedRealtime();delay(1000)}}
     LaunchedEffect(Unit) {vm.nearby.sync()}
@@ -33,16 +31,9 @@ import kotlinx.coroutines.*
     }
     if(state.status?.opted_in==true) {
         Text(Strings.text(R.string.nearby_permanent))
-        Text(Strings.text(if(state.availableNow(elapsed)) R.string.nearby_available else R.string.nearby_expired))
-        state.status?.available_until?.let {Text(eventTime(it))}
-        OutlinedButton(enabled=!busy && state.pending==null,onClick={scope.launch {
-            busy=true;failure=false
-            try {vm.nearby.refresh(vm.location.snapshot(true))}
-            catch(e: CancellationException) {if(e is TimeoutCancellationException) failure=true else throw e}
-            catch(_: Exception) {failure=true} finally {busy=false}
-        }}) {Text(Strings.text(if(busy) R.string.position_waiting else R.string.nearby_refresh))}
-        if(failure) Text(Strings.text(R.string.nearby_refresh_failed))
+        Text(Strings.text(if(state.availableNow(elapsed) && vm.location.hasPermission() && vm.location.enabled()) R.string.nearby_available else R.string.nearby_expired))
     }
+    if(!vm.location.hasPermission()) Text(Strings.text(R.string.location_permission))
     Text(Strings.text(R.string.nearby_notifications_hint),style=MaterialTheme.typography.bodySmall)
     val pushConfigured=com.whereweare.app.BuildConfig.FIREBASE_APP_ID.isNotBlank() &&
         com.whereweare.app.BuildConfig.FIREBASE_API_KEY.isNotBlank() && com.whereweare.app.BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() &&

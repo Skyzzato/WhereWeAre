@@ -12,6 +12,7 @@ fun syncFailureMessage(snapshot: Snapshot): Int = if(snapshot.syncInProgress) R.
     "session" -> R.string.error_auth
     "forbidden" -> R.string.error_forbidden
     "response" -> R.string.connection_response
+    "configuration" -> R.string.error_config
     "service" -> R.string.connection_service
     else -> R.string.connection_unreachable
 }

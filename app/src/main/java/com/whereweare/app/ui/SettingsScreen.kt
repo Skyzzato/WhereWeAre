@@ -84,8 +84,10 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         }
         SettingsSection(Strings.text(R.string.settings_location_sharing),initiallyExpanded=false) {
         val serverSharing=state.statuses.any {it.userId==state.profile?.id && it.sharing}
-        val sharingState=sharingUiState(tracking.active,tracking.starting,serverSharing,pending!=null)
+        val sharingState=sharingUiState(tracking.active,tracking.starting,serverSharing,pending!=null,tracking.initializing,tracking.waiting)
         Text(Strings.text(R.string.sharing)+": "+Strings.text(when(sharingState) {
+            SharingUiState.VERIFYING -> R.string.sharing_initializing
+            SharingUiState.SUSPENDED -> R.string.sharing_suspended
             SharingUiState.OFF -> R.string.off;SharingUiState.ON -> R.string.on;SharingUiState.STARTING -> R.string.sharing_starting
             SharingUiState.STOPPING -> R.string.sharing_stopping;SharingUiState.REMOTE_ACTIVE -> R.string.remote_session_active
         }))
@@ -106,7 +108,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
         }
         }
         OutlinedCard(onClick={places=true},modifier=Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {DetailLine(Icons.Default.Place,Strings.text(R.string.places_title));Text(Strings.text(R.string.places_entry_hint))}
+            Column(Modifier.padding(16.dp)) {Text(Strings.text(R.string.places_title),style=MaterialTheme.typography.titleMedium);Text(Strings.text(R.string.places_entry_hint))}
         }
         SettingsSection(Strings.text(R.string.appearance),initiallyExpanded=false) {
         Text(Strings.text(R.string.ui_093),style=MaterialTheme.typography.titleSmall)

@@ -13,7 +13,7 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@Serializable data class PendingSos(val id: String,val category: String,val people: Set<String>,val groups: Set<String>,val nearby: Boolean,val created: Long,val failed: Boolean=false)
+@Serializable data class PendingSos(val id: String,val category: String,val people: Set<String>,val groups: Set<String>,val nearby: Boolean,val created: Long,val failed: Boolean=false,val dismissed: Boolean=false)
 fun definiteSosFailure(error: Exception)=error is RestException && error.statusCode in listOf(400,401,403,404,409,422,429)
 
 /** Account-scoped durable intent, written before the network request. Recovery only reads. */
@@ -27,23 +27,29 @@ fun definiteSosFailure(error: Exception)=error is RestException && error.statusC
     init {scope.launch {auth.session.map {auth.userId}.distinctUntilChanged().collectLatest {user ->
         mutex.withLock {
             state.value=SosSendState.IDLE;error.value=null
-            if(user!=null) pending(user)?.let {state.value=if(it.failed) SosSendState.FAILED else SosSendState.UNKNOWN;verify(user)}
+            if(user!=null) pending(user)?.takeUnless {it.dismissed}?.let {state.value=if(it.failed) SosSendState.FAILED else SosSendState.UNKNOWN;verify(user)}
         }
     }}}
     private suspend fun pending(user: String)=store.data.first()[key(user)]?.let {Json.decodeFromString<PendingSos>(it)}
-    private suspend fun verify(user: String): Boolean {
+    private suspend fun verify(user: String): Boolean? {
         val draft=pending(user) ?: return false
         return try {
             val exists=sharing.sosRegistered(draft.id)
             if(auth.userId==user && exists) {state.value=SosSendState.CONFIRMED;error.value=null}
             exists
-        } catch(e: CancellationException) {if(e !is TimeoutCancellationException) throw e;false}
-        catch(_: Exception) {false}
+        } catch(e: CancellationException) {if(e !is TimeoutCancellationException) throw e;null}
+        catch(_: Exception) {null}
     }
     fun verify() {scope.launch {mutex.withLock {auth.userId?.let {verify(it)}}}}
     fun dismiss() {scope.launch {mutex.withLock {
         val user=auth.userId ?: return@withLock
-        store.edit {it.remove(key(user))};state.value=SosSendState.IDLE;error.value=null
+        val draft=pending(user)
+        store.edit {
+            // Hiding a warning must not forget an uncertain network write.
+            if(state.value==SosSendState.UNKNOWN && draft!=null) it[key(user)]=Json.encodeToString(PendingSos.serializer(),draft.copy(dismissed=true))
+            else it.remove(key(user))
+        }
+        state.value=SosSendState.IDLE;error.value=null
     }}}
     fun send(id: String,category: String,people: Set<String>,groups: Set<String>,nearby: Boolean) {
         // Try-lock drops double taps instead of queuing a second send after completion.
@@ -52,8 +58,14 @@ fun definiteSosFailure(error: Exception)=error is RestException && error.statusC
             try {
                 val user=auth.userId ?: return@launch
                 val existing=pending(user)
-                if(existing!=null && verify(user)) return@launch
-                val draft=(existing ?: PendingSos(id,category,people,groups,nearby,System.currentTimeMillis())).copy(failed=false)
+                if(existing!=null) {
+                    val registered=verify(user)
+                    if(registered==true) return@launch
+                    if(registered==null) {state.value=SosSendState.UNKNOWN;return@launch}
+                }
+                // A deliberately new send may replace an old dismissed attempt only AFTER a successful absence check.
+                val reusable=existing?.takeUnless {it.dismissed && System.currentTimeMillis()-it.created>5*60_000}
+                val draft=(reusable ?: PendingSos(id,category,people,groups,nearby,System.currentTimeMillis())).copy(failed=false,dismissed=false)
                 if(System.currentTimeMillis()-draft.created>5*60_000) {
                     state.value=SosSendState.UNKNOWN;error.value=com.whereweare.app.R.string.sos_old_request;return@launch
                 }

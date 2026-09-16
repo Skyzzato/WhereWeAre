@@ -7,6 +7,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton class PreferencesRepository @Inject constructor(private val store: DataStore<Preferences>,@dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context) {
+    fun sharingIntent(user: String)=store.data.map {it[booleanPreferencesKey("sharing_intent_$user")]}
+    suspend fun sharingIntent(user: String,enabled: Boolean) {store.edit {it[booleanPreferencesKey("sharing_intent_$user")]=enabled}}
     private val high = booleanPreferencesKey("high_accuracy")
     private val pending = stringPreferencesKey("pending_stop_user")
     private val pendingSession = stringPreferencesKey("pending_stop_session")
