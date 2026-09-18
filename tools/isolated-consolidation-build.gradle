@@ -1,0 +1,4 @@
+// Keep this verification separate from historical build and release artifacts.
+gradle.beforeProject { project ->
+    project.layout.buildDirectory.set(new File(project.rootProject.projectDir, '.tools/build-consolidation/' + project.name))
+}

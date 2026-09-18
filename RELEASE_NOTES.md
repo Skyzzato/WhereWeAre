@@ -1,3 +1,11 @@
+# v0.48 — prerelease
+
+versionCode 17
+
+[note](RELEASE_NOTES_v0.48.md), [verifiche della versione pubblicata](VERIFICATION_v0.48.md). Luoghi, controlli mappa e default di cinque secondi.
+
+Consolidamento del 18 settembre 2026 su main: documentazione e priorità del gate prima dell’onboarding; migrazione 022 predisposta, non applicata al server. Il tag e l’APK v0.48 restano immutati; la correzione successiva al tag non è distribuita. [Audit](REPOSITORY_AUDIT_2026-09-18.md), [politica versioni](VERSIONING.md).
+
 # v0.47 — prerelease
 
 Versione 0.47/16: [note](RELEASE_NOTES_v0.47.md), [verifiche](VERIFICATION_v0.47.md). Recupero condivisione, Cronologia eventi e aggiornamenti grafici. Nessuna nuova migrazione server.
@@ -6,11 +14,31 @@ Versione 0.47/16: [note](RELEASE_NOTES_v0.47.md), [verifiche](VERIFICATION_v0.47
 
 Versione 0.46/15: [note](RELEASE_NOTES_v0.46.md), [verifiche](VERIFICATION_v0.46.md), [migrazione e configurazione](SETUP_v0.46.md). Le nuove specifiche SOS prevalgono sulle indicazioni storiche incompatibili.
 
-# Versione corrente v0.45 — prerelease di collaudo
+# v0.45 — prerelease
 
-Note attuali: [RELEASE_NOTES_v0.45.md](RELEASE_NOTES_v0.45.md). Verifiche: [VERIFICATION_v0.45.md](VERIFICATION_v0.45.md). Audit precedente: [AUDIT_v0.44.md](AUDIT_v0.44.md). Configurazione e limiti: [SETUP_v0.44.md](SETUP_v0.44.md).
+Note della versione: [RELEASE_NOTES_v0.45.md](RELEASE_NOTES_v0.45.md). Verifiche: [VERIFICATION_v0.45.md](VERIFICATION_v0.45.md). Audit precedente: [AUDIT_v0.44.md](AUDIT_v0.44.md). Configurazione e limiti: [SETUP_v0.44.md](SETUP_v0.44.md).
 
-La sezione seguente conserva la ricostruzione storica.
+# v0.44 — prerelease
+
+[Note v0.44](RELEASE_NOTES_v0.44.md), [verifiche](VERIFICATION_v0.44.md).
+
+# v0.43 — prerelease
+
+[Note v0.43](RELEASE_NOTES_v0.43.md), [verifiche](VERIFICATION_v0.43.md).
+
+# v0.42 — prerelease
+
+[Note v0.42](RELEASE_NOTES_v0.42.md), [verifiche](VERIFICATION_v0.42.md).
+
+# v0.41 — prerelease
+
+[Note v0.41](RELEASE_NOTES_v0.41.md), [verifiche](VERIFICATION_v0.41.md).
+
+# v0.4 — prerelease
+
+[Note v0.4](RELEASE_NOTES_v0.4.md), [verifiche](VERIFICATION_v0.4.md).
+
+La sezione seguente conserva la ricostruzione storica. Gli stati di pubblicazione qui sopra riflettono la politica corrente; i documenti versionati conservano la provenienza originale.
 
 # WhereWeAre — evoluzione fino alla v0.33
 

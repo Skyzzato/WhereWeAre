@@ -1,3 +1,12 @@
+## Stato corrente
+
+Baseline corrente: v0.48 / versionCode 17.
+
+Per la verifica completa corrente vedere: [VERIFICATION_v0.48.md](VERIFICATION_v0.48.md).
+Le prove del consolidamento successivo al tag sono in [REPOSITORY_AUDIT_2026-09-18.md](REPOSITORY_AUDIT_2026-09-18.md).
+
+Le sezioni seguenti sono storiche.
+
 # WhereWeAre — verifiche
 
 ## v0.33 — verifica per la pubblicazione del repository
