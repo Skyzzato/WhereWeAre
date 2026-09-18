@@ -88,25 +88,9 @@ import io.github.jan.supabase.auth.status.SessionStatus
     }
     LifecycleResumeEffect(Unit) { bootstrap.refresh(); onPauseOrDispose {} }
     val onboardingOperation by appearance.operation.collectAsStateWithLifecycle()
-    if(!onboarding) {OnboardingScreen(onboardingOperation,appearance::finishOnboarding);return}
-    if(boot.gate!=BootstrapGate.READY || session is SessionStatus.Initializing) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-            Image(painterResource(R.drawable.ic_location),null,Modifier.padding(vertical=12.dp).sizeIn(maxWidth=160.dp,maxHeight=160.dp).size(96.dp),contentScale=ContentScale.Fit)
-            Text("WhereWeAre",style=MaterialTheme.typography.headlineLarge)
-            Text("v${BuildConfig.VERSION_NAME}")
-            Spacer(Modifier.height(24.dp))
-            when(boot.gate) {
-                BootstrapGate.UPDATE -> { Text(Strings.text(R.string.ui_120),style=MaterialTheme.typography.headlineSmall); Text(Strings.text(R.string.ui_121)) }
-                BootstrapGate.MAINTENANCE -> { Text(Strings.text(R.string.ui_122),style=MaterialTheme.typography.headlineSmall); boot.config?.maintenance_message?.let { Text(it) } }
-                BootstrapGate.FIRST_CONNECTION -> Text(Strings.text(R.string.ui_123))
-                BootstrapGate.BACKEND_UPDATE -> Text(Strings.text(R.string.backend_update))
-                else -> CircularProgressIndicator()
-            }
-            if(boot.gate !in listOf(BootstrapGate.LOADING,BootstrapGate.READY)) TextButton(onClick=bootstrap::refresh) { Text(Strings.text(R.string.ui_124)) }
-        }
-        return
-    }
-    if(session !is SessionStatus.Authenticated) { Box(Modifier.safeDrawingPadding()) { AuthScreen(auth) }; return }
+    BootstrapBoundary(boot,session is SessionStatus.Initializing,bootstrap::refresh) {
+    if(!onboarding) {OnboardingScreen(onboardingOperation,appearance::finishOnboarding);return@BootstrapBoundary}
+    if(session !is SessionStatus.Authenticated) { Box(Modifier.safeDrawingPadding()) { AuthScreen(auth) }; return@BootstrapBoundary }
     val nearbyState by appearance.nearby.state.collectAsStateWithLifecycle()
     var receiveNearby by androidx.compose.runtime.saveable.rememberSaveable((session as SessionStatus.Authenticated).session.user?.id) {mutableStateOf(true)}
     if(nearbyState.status?.consent_initialized==false && nearbyState.pending==null) {
@@ -188,4 +172,27 @@ import io.github.jan.supabase.auth.status.SessionStatus
         }
         invitation?.let {details -> AlertDialog(onDismissRequest={appearance.invite.value=null},title={Text(Strings.text(R.string.ui_127))},text={Text(details["name"].toString().trim('"'))},confirmButton={TextButton(onClick={inviteToken?.let {appearance.resolve(it,true)}}) {Text(Strings.text(R.string.send_request))}},dismissButton={TextButton(onClick={appearance.invite.value=null}) {Text(Strings.text(R.string.ui_006))}}) }
     }
+}
+}
+
+// Keep all onboarding, authentication and navigation content behind the server gate.
+@Composable internal fun BootstrapBoundary(boot: com.whereweare.app.data.BootstrapState,initializing: Boolean,retry: ()->Unit,content: @Composable ()->Unit) {
+    if(boot.gate!=BootstrapGate.READY || initializing) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
+            Image(painterResource(R.drawable.ic_location),null,Modifier.padding(vertical=12.dp).sizeIn(maxWidth=160.dp,maxHeight=160.dp).size(96.dp),contentScale=ContentScale.Fit)
+            Text("WhereWeAre",style=MaterialTheme.typography.headlineLarge)
+            Text("v${BuildConfig.VERSION_NAME}")
+            Spacer(Modifier.height(24.dp))
+            when(boot.gate) {
+                BootstrapGate.UPDATE -> { Text(Strings.text(R.string.ui_120),style=MaterialTheme.typography.headlineSmall); Text(Strings.text(R.string.ui_121)) }
+                BootstrapGate.MAINTENANCE -> { Text(Strings.text(R.string.ui_122),style=MaterialTheme.typography.headlineSmall); boot.config?.maintenance_message?.let { Text(it) } }
+                BootstrapGate.FIRST_CONNECTION -> Text(Strings.text(R.string.ui_123))
+                BootstrapGate.BACKEND_UPDATE -> Text(Strings.text(R.string.backend_update))
+                else -> CircularProgressIndicator()
+            }
+            if(boot.gate !in listOf(BootstrapGate.LOADING,BootstrapGate.READY)) TextButton(onClick=retry) { Text(Strings.text(R.string.ui_124)) }
+        }
+        return
+    }
+    content()
 }
