@@ -22,6 +22,11 @@ Deploy del 13/10/2026: migrazioni 024–028 applicate, cleanup ritrovi e dispatc
 
 ## Avvio
 
+Pubblicazione v0.50 completata: download pubblico, checksum/firma e aggiornamento
+da v0.49 con dati locali di prova conservati su emulatore API 30 verificati.
+Server latest **0.50/19**, minimo compatibile **18**.
+[Resoconto](VERIFICATION_v0.50.md).
+
 1. Installa Android Studio, JDK 21, SDK API 37 e Build Tools 36.0.0. Minimo Android 8/API 26; serve Google Play Services per Fused Location e FCM.
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
 3. Confronta schema e migrazioni prima di applicarle. La storia live era manuale; 024–028 applicate e verificate. La 027 e la 028 sono interventi server successivi al tag APK. Il reset locale 023 non appartiene al deploy. [Politica](VERSIONING.md) e [report](VERIFICATION_v0.49.md).

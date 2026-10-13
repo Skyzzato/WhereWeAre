@@ -6,6 +6,30 @@ dell'APK; checksum, firma e provenienza sono negli allegati della prerelease.
 
 ## Correzione e prova di regressione
 
+### Resoconto aggiunto dopo la pubblicazione
+
+Prerelease [v0.50](https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.50)
+pubblicata (`prerelease=true`, `draft=false`), con APK dal commit immutabile
+`4187921a2f8128b3ef7c55cdf64b58a37d42b551`, tree
+`df58d97b95b4d76ea2b16ad9175dbddfca1ccbb9`. Ricostruzione da directory nuova:
+42 task eseguiti, assembleDebug PASS.
+
+APK pubblico: **74.632.632 byte**, SHA-256
+`f6103a636b58548a827797b7430aafb0d76b0b0aa71324e66e8f391c2d6d1478`.
+Download senza autenticazione HTTP 200 e firma storica verificati. Installato
+il file scaricato sopra l'APK pubblico v0.49: versionName/code 0.50/19 e dati
+locali di prova (sentinella e preferenza onboarding) conservati su emulatore
+API 30 isolato. Nessun account reale impiegato; non è un test della sessione
+autenticata o del GPS su telefono. Emulatore di prova poi arrestato.
+
+Dopo queste verifiche, il server è stato aggiornato a latest **0.50/19**,
+minimo compatibile **18**, URL della nuova prerelease. Confermato anche tramite
+RPC bootstrap pubblico HTTP 200. Nessuna migrazione aggiuntiva.
+[PUBLICATION_REPORT.json](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.50/PUBLICATION_REPORT.json)
+integra la provenienza e lo snapshot documentale allegati alla release.
+
+### Verifica precedente al tag
+
 `SharingRepository.observe` attendeva indefinitamente dopo il primo subscribe.
 Con `phx_close` l'SDK rimuoveva il canale e passava a `UNSUBSCRIBED`, senza che
 il repository riprendesse il ciclo di cleanup/backoff/riconnessione.
