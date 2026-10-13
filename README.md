@@ -1,8 +1,8 @@
 # WhereWeAre
 
-Current development baseline: **v0.49**
+Current development baseline: **v0.50**
 
-versionCode: **18**
+versionCode: **19**
 
 stato: **prerelease**
 
@@ -14,7 +14,7 @@ La v0.49 include le correzioni successive al tag v0.48: gate prima dell'onboardi
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-**Versione v0.49 (versionCode=18), prerelease di collaudo.** Ritrovi di massimo un'ora, cancellazione per destinatari autorizzati con evento durevole, ricentramento dopo 20 secondi e musica originale solo in primo piano. Default GPS di cinque secondi e preferenze conservate. [Note](RELEASE_NOTES.md), [verifiche e stato server](VERIFICATION_v0.49.md).
+**Versione v0.50 (versionCode=19), prerelease di collaudo.** Riconnessione automatica dopo la chiusura del canale Realtime. Ritrovi di massimo un'ora, cancellazione per destinatari autorizzati con evento durevole, ricentramento dopo 20 secondi e musica originale solo in primo piano. Default GPS di cinque secondi e preferenze conservate. [Note](RELEASE_NOTES.md), [verifiche della versione](VERIFICATION_v0.50.md).
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
@@ -26,7 +26,7 @@ Deploy del 13/10/2026: migrazioni 024–028 applicate, cleanup ritrovi e dispatc
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
 3. Confronta schema e migrazioni prima di applicarle. La storia live era manuale; 024–028 applicate e verificate. La 027 e la 028 sono interventi server successivi al tag APK. Il reset locale 023 non appartiene al deploy. [Politica](VERSIONING.md) e [report](VERIFICATION_v0.49.md).
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. APK: [WhereWeAre-v0.49.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.49/WhereWeAre-v0.49.apk), firma debug precedente verificata. Artefatto `.tools/release-v0.49/WhereWeAre-v0.49.apk`; checksum e provenienza negli allegati della [prerelease](https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.49).
+5. APK: [WhereWeAre-v0.50.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.50/WhereWeAre-v0.50.apk), firma debug precedente verificata. Artefatto `.tools/release-v0.50/WhereWeAre-v0.50.apk`; checksum e provenienza negli allegati della [prerelease](https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.50).
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
@@ -67,7 +67,7 @@ La migrazione 002 disattiva il vecchio cleanup fisso a due ore: non reintrodurlo
 
 ## Cartografia
 
-Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.49` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
+Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.50` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
 
 ## Test riproducibili
 

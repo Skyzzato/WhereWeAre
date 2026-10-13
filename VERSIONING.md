@@ -11,8 +11,8 @@ cronologia pubblicata. Le versioni storiche si conservano tramite tag.
 ## Versione e tag
 
 Sorgente primaria: `app/build.gradle.kts`, campi `versionName` e `versionCode`.
-Baseline della distribuzione corrente: **v0.49 / 18**. Il versionCode cresce sempre, non si riutilizza:
-la prossima versione distribuita richiede **almeno 19**, a prescindere dal nome.
+Baseline della distribuzione corrente: **v0.50 / 19**. Il versionCode cresce sempre, non si riutilizza:
+la prossima versione distribuita richiede **almeno 20**, a prescindere dal nome.
 Splash, Informazioni e User-Agent derivano da BuildConfig.
 
 Ogni versione pubblicata ha tag `v<versionName>`, esattamente sul commit usato per
@@ -31,6 +31,10 @@ l'unica fonte cronologica ufficiale, senza CHANGELOG duplicati. I documenti
 versionati restano storici: non riscrivere provenienza, branch o risultati passati.
 
 ## Politica server e aggiornamento obbligatorio
+
+La v0.50 corregge la riconnessione Android e non richiede migrazioni.
+Il minimo compatibile resta 18; l'annuncio latest 0.50/19 viene aggiornato
+solo dopo la verifica dell'APK pubblico. [Verifica v0.50](VERIFICATION_v0.50.md).
 
 Stato live, migrazioni 024–028, test e limiti in [VERIFICATION_v0.49.md](VERIFICATION_v0.49.md).
 La 027 completa il dispatcher server dopo la pubblicazione: nessuna modifica
