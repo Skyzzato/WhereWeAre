@@ -195,7 +195,10 @@ import android.util.Log
                     } }
                     withTimeout(12_000) {auth.awaitSession();channel.subscribe(blockUntilSubscribed=true)}
                     signals.trySend(Unit)
-                    awaitCancellation()
+                    // A server phx_close (or exhausted SDK rejoin attempts) removes the
+                    // channel. Waiting forever here would leave only REST polling alive.
+                    channel.status.first {it==RealtimeChannel.Status.UNSUBSCRIBED}
+                    error("realtime_disconnected")
                 }
             } catch(e: Exception) {
                 if(e is CancellationException && e !is TimeoutCancellationException) throw e

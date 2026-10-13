@@ -1,3 +1,15 @@
+# Correzione Android successiva a v0.49 — non ancora distribuita
+
+Ripristino automatico della sottoscrizione quando il server chiude un canale
+Realtime già connesso. Prima il repository rimaneva in attesa indefinita e
+l'avviso poteva restare visibile mentre continuavano le letture REST.
+La correzione riusa cleanup, backoff e recupero dello snapshot esistenti.
+Regressione riprodotta con il repository e l'SDK reali su socket simulato;
+162 test JVM e build debug PASS. La corrispondenza con il caso sul telefono
+dell'utente non è ancora dimostrata dai log del dispositivo.
+Richiede un nuovo APK con versionCode almeno 19 e versione decisa esplicitamente;
+non è inclusa nel tag o nell'APK v0.49 già pubblicati.
+
 # v0.49 — prerelease
 
 versionCode 18. [Report di verifica e deploy](VERIFICATION_v0.49.md).

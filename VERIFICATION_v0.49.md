@@ -7,6 +7,30 @@ dopo la pubblicazione, senza spostare il tag.
 
 ## Resoconto successivo alla pubblicazione
 
+### Avviso Realtime persistente: correzione Android non distribuita
+
+Il 13/10/2026 l'utente ha confermato che «Posizioni non aggiornate» era dovuto
+a un utente fuori schermo con posizione vecchia. L'avviso Realtime è distinto.
+I test di protocollo sul progetto live hanno ottenuto join, tutte le dieci
+sottoscrizioni INSERT/UPDATE e heartbeat validi con versioni 1.0.0 e 2.0.0.
+Sono test anonimi di trasporto, non prove di consegna autorizzata sul telefono.
+
+In `SharingRepository.observe`, dopo una sottoscrizione riuscita,
+`awaitCancellation()` impediva il ritorno al ciclo di riconnessione quando
+l'SDK riceveva `phx_close`, rimuoveva il canale e passava a `UNSUBSCRIBED`.
+`RealtimeRecoveryTest` usa il repository e l'SDK 3.8.0 reali, autenticazione
+simulata e un socket controllato: prima della modifica fallisce aspettando
+inutilmente una seconda sottoscrizione; dopo la modifica passa, con un solo
+canale e dieci binding ripristinati. Il repository ora attende la chiusura del
+canale e riprende cleanup/backoff/riconnessione e snapshot già previsti.
+
+**162 test JVM, zero errori/fallimenti/saltati, e assembleDebug PASS**.
+Nessuna migrazione server necessaria. Questa modifica è successiva al tag:
+**non è nel telefono né nell'APK v0.49 pubblicato**. La distribuzione richiede
+una nuova versione esplicita con versionCode almeno 19. Il difetto è riprodotto,
+ma mancano ancora i log del telefono per attribuirgli con certezza l'avviso
+segnalato. Non viene dichiarato un collaudo end-to-end sul dispositivo.
+
 ### Correzione dell'errore «Errore del servizio server»
 
 Il 13/10/2026, dopo la segnalazione dell'utente, è stato riprodotto sul server
