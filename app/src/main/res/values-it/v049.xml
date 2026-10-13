@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="background_music">Musica di sottofondo</string>
+    <string name="background_music_info">Riproduce una musica discreta mentre usi l’app</string>
+    <string name="version_obsolete">Questa versione di WhereWeAre è obsoleta. Aggiorna per continuare.</string>
+    <string name="update_app">Aggiorna</string>
+    <string name="exit_app">Esci</string>
+    <string name="meeting_delete">Cancella punto di ritrovo</string>
+    <string name="meeting_delete_all">Cancella per tutti</string>
+    <string name="meeting_delete_own">Vuoi cancellare il tuo punto di ritrovo? Verrà rimosso per tutti i partecipanti.</string>
+    <string name="meeting_delete_other">Vuoi cancellare il punto di ritrovo di %1$s? Verrà rimosso per tutti i partecipanti e %1$s riceverà un avviso.</string>
+    <string name="meeting_removed_notice">%1$s ha cancellato il tuo punto di ritrovo %2$s.</string>
+    <string name="meeting_deleted">Punto di ritrovo cancellato</string>
+    <string name="meeting_gone">Questo punto di ritrovo è già scaduto o è stato cancellato.</string>
+    <string name="meeting_expires">Scade tra %1$s minuti</string>
+    <string name="waiting_gps">In attesa del GPS</string>
+    <string name="last_upload_success">Ultimo invio riuscito alle %1$s</string>
+    <string name="diag_retry_count">Tentativi consecutivi</string>
+    <string name="diag_power_save">Risparmio energetico</string>
+    <string name="diag_doze">Dispositivo inattivo (Doze)</string>
+    <string name="diag_notifications">Notifiche autorizzate</string>
+    <string name="battery_targeted_hint">Gli invii sono in ritardo e l’ottimizzazione batteria è attiva. Controlla le restrizioni energetiche dell’app nelle impostazioni del telefono. Android può ritardare gli aggiornamenti.</string>
+</resources>

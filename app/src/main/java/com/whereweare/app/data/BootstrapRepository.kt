@@ -12,7 +12,7 @@ import javax.inject.Singleton
 
 @Serializable data class BootstrapConfig(val latest_version_code: Int,val latest_version_name: String,
     val minimum_supported_version_code: Int,val maintenance_mode: Boolean,val maintenance_message: String?=null,
-    val defaults: GlobalDefaults=GlobalDefaults(),val features: FeatureFlags=FeatureFlags(),val api_version: Int=2) {
+    val defaults: GlobalDefaults=GlobalDefaults(),val features: FeatureFlags=FeatureFlags(),val api_version: Int=2,val update_url: String?=null) {
     fun valid()=minimum_supported_version_code>0 && latest_version_code>=minimum_supported_version_code && latest_version_name.isNotBlank()
 }
 @Serializable data class GlobalDefaults(val gps_interval_seconds: Int=5,val high_accuracy: Boolean=true,val theme: String="default",val avatar_scale: Float=1f,val stale_grace_seconds: Int=180)
@@ -39,15 +39,22 @@ suspend fun resolveBootstrap(cached: BootstrapConfig?,fetch: suspend ()->Bootstr
     private val json=Json { ignoreUnknownKeys=true }
     val state=MutableStateFlow(BootstrapState())
     private val mutex=kotlinx.coroutines.sync.Mutex()
+    private var lastVerified: Long?=null
     suspend fun refresh() {
         if(!mutex.tryLock()) return
         try {
             val cached=try { preferences.bootstrap.first()?.let { json.decodeFromString<BootstrapConfig>(it) } }
                 catch(e: CancellationException) {throw e} catch(_: Exception) {null}
-            val config=resolveBootstrap(cached,
-                fetch={withTimeout(8_000) { client.postgrest.rpc("app_bootstrap").decodeAs<BootstrapConfig>() }},
+            var config=resolveBootstrap(state.value.config ?: cached,
+                fetch={withTimeout(8_000) { client.postgrest.rpc("app_bootstrap").decodeAs<BootstrapConfig>().also {check(it.valid());lastVerified=android.os.SystemClock.elapsedRealtime()} }},
                 save={preferences.bootstrap(json.encodeToString(BootstrapConfig.serializer(),it))})
-            state.value=BootstrapState(bootstrapGate(config,BuildConfig.VERSION_CODE),config)
+            // Known obsolescence is sticky, including cache-write failures and offline refreshes.
+            val blocked=listOfNotNull(state.value.config,cached).maxByOrNull {it.minimum_supported_version_code}
+            if(blocked!=null && blocked.minimum_supported_version_code>BuildConfig.VERSION_CODE &&
+                (config?.minimum_supported_version_code ?: 0)<blocked.minimum_supported_version_code) config=blocked
+            val gate=bootstrapGate(config,BuildConfig.VERSION_CODE)
+            val fresh=lastVerified?.let {android.os.SystemClock.elapsedRealtime()-it in 0..900_000}==true
+            state.value=BootstrapState(if(gate==BootstrapGate.READY && !fresh) BootstrapGate.FIRST_CONNECTION else gate,config)
         } finally { mutex.unlock() }
     }
 }

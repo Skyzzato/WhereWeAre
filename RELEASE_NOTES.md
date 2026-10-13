@@ -1,3 +1,30 @@
+# v0.49 — prerelease
+
+versionCode 18. [Report di verifica e deploy](VERIFICATION_v0.49.md).
+
+- Condivisione: retry limitato a 30 secondi anche senza Activity, rinnovo sessione
+  sulle scritture, fix recenti con clock monotono e ACK server esplicito. STOP
+  annulla acquisizione e invii; default 5 secondi, nessun rallentamento intenzionale
+  a schermo spento. Il player musicale non mantiene vivo il GPS.
+- Ritrovi/bengala: massimo un'ora dalla creazione server, TTL non prorogabile,
+  invalidazione immediata alla scadenza e pulizia ogni minuto. Cancellazione per
+  creatore o destinatario attualmente autorizzato, conferma e evento idempotente
+  nella Cronologia; push ordinario predisposto nella coda durevole.
+- Mappa: ricentramento dopo 20 secondi senza utenti/ritrovi visibili né gesti,
+  sospeso in background/dialoghi, senza attivare follow.
+- Musica lounge originale sintetica di 68,6 secondi, volume basso, toggle
+  persistente inizialmente ON, pausa al blocco e priorità per SOS/bengala.
+- Gate numerico prima delle funzionalità, cache compatibilità limitata, UPDATE
+  persistente offline e controllo server delle API legacy. Minimo 18 attivato
+  soltanto dopo pubblicazione e verifica dell'APK, con resoconto separato dal tag.
+
+Verifiche: build, 161 test JVM, lint (zero errori, 82 warning), 14 suite SQL e
+3 test dispatcher PASS. SQL live con rollback e zero fixture residue; firma
+compatibile e aggiornamento sopra v0.48 nell'emulatore API 30 verificati.
+**NON ESEGUITI: collaudo 60–90 minuti su due telefoni, FLP/Doze/OEM reali,
+chiamate/cuffie e FCM end-to-end.** FCM resta senza credenziali server disponibili;
+avvisi recuperabili nell'app, consegna push non dichiarata funzionante.
+
 # v0.48 — prerelease
 
 versionCode 17

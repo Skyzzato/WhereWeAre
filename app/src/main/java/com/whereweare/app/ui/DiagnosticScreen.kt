@@ -87,6 +87,12 @@ import java.util.Locale
                         DiagnosticRow(R.string.diag_satellites_used,freshSatellites?.used?.toString() ?: unavailable)
                         DiagnosticRow(R.string.diag_last_sent,timestamp(tracking.lastSent))
                         DiagnosticRow(R.string.diag_last_ack,timestamp(tracking.lastAcknowledged))
+                        DiagnosticRow(R.string.diag_retry_count,tracking.retryCount.toString())
+                        DiagnosticRow(R.string.diag_power_save,bool(context.getSystemService(PowerManager::class.java).isPowerSaveMode))
+                        DiagnosticRow(R.string.diag_doze,bool(context.getSystemService(PowerManager::class.java).isDeviceIdleMode))
+                        DiagnosticRow(R.string.diag_notifications,bool(androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()))
+                        tracking.failure?.let {Text(stringResource(trackingFailureMessage(tracking)))}
+                        if(!batteryExempt && tracking.waiting) Text(stringResource(R.string.battery_targeted_hint))
                         DiagnosticRow(R.string.diag_sharing,bool(tracking.active))
                         DiagnosticRow(R.string.diag_foreground,bool(foreground))
                         DiagnosticRow(R.string.diag_recovery,bool(tracking.recovering && tracking.starting))

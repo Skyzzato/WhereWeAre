@@ -24,7 +24,7 @@ class V046Test {
         assertEquals(3,returned)
     }
     @Test fun cleanInstallAndUpgradeRespectPriorOff() {
-        assertTrue(shouldInitializeSharing(null,0,false))
+        assertFalse(shouldInitializeSharing(null,0,false)) // v0.49 requires an explicit start.
         assertFalse(shouldInitializeSharing(null,1,false))
         assertFalse(shouldInitializeSharing(false,0,false))
         assertFalse(shouldInitializeSharing(false,42,false))

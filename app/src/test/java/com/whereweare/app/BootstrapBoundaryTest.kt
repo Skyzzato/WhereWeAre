@@ -59,10 +59,10 @@ class BootstrapBoundaryTest {
             for(target in listOf("onboarding","login/accountB","deep-link","notification","settings")) {
                 compose.runOnIdle { destination=target; initializing=!initializing }
                 compose.onNodeWithText(target).assertDoesNotExist()
-                compose.onNodeWithText(Strings.text(R.string.ui_120)).assertIsDisplayed()
+                compose.onNodeWithText(Strings.text(R.string.version_obsolete)).assertIsDisplayed()
             }
             controller.pause().stop().start().resume()
-            compose.onNodeWithText(Strings.text(R.string.ui_120)).assertIsDisplayed()
+            compose.onNodeWithText(Strings.text(R.string.version_obsolete)).assertIsDisplayed()
             compose.onNodeWithText("settings").assertDoesNotExist()
         }
     }

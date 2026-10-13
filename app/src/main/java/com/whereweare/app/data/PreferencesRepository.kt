@@ -22,6 +22,9 @@ import javax.inject.Singleton
     private val scaleKey=floatPreferencesKey("avatar_scale")
     private val languageKey=stringPreferencesKey("language")
     private val flareStyleKey=intPreferencesKey("flare_style_id")
+    private val musicKey=booleanPreferencesKey("background_music")
+    val backgroundMusic=store.data.map {it[musicKey] ?: true}
+    suspend fun backgroundMusic(enabled: Boolean) {store.edit {it[musicKey]=enabled}}
     private val flareSoundKey=booleanPreferencesKey("flare_sound")
     val flareStyle=store.data.map {com.whereweare.app.domain.FlareStyles.normalize(it[flareStyleKey])}
     val flareSound=store.data.map {it[flareSoundKey] ?: true}

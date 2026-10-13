@@ -15,6 +15,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.MoreVert
@@ -42,7 +50,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun MapScreen(vm: MapViewModel,focus: MapFocus?=null,focused: ()->Unit={},onPlaces: ()->Unit={}) {
+@Composable fun MapScreen(vm: MapViewModel,focus: MapFocus?=null,focused: ()->Unit={},onPlaces: ()->Unit={},globalModalOpen: Boolean=false) {
     val state by vm.state.collectAsStateWithLifecycle()
     val local by vm.local.collectAsStateWithLifecycle()
     val hiddenActiveSos by vm.hiddenActiveSos.collectAsStateWithLifecycle()
@@ -87,6 +95,15 @@ import java.time.format.DateTimeFormatter
     var choosingRecipients by remember {mutableStateOf(false)}
     var selectedId by remember { mutableStateOf<String?>(null) }
     var selectedMeeting by rememberSaveable {mutableStateOf<String?>(null)}
+    var deletingMeeting by remember {mutableStateOf<MeetingPoint?>(null)}
+    var preferredPerson by rememberSaveable {mutableStateOf<String?>(null)}
+    var preferredMeeting by rememberSaveable {mutableStateOf<String?>(null)}
+    var touching by remember {mutableStateOf(false)}
+    var gestureSerial by remember {mutableLongStateOf(0)}
+    var mapBounds by remember {mutableStateOf(Rect.Zero)}
+    val covered=remember {mutableStateMapOf<String,Rect>()}
+    val density=LocalDensity.current.density
+    fun overlayArea(id: String)=Modifier.onGloballyPositioned {covered[id]=it.boundsInRoot()}
     var seenCompletions by rememberSaveable {mutableStateOf(emptyList<String>())}
     var celebration by rememberSaveable {mutableStateOf<String?>(null)}
     LaunchedEffect(state.snapshot.meetings) {
@@ -99,7 +116,7 @@ import java.time.format.DateTimeFormatter
     var sosEditor by rememberSaveable {mutableStateOf(false)}
     var checkinEditor by rememberSaveable {mutableStateOf(false)}
     var checkinInbox by rememberSaveable {mutableStateOf(false)}
-    val events=unifiedUpdates(state.snapshot.events).filter {it.active(state.now) && (it.checkin()!=null || it.place()!=null || it.kind in setOf("sos","sos_closed"))}
+    val events=unifiedUpdates(state.snapshot.events).filter {it.active(state.now) && (it.checkin()!=null || it.place()!=null || it.kind in setOf("sos","sos_closed","meeting_removed"))}
     LaunchedEffect(events,hiddenActiveSos) {if(events.none {it.id==selectedEvent} && hiddenActiveSos?.id!=selectedEvent) selectedEvent=null}
     var mapError by remember { mutableStateOf(false) }
     LaunchedEffect(camera) {
@@ -123,8 +140,56 @@ import java.time.format.DateTimeFormatter
         if(focus?.event!=null) {checkinInbox=true;selectedEvent=null;focused();return@LaunchedEffect}
         val point=state.snapshot.meetings.firstOrNull {it.id==focus?.meeting}
         val person=state.visible.firstOrNull {it.location.userId==focus?.person}
-        if(point!=null || person!=null) {selectedMeeting=point?.id;follow=false;selectedEvent=null;selectedId=person?.location?.userId
+        if(point!=null || person!=null) {preferredPerson=person?.location?.userId;preferredMeeting=point?.id;selectedMeeting=point?.id;follow=false;selectedEvent=null;selectedId=person?.location?.userId
             camera.setCameraPosition(CameraPosition(target=point?.let {Position(it.longitude,it.latitude)} ?: Position(person!!.location.longitude,person.location.latitude),zoom=if((person?.location?.precisionMeters ?: 0)>0) 12.0 else 16.0));focused()}
+    }
+    val timer=remember {EmptyMapTimer()}
+    val owner=androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val currentState by rememberUpdatedState(state)
+    val currentLocal by rememberUpdatedState(local)
+    val blocked by rememberUpdatedState(globalModalOpen || creatingMeeting || choosingRecipients || selectedMeeting!=null || deletingMeeting!=null ||
+        selectedPlace!=null || actions || sosEditor || checkinEditor || checkinInbox || celebration!=null || selectedEvent!=null)
+    LaunchedEffect(camera,owner) {
+        owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            timer.reset()
+            var lastCamera=camera.cameraPosition
+            var lastGesture=gestureSerial
+            var settledAt=android.os.SystemClock.elapsedRealtime()
+            while(true) {
+                val now=android.os.SystemClock.elapsedRealtime()
+                val moved=camera.cameraPosition!=lastCamera
+                if(moved || gestureSerial!=lastGesture || touching) {timer.reset();settledAt=now}
+                lastCamera=camera.cameraPosition;lastGesture=gestureSerial
+                val people=currentState.visible.map {it.location}+listOfNotNull(currentLocal)
+                val meetings=currentState.snapshot.meetings.filter {it.alive(currentState.now)}
+                fun valid(p: Position)=p.latitude.isFinite() && p.longitude.isFinite() && !(p.latitude==0.0 && p.longitude==0.0)
+                fun screen(p: Position)=camera.screenLocationFromPosition(p)?.let {Offset(it.x.value*density,it.y.value*density)}
+                val precise=people.filter {it.precisionMeters==0}
+                val projections=precise.mapIndexed {i,p -> val at=screen(Position(p.longitude,p.latitude));MarkerScreenPoint(i,at?.x?.div(density) ?: i*10000f,at?.y?.div(density) ?: 0f)}
+                val positions=clusterMarkers(projections,maxOf(48f,mapAvatarDp(avatarScale,true)+10f)).map {precise[it.first()]}.map {Position(it.longitude,it.latitude)}+
+                    people.filter {it.precisionMeters>0}.map {Position(it.longitude,it.latitude)}+meetings.map {Position(it.longitude,it.latitude)}
+                val anyVisible=positions.any {p -> screen(p)?.let {at ->
+                    at.x>=0 && at.y>=0 && at.x<=mapBounds.width && at.y<=mapBounds.height &&
+                        covered.none {(id,rect) -> (id!="person" || selectedId!=null) && (id!="empty" || currentState.visible.isEmpty() && events.isEmpty()) && rect.contains(at+mapBounds.topLeft)}
+                }==true}
+                val selected=people.firstOrNull {it.userId==preferredPerson}?.let {Position(it.longitude,it.latitude)}
+                    ?: meetings.firstOrNull {it.id==preferredMeeting}?.let {Position(it.longitude,it.latitude)}
+                val own=currentLocal?.let {Position(it.longitude,it.latitude)}?.takeIf(::valid)
+                val targets=positions.filter(::valid)
+                val target=selected?.takeIf(::valid) ?: own
+                val enabled=!blocked && !touching && now-settledAt>=350 && mapBounds.width>0 &&
+                    context.getSystemService(android.os.PowerManager::class.java).isInteractive
+                if(timer.tick(now,enabled,anyVisible,target!=null || targets.isNotEmpty())) {
+                    follow=false;centered=true
+                    if(target!=null) camera.animateCameraPosition(CameraPosition(target=target,zoom=15.0))
+                    else if(targets.size==1) camera.animateCameraPosition(CameraPosition(target=targets.first(),zoom=14.0))
+                    else camera.animateCameraToBounds(BoundingBox(west=targets.minOf {it.longitude}-.001,south=targets.minOf {it.latitude}-.001,
+                        east=targets.maxOf {it.longitude}+.001,north=targets.maxOf {it.latitude}+.001),padding=PaddingValues(72.dp))
+                    lastCamera=camera.cameraPosition
+                }
+                delay(250)
+            }
+        }
     }
     selectedPlace?.let {place -> AlertDialog(onDismissRequest={selectedPlace=null},title={Text(place.name)},text={Text(Strings.text(R.string.place_radius_value,place.radius_m.toString()))},confirmButton={TextButton(onClick={selectedPlace=null}) {Text(Strings.text(R.string.close))}}) }
     Column(Modifier.fillMaxSize()) {
@@ -143,7 +208,12 @@ import java.time.format.DateTimeFormatter
             Text(Strings.text(R.string.ui_045, (fix.accuracy.toLong()).toString()),Modifier.fillMaxWidth().padding(12.dp))
         } }
         if(mapError) Notice(R.string.map_error)
-        Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
+        Box(Modifier.weight(1f).fillMaxWidth().clipToBounds().onGloballyPositioned {mapBounds=it.boundsInRoot()}.pointerInput(Unit) {
+            awaitPointerEventScope {while(true) {
+                val event=awaitPointerEvent(PointerEventPass.Initial)
+                touching=event.changes.any {it.pressed};gestureSerial++
+            }}
+        }) {
             MaplibreMap(
                 modifier=Modifier.fillMaxSize(),state=camera,
                 uiOptions=remember { MapUiOptions { renderMode=AndroidRenderMode.Texture } },
@@ -212,25 +282,25 @@ import java.time.format.DateTimeFormatter
                         }
                     }
                     state.snapshot.meetings.filter {it.active}.forEach {point ->
-                        Surface(onClick={selectedMeeting=point.id;scope.launch {follow=false;camera.setCameraPosition(CameraPosition(target=Position(point.longitude,point.latitude),zoom=16.0))}},color=androidx.compose.ui.graphics.Color.Transparent,
+                        Surface(onClick={preferredMeeting=point.id;preferredPerson=null;selectedMeeting=point.id;scope.launch {follow=false;camera.setCameraPosition(CameraPosition(target=Position(point.longitude,point.latitude),zoom=16.0))}},color=androidx.compose.ui.graphics.Color.Transparent,
                             modifier=Modifier.placedAt(Position(point.longitude,point.latitude))) {Icon(Icons.Default.Flag,point.creator_name,Modifier.size(48.dp).padding(4.dp),tint=sharingActionColor())}
                     }
                 })
             ApproximateAreas(camera,state.visible.map {it.location}+events.mapNotNull {it.checkin()?.location(it.id)?:it.sos()?.location(it.id)})
             MeetingConnections(camera,state.snapshot.meetings,state.visible.map {it.location}.filter {it.precisionMeters==0}+listOfNotNull(local))
-            if(!creatingMeeting) Box(Modifier.align(Alignment.BottomEnd).padding(end=12.dp,bottom=36.dp)) {
+            if(!creatingMeeting) Box(Modifier.align(Alignment.BottomEnd).padding(end=12.dp,bottom=36.dp).then(overlayArea("center"))) {
                 TooltipBox(positionProvider=TooltipDefaults.rememberPlainTooltipPositionProvider(),tooltip={PlainTooltip {Text(Strings.text(R.string.center_me))}},state=rememberTooltipState()) {
                     FilledIconButton(enabled=local!=null,onClick={local?.let {fix ->
                         if(fix.recordedAt.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))) vm.message(R.string.local_position_stale)
-                        follow=true;scope.launch {camera.animateCameraPosition(CameraPosition(target=Position(fix.longitude,fix.latitude),zoom=15.0))}
+                        preferredPerson=fix.userId;preferredMeeting=null;follow=true;scope.launch {camera.animateCameraPosition(CameraPosition(target=Position(fix.longitude,fix.latitude),zoom=15.0))}
                     }},modifier=Modifier.size(48.dp)) {Icon(Icons.Default.MyLocation,Strings.text(R.string.center_me))}
                 }
             }
-            if(!creatingMeeting) Column(Modifier.align(Alignment.TopStart).padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            if(!creatingMeeting) Column(Modifier.align(Alignment.TopStart).padding(12.dp).then(overlayArea("actionsLeft")),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 if(config.config?.features?.meeting_points!=false) MapActionButton(Icons.Default.Flag,Strings.text(R.string.ui_046)) {follow=false;creatingMeeting=true}
                 if(state.snapshot.eventsAvailable) MapActionButton(Icons.Default.Check,Strings.text(R.string.checkin_title)) {vm.message(null);checkinEditor=true}
             }
-            if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+            if(!creatingMeeting) Box(Modifier.align(Alignment.TopEnd).padding(12.dp).then(overlayArea("actionsRight"))) {
                 MapActionButton(Icons.Default.MoreVert,Strings.text(R.string.map_actions)) {actions=true}
                 DropdownMenu(actions,{actions=false}) {
                     // SOS and check-ins share the single updates entry below.
@@ -252,7 +322,7 @@ import java.time.format.DateTimeFormatter
                     DropdownMenuItem(text={Text(Strings.text(R.string.checkin_inbox))},onClick={actions=false;checkinInbox=true})
                 }
             }
-            if(!creatingMeeting) SosMapButton(state.snapshot,events,Modifier.align(Alignment.TopEnd).padding(top=84.dp,end=12.dp),
+            if(!creatingMeeting) SosMapButton(state.snapshot,events,Modifier.align(Alignment.TopEnd).padding(top=84.dp,end=12.dp).then(overlayArea("sos")),
                 openEditor={vm.message(null);vm.openSos({sosEditor=true},{selectedEvent=it})},openEvent={selectedEvent=it})
             if(creatingMeeting) {
                 Icon(Icons.Default.Flag,Strings.text(R.string.ui_047),Modifier.align(Alignment.Center).size(48.dp),tint=MaterialTheme.colorScheme.primary)
@@ -261,11 +331,11 @@ import java.time.format.DateTimeFormatter
                     Button(onClick={choosingRecipients=true}) {Text(Strings.text(R.string.ui_049))}
                 }}}
             }
-            if(state.visible.isEmpty() && events.isEmpty() && !creatingMeeting) Surface(modifier=Modifier.align(Alignment.BottomCenter).padding(start=12.dp,end=72.dp,bottom=48.dp),shape=MaterialTheme.shapes.medium) {
+            if(state.visible.isEmpty() && events.isEmpty() && !creatingMeeting) Surface(modifier=Modifier.align(Alignment.BottomCenter).padding(start=12.dp,end=72.dp,bottom=48.dp).then(overlayArea("empty")),shape=MaterialTheme.shapes.medium) {
                 Text(stringResource(R.string.empty_map),Modifier.padding(8.dp),style=MaterialTheme.typography.labelMedium)
             }
             val selected=(state.visible+listOfNotNull(local?.let { VisiblePerson(Strings.text(R.string.you),it,freshness(it.recordedAt,state.now)) })).firstOrNull { it.location.userId==selectedId }
-            selected?.takeUnless {creatingMeeting || selectedEvent!=null}?.let { person -> ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp).heightIn(max=360.dp)) { Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
+            selected?.takeUnless {creatingMeeting || selectedEvent!=null}?.let { person -> ElevatedCard(Modifier.align(Alignment.BottomCenter).padding(16.dp).heightIn(max=360.dp).then(overlayArea("person"))) { Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) { Text(person.name,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium); TextButton(onClick={selectedId=null}) { Text(Strings.text(R.string.close)) } }
                 val own=person.location.userId==state.snapshot.profile?.id
                 val stale=if(own) person.location.recordedAt.isBefore(state.now.minusSeconds(updateInterval.toLong()+180))
@@ -314,7 +384,7 @@ import java.time.format.DateTimeFormatter
             }}
         }
         Surface { Text(provider.attribution,Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=4.dp),style=MaterialTheme.typography.labelSmall) }
-        state.snapshot.meetings.firstOrNull {it.active && it.creator_id==state.snapshot.profile?.id}?.let {point -> TextButton(onClick={vm.removeMeeting(point.id)},enabled=!operation.busy) {Text(Strings.text(R.string.ui_054))} }
+        state.snapshot.meetings.firstOrNull {it.active && it.creator_id==state.snapshot.profile?.id}?.let {point -> TextButton(onClick={deletingMeeting=point},enabled=!operation.busy) {Text(Strings.text(R.string.ui_054))} }
         Surface(tonalElevation=3.dp) {
             Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 val serverSharing=state.snapshot.statuses.any { it.userId==state.snapshot.profile?.id && it.sharing }
@@ -331,6 +401,7 @@ import java.time.format.DateTimeFormatter
                         SharingUiState.REMOTE_ACTIVE -> R.string.remote_session_active
                     }),Modifier.padding(start=8.dp),color=if(sharingState==SharingUiState.ON) sharingActionColor() else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                tracking.lastAcknowledged?.let {Text(Strings.text(R.string.last_upload_success,eventTime(it.toString())),style=MaterialTheme.typography.bodySmall)}
                 if(tracking.active) Text(sharingAccuracyText(tracking.lastAcknowledged!=null,tracking.publishedFix?.accuracy),style=MaterialTheme.typography.bodySmall)
                 val significantDelay=tracking.pendingUpload && (tracking.lastAcknowledged?.isBefore(state.now.minusSeconds(maxOf(60L,updateInterval.toLong()+30))) ?: tracking.waiting)
                 val warning=when {
@@ -341,6 +412,7 @@ import java.time.format.DateTimeFormatter
                     !vm.location.enabled() -> R.string.location_disabled
                     tracking.initializing || tracking.retrying -> R.string.sync_waiting
                     tracking.failure!=null -> trackingFailureMessage(tracking)
+                    tracking.active && tracking.fix==null -> R.string.waiting_gps
                     significantDelay -> R.string.location_upload_pending
                     else -> null
                 }
@@ -365,7 +437,13 @@ import java.time.format.DateTimeFormatter
             text={Column {Text(placeEventText(notice));Text(eventTime(notice.observed_at))}},
             confirmButton={TextButton(onClick={selectedEvent=null}) {Text(Strings.text(R.string.close))}})
     }
-    state.snapshot.meetings.firstOrNull {it.id==selectedMeeting}?.let {point -> FlareProgressDialog(point,state.now,state.visible.map {it.location}+listOfNotNull(local),vm.routing) {selectedMeeting=null}}
+    state.snapshot.meetings.firstOrNull {it.id==selectedMeeting}?.let {point -> FlareProgressDialog(point,state.now,state.visible.map {it.location}+listOfNotNull(local),vm.routing,remove={deletingMeeting=point}) {selectedMeeting=null}}
+    deletingMeeting?.let {point -> AlertDialog(onDismissRequest={if(!operation.busy) deletingMeeting=null},title={Text(Strings.text(R.string.meeting_delete))},
+        text={Column {Text(Strings.text(if(point.creator_id==state.snapshot.profile?.id) R.string.meeting_delete_own else R.string.meeting_delete_other,point.creator_name));Busy(operation,inline=true)}},
+        confirmButton={TextButton(enabled=!operation.busy,onClick={vm.removeMeeting(point.id) {deletingMeeting=null;selectedMeeting=null}}) {Text(Strings.text(R.string.meeting_delete_all))}},
+        dismissButton={TextButton(enabled=!operation.busy,onClick={deletingMeeting=null}) {Text(Strings.text(R.string.ui_006))}}) }
+    events.firstOrNull {it.id==selectedEvent && it.kind=="meeting_removed"}?.let {event -> AlertDialog(onDismissRequest={selectedEvent=null},
+        title={Text(Strings.text(R.string.meeting_delete))},text={Text(eventReceivedText(event))},confirmButton={TextButton(onClick={selectedEvent=null}) {Text(Strings.text(R.string.close))}}) }
     if(celebration!=null) FlareReunion {celebration=null}
     if(choosingRecipients) MeetingEditor(state.snapshot,confirm={all,people,groups ->
         val point=camera.cameraPosition.target

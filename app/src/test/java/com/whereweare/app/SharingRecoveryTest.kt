@@ -29,6 +29,16 @@ class SharingRecoveryTest {
         override val data=MutableStateFlow(emptyPreferences())
         override suspend fun updateData(transform: suspend (Preferences)->Preferences): Preferences = transform(data.value).also {data.value=it}
     }
+    @Test fun musicDefaultsOnAndOffSurvivesRepositoryRecreation()=runTest {
+        val store=MemoryStore()
+        val context=RuntimeEnvironment.getApplication()
+        val first=PreferencesRepository(store,context)
+        assertTrue(first.backgroundMusic.first())
+        first.backgroundMusic(false)
+        val restored=PreferencesRepository(store,context)
+        assertFalse(restored.backgroundMusic.first())
+        assertEquals(5,restored.interval.first())
+    }
 
     private suspend fun TestScope.scenario(locationReady: (LocationRepository)->Unit={},test: suspend TestScope.(SharingController,PreferencesRepository,SharingRepository,CoroutineScope,()->Unit)->Unit) {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -40,6 +50,8 @@ class SharingRecoveryTest {
             val auth=mock(AuthRepository::class.java)
             val location=mock(LocationRepository::class.java)
             val boot=mock(BootstrapRepository::class.java)
+            `when`(repo.online).thenReturn(MutableStateFlow(true))
+            `when`(repo.now()).thenAnswer {java.time.Instant.now()}
             `when`(auth.userId).thenReturn("owner")
             `when`(location.hasPermission()).thenReturn(true)
             `when`(location.enabled()).thenReturn(true)
@@ -72,7 +84,20 @@ class SharingRecoveryTest {
             prefs.hidePlace("owner","home",true);runCurrent()
             prefs.placeIconScale(1.5f);runCurrent()
             prefs.avatarScale(.75f);runCurrent()
+            prefs.backgroundMusic(false);runCurrent()
             assertEquals(1,acquisitions)
+        }
+    }
+    @Test fun fourthFailureDoesNotWaitForAnActivityOrNetworkTransition()=runTest {
+        scenario {controller,_,repo,service,stop ->
+            var attempts=0
+            doAnswer {if(++attempts<=4) throw IOException("offline");Unit}.`when`(repo).sharing(eq(true),any(),any())
+            controller.attach(service,stopService=stop);runCurrent()
+            advanceTimeBy(14_001);runCurrent()
+            assertEquals(4,attempts)
+            advanceTimeBy(30_000);runCurrent()
+            assertEquals(5,attempts)
+            assertTrue(controller.state.value.active)
         }
     }
     @Test fun failedStartDoesNotClaimOnAndRetryUsesPersistedRevision() = runTest {
@@ -184,7 +209,8 @@ class SharingRecoveryTest {
             assertTrue(controller.state.value.waiting)
             assertEquals(saved,prefs.trackingSession.first())
             doReturn(StatusDto("owner",true,8,saved.sessionId)).`when`(repo).ownSharingStatus()
-            advanceTimeBy(3_000);runCurrent()
+            // Recovery remains bounded after repeated failures, without requiring a UI/network event.
+            advanceTimeBy(30_000);runCurrent()
             assertTrue(controller.state.value.active)
             assertFalse(controller.state.value.waiting)
             verify(repo,times(1)).sharing(true,saved.sessionId,7L)

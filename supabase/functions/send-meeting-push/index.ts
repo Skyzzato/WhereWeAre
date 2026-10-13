@@ -32,7 +32,7 @@ export async function handle(request: Request): Promise<Response> {
         if(!allowed) return 'invalid';
         const result=await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`,{
           method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(15000),
-          body:JSON.stringify({message:{token:device,data:pushData(job),android:{priority:'HIGH',ttl:'86400s'}}})
+          body:JSON.stringify({message:{token:device,data:pushData(job),android:{priority:job.kind==='sos'?'HIGH':'NORMAL',ttl:'86400s'}}})
         });
         if(result.ok) return 'accepted';
         if(!result.ok) {

@@ -14,14 +14,19 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import javax.inject.Singleton
+import io.ktor.client.plugins.defaultRequest
 
 private val Context.preferences by preferencesDataStore("preferences")
 @Module @InstallIn(SingletonComponent::class)
 object AppModule {
+    @OptIn(io.github.jan.supabase.annotations.SupabaseInternal::class)
     @Provides @Singleton fun supabase() = createSupabaseClient(
         BuildConfig.SUPABASE_URL.ifBlank { "https://unconfigured.supabase.co" },
         BuildConfig.SUPABASE_ANON_KEY.ifBlank { "unconfigured" }
-    ) { install(Auth); install(Postgrest); install(Realtime) }
+    ) {
+        httpConfig {defaultRequest {headers.append("X-WhereWeAre-Version",BuildConfig.VERSION_CODE.toString())}}
+        install(Auth); install(Postgrest); install(Realtime)
+    }
     @Provides @Singleton fun fused(@ApplicationContext context: Context) = LocationServices.getFusedLocationProviderClient(context)
     @Provides @Singleton fun preferences(@ApplicationContext context: Context) = context.preferences
 }

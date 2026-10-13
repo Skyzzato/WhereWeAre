@@ -15,7 +15,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val initializing: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val publishedFix: UserLocation?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null,val retrying: Boolean=false,val failure: String?=null)
+data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,val lastSent: java.time.Instant?=null,val fix: UserLocation?=null,val starting: Boolean=false,val initializing: Boolean=false,val pendingUpload: Boolean=false,val lastAcknowledged: java.time.Instant?=null,val publishedFix: UserLocation?=null,val recovering: Boolean=false,val deviceStatus: DeviceStatusObservation?=null,val retrying: Boolean=false,val failure: String?=null,val retryCount: Int=0)
 @Singleton class SharingController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: SharingRepository,
@@ -43,6 +43,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
 
     fun start() {
         check(bootstrap.state.value.gate==BootstrapGate.READY) { "bootstrap_blocked" }
+        check(com.whereweare.app.MainActivity.visible) { "activity_not_visible" }
         check(location.hasPermission()) { "location_permission" }
         check(location.enabled()) { "location_disabled" }
         if(state.value.starting || state.value.active) return
@@ -79,6 +80,10 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                 val session=saved.sessionId
                 val latest=MutableStateFlow<UserLocation?>(null)
                 val signals=kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+                val compatibility=launch {
+                    combine(repository.online,flow {while(true) {emit(Unit);delay(60_000)}}) { online,_ -> online }
+                        .collect {if(it) {bootstrap.refresh();if(bootstrap.state.value.gate==BootstrapGate.UPDATE) requestStop()}}
+                }
                 val updates=launch {
                     combine(preferences.highAccuracy,preferences.interval) { high,seconds -> high to seconds }.distinctUntilChanged()
                         .flatMapLatest { (high,seconds) -> location.fixes(high,seconds).retryWhen { cause,_ ->
@@ -90,7 +95,11 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                             // A revoked permission must terminate sharing, not escape a child job and crash.
                             if(owner==generation) scope.launch { stopSessionAfterProviderFailure(owner) }
                         }
-                        .collect { latest.value=it; mutableState.value=state.value.copy(fix=it,pendingUpload=true); signals.trySend(Unit) }
+                        .collect { fix ->
+                            if(fix.elapsedRealtimeNanos!=latest.value?.elapsedRealtimeNanos || latest.value==null) {
+                                latest.value=fix;mutableState.value=state.value.copy(fix=fix,pendingUpload=true);signals.trySend(Unit)
+                            }
+                        }
                 }
                 try {
                     var failures=0
@@ -98,6 +107,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                     var started=false
                     var revision: Long?=saved.revision
                     var sent: UserLocation?=null
+                    var stamped: Pair<UserLocation,UserLocation>?=null
                     var lastStatusCheck=0L
                     var lastDeviceSample: Long?=null
                     var lastDeviceReport=0L
@@ -109,6 +119,7 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                             if(bootstrap.state.value.gate!=BootstrapGate.READY) break
                             if(!started) {
                                 withTimeout(12_000) {
+                                    repository.syncClock()
                                     repository.rpc("set_update_interval",kotlinx.serialization.json.buildJsonObject {put("seconds",kotlinx.serialization.json.JsonPrimitive(preferences.interval.first()))})
                                     if(revision==null) {
                                         revision=repository.sharingRevision()
@@ -129,10 +140,12 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                                 mutableState.value=state.value.copy(waiting=false)
                             }
                             latest.value?.takeIf { it!=sent }?.let {
-                                if(java.time.Duration.between(it.recordedAt,java.time.Instant.now()).toHours()<2) {
-                                    withTimeout(12_000) { repository.publish(session,it) }; sent=it; repository.saveOwn(it)
-                                    mutableState.value=state.value.copy(active=true,waiting=false,lastSent=it.recordedAt,
-                                        lastAcknowledged=java.time.Instant.now(),publishedFix=it,pendingUpload=latest.value!=sent)
+                                if(fixAgeMillis(it,android.os.SystemClock.elapsedRealtimeNanos()) in 0..30_000) {
+                                    if(stamped?.first!=it) stamped=it to it.copy(recordedAt=repository.now().minusMillis(fixAgeMillis(it,android.os.SystemClock.elapsedRealtimeNanos())))
+                                    val upload=requireNotNull(stamped).second
+                                    withTimeout(12_000) { repository.publish(session,upload) }; sent=it; repository.saveOwn(upload)
+                                    mutableState.value=state.value.copy(active=true,waiting=false,lastSent=java.time.Instant.now(),
+                                        lastAcknowledged=java.time.Instant.now(),publishedFix=upload,pendingUpload=latest.value!=sent)
                                 }
                             }
                             if(lastDeviceSample==null || elapsed-lastDeviceSample>=60_000) {
@@ -160,16 +173,17 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
                             if(e is io.github.jan.supabase.exceptions.RestException && e.statusCode==401 && !recoveredSession) {
                                 recoveredSession=true
                                 try {withTimeout(12_000) {auth.recoverSession()}}
-                                catch(cancel: CancellationException) {if(cancel !is TimeoutCancellationException) throw cancel;break}
-                                catch(_: Exception) {break}
+                                catch(cancel: CancellationException) {if(cancel !is TimeoutCancellationException) throw cancel}
+                                catch(_: Exception) { /* A temporary refresh failure also follows bounded backoff. */ }
                             } else if(!retryableRead(e)) break
                             failures=(failures+1).coerceAtMost(5)
                         } finally {mutableState.value=state.value.copy(retrying=false)}
-                        if(failures>=4) {repository.awaitRecoverySignal();failures=0}
+                        mutableState.value=state.value.copy(retryCount=failures)
+                        if(failures>=4) delay(30_000)
                         else if(failures>0) delay((1_000L shl failures).coerceAtMost(30_000))
                         else withTimeoutOrNull(3_000) { signals.receive() }
                     }
-                } finally { updates.cancel() }
+                } finally { updates.cancel();compatibility.cancel() }
             } catch(e: CancellationException) { throw e
             } catch(e: Exception) { mutableState.value=state.value.copy(waiting=true,failure=connectionFailure(e))
             } finally {
@@ -198,7 +212,12 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
             }
         }
     }
-    fun requestStop() { scope.launch { stop() } }
+    fun requestStop() {
+        // Cancel acquisition, in-flight HTTP and retries before the first disk/network suspension.
+        ++generation;tracking?.cancel();tracking=null
+        mutableState.value=state.value.copy(active=false,starting=false,pendingUpload=false)
+        scope.launch { stop() }
+    }
     private suspend fun stopSessionAfterProviderFailure(owner: Long) = mutex.withLock {
         if(owner!=generation) return@withLock
         val saved=preferences.trackingSession.first() ?: return@withLock
@@ -215,7 +234,8 @@ data class TrackingState(val active: Boolean=false,val waiting: Boolean=false,va
         scope.launch { stopSessionAfterProviderFailure(failedGeneration) }
     }
     suspend fun stop() = mutex.withLock {
-        val id=auth.userId ?: return@withLock
+        ++generation;tracking?.cancel();tracking=null
+        val id=auth.userId ?: preferences.trackingSession.first()?.userId ?: return@withLock
         // Persist intent before terminating the foreground service or making a network call.
         preferences.sharingIntent(id,false)
         preferences.pendingStop(id)

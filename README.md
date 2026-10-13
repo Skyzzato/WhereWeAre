@@ -1,8 +1,8 @@
 # WhereWeAre
 
-Current development baseline: **v0.48**
+Current development baseline: **v0.49**
 
-versionCode: **17**
+versionCode: **18**
 
 stato: **prerelease**
 
@@ -10,23 +10,23 @@ branch canonico: **main**
 
 Regole correnti: [VERSIONING.md](VERSIONING.md). Audit e verifiche del consolidamento: [REPOSITORY_AUDIT_2026-09-18.md](REPOSITORY_AUDIT_2026-09-18.md).
 
-`main` include il consolidamento successivo al tag v0.48, con priorità del gate prima dell'onboarding. L'APK pubblicato v0.48 resta quello originale; la correzione non è ancora distribuita. Una futura distribuzione richiederà un versionCode almeno 18 e un nome versione da decidere.
+La v0.49 include le correzioni successive al tag v0.48: gate prima dell'onboarding, recupero della condivisione indipendente dalla UI e fix con età monotona. I tag e gli APK storici restano immutati.
 
 Applicazione Android per condividere volontariamente l’ultima posizione con persone e gruppi. Kotlin, Compose Material 3, Hilt, Fused Location Provider, MapLibre e Supabase. Italiano e inglese. Nessuna cronologia GPS.
 
-**Versione v0.48 (versionCode=17), prerelease di collaudo.** Luoghi e controlli mappa, intervallo predefinito di cinque secondi. Vedi [note v0.48](RELEASE_NOTES_v0.48.md), [verifiche](VERIFICATION_v0.48.md) e [configurazione server vigente](SETUP_v0.46.md).
+**Versione v0.49 (versionCode=18), prerelease di collaudo.** Ritrovi di massimo un'ora, cancellazione per destinatari autorizzati con evento durevole, ricentramento dopo 20 secondi e musica originale solo in primo piano. Default GPS di cinque secondi e preferenze conservate. [Note](RELEASE_NOTES.md), [verifiche e stato server](VERIFICATION_v0.49.md).
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
-Il server verificato il 16/09/2026 restituisce bootstrap **0.46/15**, quota SOS disattivata e migrazione 021 applicata. Test SQL transazionale remoto passato con zero fixture residue. **FCM non ancora configurato: nessuna consegna push reale verificata.** Dettagli: [SETUP_v0.46.md](SETUP_v0.46.md).
+Deploy funzionale del 13/10/2026: migrazioni 024–026 applicate, cleanup ritrovi ogni minuto e test SQL remoto passato con zero fixture residue. Il minimo viene alzato a 18 solo dopo la disponibilità dell'APK: esito effettivo nel [report](VERIFICATION_v0.49.md). **FCM non configurato e collaudo prolungato su telefoni reali non eseguito.**
 
 ## Avvio
 
 1. Installa Android Studio, JDK 21, SDK API 37 e Build Tools 36.0.0. Minimo Android 8/API 26; serve Google Play Services per Fused Location e FCM.
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
-3. La nuova 022 prepara solo la politica versione ed è **non applicata al server**: vedi [VERSIONING.md](VERSIONING.md). Applica le migrazioni 001–021 in ordine, verificando prima quelle già presenti. Il progetto configurato ha già ricevuto la 021: [SETUP v0.46](SETUP_v0.46.md).
+3. Confronta schema e migrazioni prima di applicarle. La storia live era manuale; 024–026 applicate e verificate. Il reset locale 023 non appartiene al deploy. [Politica](VERSIONING.md) e [report](VERIFICATION_v0.49.md).
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
-5. APK installabile: [WhereWeAre-v0.48.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.48/WhereWeAre-v0.48.apk), firma debug precedente. Artefatto `.tools/release-v0.48/WhereWeAre-v0.48.apk`; checksum e provenienza negli allegati della prerelease.
+5. APK: [WhereWeAre-v0.49.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.49/WhereWeAre-v0.49.apk), firma debug precedente verificata. Artefatto `.tools/release-v0.49/WhereWeAre-v0.49.apk`; checksum e provenienza negli allegati della [prerelease](https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.49).
 
 La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene compatibile la v0.3 e il minimo client a 4. Applicarla prima di usare le nuove azioni della v0.31.
 
@@ -39,7 +39,8 @@ La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene c
 - Codici brevi casuali `H7D-F8C`; i precedenti codici a otto caratteri rimangono validi. Un codice consente di richiedere un collegamento, non di leggere automaticamente il GPS.
 - Richieste personali, richieste di adesione approvate dall’amministratore, inviti ai gruppi accettati dal destinatario, gestione membri e nome gruppo.
 - Visibilità locale di persone/gruppi indipendente dall’autorizzazione a condividere.
-- Punto di ritrovo persistente, destinatari deduplicati, banner, linee animate, bengala Canvas e apertura della mappa da notifica.
+- Punto di ritrovo di massimo un'ora, destinatari deduplicati, cancellazione condivisa autorizzata, banner, linee animate, bengala Canvas e apertura della mappa da notifica.
+- Musica lounge originale, disattivabile e sospesa al blocco/background; ricentramento automatico dopo 20 secondi di mappa vuota senza gesti.
 - Notifiche push predisposte con Firebase, da configurare; link HTTPS predisposti per il futuro dominio, senza associazione verificata attiva.
 - Eliminazione account tramite Edge Function esistente, logout, pulizia immagini e cache; la condivisione continua conserva l’ultima posizione; Check-in e SOS sono eventi volontari separati.
 

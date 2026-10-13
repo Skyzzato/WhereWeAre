@@ -11,8 +11,8 @@ cronologia pubblicata. Le versioni storiche si conservano tramite tag.
 ## Versione e tag
 
 Sorgente primaria: `app/build.gradle.kts`, campi `versionName` e `versionCode`.
-Baseline pubblicata: **v0.48 / 17**. Il versionCode cresce sempre, non si riutilizza:
-la prossima versione distribuita richiede **almeno 18**, a prescindere dal nome.
+Baseline della distribuzione corrente: **v0.49 / 18**. Il versionCode cresce sempre, non si riutilizza:
+la prossima versione distribuita richiede **almeno 19**, a prescindere dal nome.
 Splash, Informazioni e User-Agent derivano da BuildConfig.
 
 Ogni versione pubblicata ha tag `v<versionName>`, esattamente sul commit usato per
@@ -32,26 +32,29 @@ versionati restano storici: non riscrivere provenienza, branch o risultati passa
 
 ## Politica server e aggiornamento obbligatorio
 
-La configurazione server applicata documentata resta SETUP_v0.46.md. La nuova
-`supabase/migrations/022_v0_48_version_policy.sql` prepara latest 0.48/17 senza
-alzare il minimo; non è stata applicata al server durante il consolidamento.
-Le migrazioni 001–021 sono immutabili. Verificare lo stato prima di qualsiasi deploy.
+Stato live, migrazioni 024–026, test e limiti in [VERIFICATION_v0.49.md](VERIFICATION_v0.49.md).
+Al deploy funzionale il server aveva già latest 0.48/17 e minimo 17; la presenza
+della 022 non ne dimostra l'applicazione. Il registro storico live è vuoto:
+confrontare anche schema/definizioni. Le migrazioni applicate sono immutabili.
+Il reset locale 023 non è parte della release e non è stato eseguito.
 
-Solo dopo esplicita autorizzazione al deploy live, per imporre v0.48 come minimo:
+Solo dopo build, test, firma e APK pubblicato verificati, per imporre v0.49 come minimo:
 
 ```sql
 update private.app_bootstrap
 set
-    latest_version_code = 17,
-    latest_version_name = '0.48',
-    minimum_supported_version_code = 17
+    latest_version_code = 18,
+    latest_version_name = '0.49',
+    minimum_supported_version_code = 18,
+    update_url = 'https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.49'
 where singleton = true;
 
 select public.app_bootstrap();
 ```
 
-Con minimo 17: v0.48/code 17 ammessa; v0.47/code 16, v0.46/code 15 e precedenti
-bloccate da UPDATE. Il confronto usa il codice numerico, non il nome versione.
-Il gate precede onboarding, login e navigazione; retry e cache esistenti restano.
-La correzione di priorità del 18 settembre è successiva al tag v0.48 e non è
-contenuta nell'APK storico: impostare il minimo 17 non aggiorna quel binario.
+Con minimo 18, v0.49/code 18 è ammessa; i client precedenti vengono rifiutati
+dalle API protette e dalle scritture di posizione. Bootstrap e stop restano
+disponibili. Header/versionCode sono compatibilità, non prova crittografica dell'APK.
+La nuova UI controlla prima dell'onboarding e limita la cache; vecchi APK offline
+possono mostrare schermate/dati locali. Non si modificano binari già distribuiti.
+L'esito live finale viene registrato su main dopo la release, senza spostare il tag.

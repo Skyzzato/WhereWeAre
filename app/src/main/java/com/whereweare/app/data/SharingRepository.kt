@@ -27,10 +27,17 @@ import android.util.Log
             "resolve_invite_link" -> params["confirm"]?.jsonPrimitive?.booleanOrNull==true
             else -> true
         }
-    ) { withTimeout(12_000) {auth.awaitSession();client.postgrest.rpc(name,params)} }
+    ) { withTimeout(12_000) {
+        try {auth.awaitSession()} catch(_: SessionUnavailableException) {auth.recoverSession();auth.awaitSession()}
+        try {client.postgrest.rpc(name,params)} catch(e: io.github.jan.supabase.exceptions.RestException) {
+            // A rejected 401 has not executed the mutation; renew once, including in the service.
+            if(e.statusCode!=401) throw e
+            auth.recoverSession();client.postgrest.rpc(name,params)
+        }
+    } }
     suspend fun testConnection() { withTimeout(12_000) {ownSharingStatus()} }
     val online=network.online
-    suspend fun awaitRecoverySignal() { merge(refreshes,network.state.map {it.online}.distinctUntilChanged().drop(1).filter {it}.map {Unit}).first() }
+    suspend fun awaitRecoverySignal() { withTimeoutOrNull(30_000) { merge(refreshes,network.state.map {it.online}.distinctUntilChanged().drop(1).filter {it}.map {Unit}).first() } }
     private val refreshes=MutableSharedFlow<Unit>(extraBufferCapacity=1)
     private data class AvatarChange(val user: String,val path: String?)
     private val avatarChange=MutableStateFlow<AvatarChange?>(null)
@@ -38,6 +45,11 @@ import android.util.Log
     private data class ClockAnchor(val server: Instant,val elapsed: Long)
     @Volatile private var clock=ClockAnchor(Instant.now(),SystemClock.elapsedRealtime())
     fun now(): Instant = clock.let { it.server.plusMillis(SystemClock.elapsedRealtime()-it.elapsed) }
+    suspend fun syncClock() {
+        val started=SystemClock.elapsedRealtime()
+        val time=serverRpc("server_time").decodeAs<String>()
+        clock=ClockAnchor(Instant.parse(time),started)
+    }
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: StateFlow<Snapshot> = auth.session.map { auth.userId }.distinctUntilChanged().flatMapLatest { id ->
         if(id==null) flowOf(Snapshot(loading=false)) else observe(id)
@@ -46,7 +58,9 @@ import android.util.Log
         else if(snapshot.profile.avatarPath==change.path) { avatarChange.compareAndSet(change,null); snapshot }
         else snapshot.copy(profile=snapshot.profile.copy(avatarPath=change.path))
     }.combine(optimistic.changes) { snapshot,pending -> optimistic.render(snapshot,pending) }
-        .stateIn(scope,SharingStarted.WhileSubscribed(5_000),Snapshot())
+        .combine(flow {while(true) {emit(now());delay(1_000)}}) { snapshot,time ->
+            snapshot.copy(meetings=snapshot.meetings.filter {it.expiresAt()?.isAfter(time)==true})
+        }.stateIn(scope,SharingStarted.WhileSubscribed(0),Snapshot())
 
     private fun observe(id: String): Flow<Snapshot> = channelFlow {
         var last=state.value.takeIf {it.profile?.id==id}?:Snapshot()
@@ -275,7 +289,11 @@ import android.util.Log
         put("mid",id); put("lat",lat); put("lon",lon); put("all_people",all)
         putJsonArray("people") {people.forEach {add(it)}}; putJsonArray("group_ids") {groups.forEach {add(it)}}
     })
-    suspend fun removeMeeting(id: String)=mutate({s -> s.copy(meetings=s.meetings.map {if(it.id==id) it.copy(active=false) else it}) },{s -> s.meetings.none {it.id==id && it.active} }) { rpc("remove_meeting",buildJsonObject {put("mid",id)}) }
+    suspend fun removeMeeting(id: String): String {
+        val result=serverRpc("remove_meeting_v049",buildJsonObject {put("mid",id)}).decodeAs<String>()
+        refresh()
+        return result
+    }
     suspend fun inviteLink(token: String,confirm: Boolean): JsonObject? = serverRpc("resolve_invite_link",buildJsonObject {put("token",token);put("confirm",confirm)}).data.let { if(it=="null") null else Json.parseToJsonElement(it).jsonObject }.also { if(confirm) refresh() }
     suspend fun lookup(code: String): UserProfile? = serverRpc("lookup_user_by_invite_code",buildJsonObject { put("code",normalizeInviteCode(code)) }).decodeList<LookupDto>().firstOrNull()?.domain()
     suspend fun sendRequest(code: String) {
@@ -299,11 +317,12 @@ import android.util.Log
         put("expected_revision",revision?.let(::JsonPrimitive)?:JsonNull)
     }); refresh() }
     suspend fun publish(session: String,location: UserLocation) {
-        serverRpc("publish_location",buildJsonObject {
-            put("session",session); put("lat",location.latitude); put("lon",location.longitude); put("acc",location.accuracy)
+        val accepted=serverRpc("publish_location_v049",buildJsonObject {
+            put("fix_age_ms",fixAgeMillis(location,android.os.SystemClock.elapsedRealtimeNanos()));put("session",session); put("lat",location.latitude); put("lon",location.longitude); put("acc",location.accuracy)
             put("fix_at",location.recordedAt.toString())
             put("velocity",location.speed?.let(::JsonPrimitive)?:JsonNull); put("heading",location.bearing?.let(::JsonPrimitive)?:JsonNull)
-        })
+        }).decodeAs<Boolean>()
+        check(accepted) {"fix_not_accepted"}
     }
     suspend fun rename(name: String) {
         require(validName(name))

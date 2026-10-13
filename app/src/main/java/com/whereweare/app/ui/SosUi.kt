@@ -27,9 +27,10 @@ import kotlinx.serialization.json.jsonPrimitive
 
 fun sosCategory(value: String)=Strings.text(when(value) {"injured" -> R.string.sos_injured;"lost" -> R.string.sos_lost;"vehicle" -> R.string.sos_vehicle;"accident" -> R.string.sos_accident;else -> R.string.sos_help})
 fun sosClosureText(event: AppEvent)=Strings.text(when(event.payload["reason"]?.jsonPrimitive?.content) {"resolved" -> R.string.sos_resolved;"okay" -> R.string.sos_okay;else -> R.string.sos_accidental})
-fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name.isBlank()) Strings.text(R.string.nearby_anonymous) else Strings.text(when(event.kind) {"place" -> R.string.place_event_received;"sos" -> R.string.sos_received;"sos_closed" -> R.string.sos_closed_received;else -> R.string.checkin_received},event.sender_name)
+fun eventReceivedText(event: AppEvent)=if(event.kind=="meeting_removed") Strings.text(R.string.meeting_removed_notice,event.sender_name,event.payload["meeting_name"]?.jsonPrimitive?.content.orEmpty()) else if(event.kind=="sos" && event.sender_name.isBlank()) Strings.text(R.string.nearby_anonymous) else Strings.text(when(event.kind) {"place" -> R.string.place_event_received;"sos" -> R.string.sos_received;"sos_closed" -> R.string.sos_closed_received;else -> R.string.checkin_received},event.sender_name)
 
 @Composable fun SosEditor(vm: MapViewModel,snapshot: Snapshot,close: ()->Unit) {
+    DisposableEffect(Unit) {AudioPriority.begin();onDispose {AudioPriority.end()}}
     val context=LocalContext.current
     val status by vm.sosSendState.collectAsStateWithLifecycle()
     val sendError by vm.sosError.collectAsStateWithLifecycle()
@@ -77,6 +78,7 @@ fun eventReceivedText(event: AppEvent)=if(event.kind=="sos" && event.sender_name
 }
 
 @Composable fun SosDetail(vm: MapViewModel,event: AppEvent,owner: Boolean,close: ()->Unit) {
+    DisposableEffect(Unit) {AudioPriority.begin();onDispose {AudioPriority.end()}}
     val operation by vm.operation.collectAsStateWithLifecycle()
     var status by remember(event.id) {mutableStateOf<SosStatus?>(null)}
     var failed by remember(event.id) {mutableStateOf(false)}

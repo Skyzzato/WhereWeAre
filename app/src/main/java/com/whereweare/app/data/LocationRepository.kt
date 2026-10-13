@@ -46,7 +46,7 @@ data class SatelliteDetails(val visible: Int,val used: Int,val observedAt: Insta
         val age=((SystemClock.elapsedRealtimeNanos()-fix.elapsedRealtimeNanos)/1_000_000).coerceAtLeast(0)
         if(!fix.hasAccuracy() || !fix.accuracy.isFinite() || fix.accuracy<0 || age>30_000) return null
         val result=UserLocation(auth.userId.orEmpty(),fix.latitude,fix.longitude,fix.accuracy.toDouble(),
-            if(fix.hasSpeed()) fix.speed.toDouble() else null,if(fix.hasBearing()) fix.bearing.toDouble() else null,Instant.now().minusMillis(age))
+            if(fix.hasSpeed()) fix.speed.toDouble() else null,if(fix.hasBearing()) fix.bearing.toDouble() else null,Instant.now().minusMillis(age),elapsedRealtimeNanos=fix.elapsedRealtimeNanos)
         mutableDetails.value=DeviceLocationDetails(result,if(fix.hasAltitude()) fix.altitude else null,fix.provider)
         return result
     }

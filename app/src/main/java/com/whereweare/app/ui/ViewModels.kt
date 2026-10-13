@@ -29,6 +29,8 @@ open class OperationViewModel: ViewModel() {
                 val key=e.message.orEmpty()
                 val resource=when {
                     e is java.io.IOException -> R.string.error_network
+                    "meeting_gone" in key -> R.string.meeting_gone
+                    "update_required" in key -> R.string.version_obsolete
                     "place_duplicate" in key -> R.string.place_duplicate
                     "configuration" in key -> R.string.error_config
                     "stop_pending" in key -> R.string.stop_pending
@@ -119,7 +121,7 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
         feedback.created(user,id,style)
         sharing.createMeeting(id,lat,lon,all,people,groups,style)
     } }
-    fun removeMeeting(id: String) {perform {sharing.removeMeeting(id)}}
+    fun removeMeeting(id: String,done: ()->Unit={}) {perform {val result=sharing.removeMeeting(id);if(result!="removed") error("meeting_gone");done()}}
     fun checkin(id: String,type: String,message: String,people: Set<String>,groups: Set<String>,meeting: String?,completed: ()->Unit) {perform(R.string.checkin_sent) {
         val fix=try {location.snapshot(preferences.highAccuracy.first())} catch(_: TimeoutCancellationException) {error("location_timeout")}
         sharing.checkin(id,type,message,fix,people,groups,meeting)
@@ -206,8 +208,10 @@ data class MapState(val snapshot: Snapshot=Snapshot(),val visible: List<VisibleP
     val state=sharing.state
     val email get()=auth.email
     val flareStyle=preferences.flareStyle.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),FlareStyles.DEFAULT_ID)
+    val backgroundMusic=preferences.backgroundMusic.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     val flareSound=preferences.flareSound.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)
     fun flareStyle(id: Int) {perform {preferences.flareStyle(id)}}
+    fun backgroundMusic(enabled: Boolean) {perform {preferences.backgroundMusic(enabled)}}
     fun flareSound(enabled: Boolean) {perform {preferences.flareSound(enabled)}}
     val registeredSince get()=registrationDate(auth.createdAt)
     val highAccuracy=preferences.highAccuracy.stateIn(viewModelScope,SharingStarted.WhileSubscribed(0),true)

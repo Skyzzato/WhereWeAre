@@ -1,0 +1,4 @@
+gradle.beforeProject { project ->
+    def output = project.providers.gradleProperty('wwaBuildDirectory').getOrElse('.tools/build-v049-verified')
+    project.layout.buildDirectory.set(new File(project.rootProject.projectDir, output + '/' + project.name))
+}

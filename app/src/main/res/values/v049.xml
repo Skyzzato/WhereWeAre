@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="background_music">Background music</string>
+    <string name="background_music_info">Plays discreet music while you use the app</string>
+    <string name="version_obsolete">This version of WhereWeAre is obsolete. Update to continue.</string>
+    <string name="update_app">Update</string>
+    <string name="exit_app">Exit</string>
+    <string name="meeting_delete">Delete meeting point</string>
+    <string name="meeting_delete_all">Delete for everyone</string>
+    <string name="meeting_delete_own">Delete your meeting point? It will be removed for everyone.</string>
+    <string name="meeting_delete_other">Delete %1$s’s meeting point? It will be removed for everyone and %1$s will receive a notice.</string>
+    <string name="meeting_removed_notice">%1$s deleted your meeting point %2$s.</string>
+    <string name="meeting_deleted">Meeting point deleted</string>
+    <string name="meeting_gone">This meeting point has already expired or been deleted.</string>
+    <string name="meeting_expires">Expires in %1$s minutes</string>
+    <string name="waiting_gps">Waiting for GPS</string>
+    <string name="last_upload_success">Last successful upload at %1$s</string>
+    <string name="diag_retry_count">Consecutive retries</string>
+    <string name="diag_power_save">Power saving</string>
+    <string name="diag_doze">Device idle (Doze)</string>
+    <string name="diag_notifications">Notifications allowed</string>
+    <string name="battery_targeted_hint">Uploads are delayed and battery optimization is enabled. Check this app’s battery restrictions in system settings. Android may delay updates.</string>
+</resources>

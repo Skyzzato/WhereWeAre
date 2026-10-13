@@ -26,7 +26,7 @@ data class LocationShare(val owner: String, val viewer: String, val enabled: Boo
 data class SharingStatus(val userId: String, val sharing: Boolean)
 data class UserLocation(val userId: String, val latitude: Double, val longitude: Double,
     val accuracy: Double, val speed: Double?, val bearing: Double?, val recordedAt: Instant,
-    val batteryLevel: Int?=null,val locationEnabled: Boolean?=null,val deviceStatusAt: Instant?=null,val precisionMeters: Int=0)
+    val batteryLevel: Int?=null,val locationEnabled: Boolean?=null,val deviceStatusAt: Instant?=null,val precisionMeters: Int=0,val elapsedRealtimeNanos: Long?=null)
 
 data class DeviceStatus(val batteryLevel: Int?,val locationEnabled: Boolean)
 data class DeviceStatusObservation(val status: DeviceStatus,val observedAt: Instant)
@@ -71,7 +71,10 @@ data class Snapshot(val profile: UserProfile? = null, val names: Map<String,Stri
 @kotlinx.serialization.Serializable data class AudienceMember(val user_id: String,val name: String,val precision_m: Int,val sources: List<PrecisionSource>)
 
 @kotlinx.serialization.Serializable data class GroupRequest(val id: String,val group_id: String,val group_name: String,val user_id: String,val name: String,val kind: String,val status: String,val can_respond: Boolean,val group_emoji: String="📍",val can_cancel: Boolean=false)
-@kotlinx.serialization.Serializable data class MeetingPoint(val id: String,val creator_id: String,val creator_name: String,val latitude: Double,val longitude: Double,val active: Boolean,val created_at: String,val removed_at: String?=null,val recipients: List<String> = emptyList(),val flare_style_id: Int?=FlareStyles.DEFAULT_ID,val radius_m: Int=100,val completed_at: String?=null,val progress: List<FlareProgress> = emptyList())
+@kotlinx.serialization.Serializable data class MeetingPoint(val id: String,val creator_id: String,val creator_name: String,val latitude: Double,val longitude: Double,val active: Boolean,val created_at: String,val removed_at: String?=null,val recipients: List<String> = emptyList(),val flare_style_id: Int?=FlareStyles.DEFAULT_ID,val radius_m: Int=100,val completed_at: String?=null,val progress: List<FlareProgress> = emptyList(),val expires_at: String?=null) {
+    fun expiresAt(): Instant?=runCatching {val limit=Instant.parse(created_at).plusSeconds(3600); expires_at?.let {minOf(limit,Instant.parse(it))} ?: limit}.getOrNull()
+    fun alive(now: Instant)=active && expiresAt()?.isAfter(now)==true
+}
 fun stalePosition(fix: UserLocation,profile: ContactProfile?,now: Instant,graceSeconds: Int)=
     Duration.between(fix.recordedAt,now).seconds>((profile?.updateInterval ?: 60)+graceSeconds).toLong()
 

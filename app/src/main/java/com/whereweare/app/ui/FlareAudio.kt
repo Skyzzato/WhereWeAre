@@ -18,10 +18,11 @@ class FlareAudio(private val context: Context) : AutoCloseable {
             val player=MediaPlayer.create(context,resource,attributes,0) ?: return
             player.setVolume(1f,1f)
             players.add(player)
-            player.setOnCompletionListener {players.remove(it);it.release()}
-            player.setOnErrorListener {p,_,_ -> players.remove(p);p.release();true}
+            AudioPriority.begin()
+            player.setOnCompletionListener {if(players.remove(it)) AudioPriority.end();it.release()}
+            player.setOnErrorListener {p,_,_ -> if(players.remove(p)) AudioPriority.end();p.release();true}
             player.start()
         } catch(_: Exception) {close()}
     }
-    override fun close() {players.toList().forEach {runCatching {it.release()}};players.clear()}
+    override fun close() {players.toList().forEach {runCatching {it.release()};AudioPriority.end()};players.clear()}
 }

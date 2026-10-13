@@ -35,6 +35,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.auth.status.SessionStatus
 
 @AndroidEntryPoint class MainActivity: ComponentActivity() {
+    @javax.inject.Inject lateinit var music: BackgroundMusic
     @javax.inject.Inject lateinit var nearbyConsent: com.whereweare.app.data.NearbySosRepository
     @javax.inject.Inject lateinit var inviteStore: com.whereweare.app.data.InviteStore
     private var invalidInvite by mutableStateOf(false)
@@ -46,6 +47,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
     @javax.inject.Inject lateinit var sharing: com.whereweare.app.data.SharingRepository
     private var link by mutableStateOf<android.net.Uri?>(null)
     override fun onStart() {super.onStart(); visible=true;sharing.refresh()}
+    override fun onResume() {super.onResume();music.visible(true)}
+    override fun onPause() {music.visible(false);super.onPause()}
     override fun onStop() {visible=false;super.onStop()}
     companion object {@Volatile var visible=false; private set}
     override fun onNewIntent(intent: android.content.Intent) {super.onNewIntent(intent);setIntent(intent);intent.data?.let {receiveInvite(it)};link=intent.data ?: intent.getStringExtra("meeting_id")?.let {android.net.Uri.parse("whereweare://meeting/$it")}}
@@ -74,7 +77,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun App(auth: AuthViewModel=hiltViewModel(),bootstrap: BootstrapViewModel=hiltViewModel(),appearance: AppearanceViewModel,link: android.net.Uri?,linkHandled: ()->Unit) {
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current
-    LaunchedEffect(lifecycle,appearance) { lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {appearance.observeMeetings()} }
+    LaunchedEffect(lifecycle,appearance) { lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {appearance.observeMeetings()} }
     val session by auth.session.collectAsStateWithLifecycle()
     val boot by bootstrap.repository.state.collectAsStateWithLifecycle()
     val onboarding by appearance.onboarding.collectAsStateWithLifecycle()
@@ -86,9 +89,13 @@ import io.github.jan.supabase.auth.status.SessionStatus
             }
         }
     }
-    LifecycleResumeEffect(Unit) { bootstrap.refresh(); onPauseOrDispose {} }
+    LaunchedEffect(lifecycle,online) {
+        lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            while(true) {bootstrap.refresh();kotlinx.coroutines.delay(60_000)}
+        }
+    }
     val onboardingOperation by appearance.operation.collectAsStateWithLifecycle()
-    BootstrapBoundary(boot,session is SessionStatus.Initializing,bootstrap::refresh) {
+    BootstrapBoundary(boot,session is SessionStatus.Initializing,bootstrap::refresh,stopSharing=appearance.controller::requestStop) {
     if(!onboarding) {OnboardingScreen(onboardingOperation,appearance::finishOnboarding);return@BootstrapBoundary}
     if(session !is SessionStatus.Authenticated) { Box(Modifier.safeDrawingPadding()) { AuthScreen(auth) }; return@BootstrapBoundary }
     val nearbyState by appearance.nearby.state.collectAsStateWithLifecycle()
@@ -125,7 +132,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
         var scanning by remember {mutableStateOf(false)}
         val notice by appearance.notification.collectAsStateWithLifecycle()
         val eventNotice by appearance.eventNotice.collectAsStateWithLifecycle()
-        val sharingSnapshot by appearance.sharing.state.collectAsStateWithLifecycle()
+        if(eventNotice?.kind=="sos") DisposableEffect(eventNotice?.id) {AudioPriority.begin();onDispose {AudioPriority.end()}}
+        val sharingSnapshot by appearance.sharing.state.collectAsStateWithLifecycle(minActiveState=androidx.lifecycle.Lifecycle.State.RESUMED)
         val flare by appearance.flare.collectAsStateWithLifecycle()
         val flareSound by appearance.flareSound.collectAsStateWithLifecycle()
         val invitation by appearance.invite.collectAsStateWithLifecycle()
@@ -159,7 +167,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
         } } }) { padding ->
             NavHost(nav,startDestination="map",modifier=Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background),
                 enterTransition={ EnterTransition.None },exitTransition={ ExitTransition.None },popEnterTransition={ EnterTransition.None },popExitTransition={ ExitTransition.None }) {
-                composable("map") { MapScreen(hiltViewModel(),focus,{focus=null},onPlaces={nav.navigate("places")}) }
+                composable("map") { MapScreen(hiltViewModel(),focus,{focus=null},onPlaces={nav.navigate("places")},globalModalOpen=scanning || invitation!=null || nearbyState.status?.consent_initialized==false) }
                 composable("people") { Surface(Modifier.fillMaxSize()) {val current=invite?.takeIf {it.type=="person"};PeopleScreen(hiltViewModel(),onShow={id -> focus=MapFocus(person=id);nav.navigate("map") {launchSingleTop=true}},initialCode=current?.code,inviteId=current?.id,inviteHandled={current?.let {appearance.invites.consume(it.id)}},onScan={scanning=true}) } }
                 composable("groups") { Surface(Modifier.fillMaxSize()) {val current=invite?.takeIf {it.type=="group"}; GroupsScreen(hiltViewModel(),initialCode=current?.code,inviteId=current?.id,inviteHandled={current?.let {appearance.invites.consume(it.id)}},onScan={scanning=true}) } }
                 composable("settings") { Surface(Modifier.fillMaxSize()) { SettingsScreen(hiltViewModel(),onCenterPlace={place -> focus=MapFocus(place=place);nav.navigate("map") {popUpTo("map") {inclusive=false};launchSingleTop=true}},onPrivacy={ nav.navigate("privacy") }) } }
@@ -176,7 +184,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
 }
 
 // Keep all onboarding, authentication and navigation content behind the server gate.
-@Composable internal fun BootstrapBoundary(boot: com.whereweare.app.data.BootstrapState,initializing: Boolean,retry: ()->Unit,content: @Composable ()->Unit) {
+@Composable internal fun BootstrapBoundary(boot: com.whereweare.app.data.BootstrapState,initializing: Boolean,retry: ()->Unit,stopSharing: ()->Unit={},content: @Composable ()->Unit) {
+    val context=LocalContext.current
     if(boot.gate!=BootstrapGate.READY || initializing) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
             Image(painterResource(R.drawable.ic_location),null,Modifier.padding(vertical=12.dp).sizeIn(maxWidth=160.dp,maxHeight=160.dp).size(96.dp),contentScale=ContentScale.Fit)
@@ -184,7 +193,15 @@ import io.github.jan.supabase.auth.status.SessionStatus
             Text("v${BuildConfig.VERSION_NAME}")
             Spacer(Modifier.height(24.dp))
             when(boot.gate) {
-                BootstrapGate.UPDATE -> { Text(Strings.text(R.string.ui_120),style=MaterialTheme.typography.headlineSmall); Text(Strings.text(R.string.ui_121)) }
+                BootstrapGate.UPDATE -> {
+                    Text(Strings.text(R.string.version_obsolete),style=MaterialTheme.typography.headlineSmall)
+                    val url=boot.config?.update_url?.takeIf {it.startsWith("https://github.com/Skyzzato/WhereWeAre/releases/")}
+                        ?: "https://github.com/Skyzzato/WhereWeAre/releases"
+                    Button(onClick={runCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)))}}) {Text(Strings.text(R.string.update_app))}
+                    TextButton(onClick=stopSharing) {Text(Strings.text(R.string.stop))}
+                    TextButton(onClick={generateSequence(context) {(it as? android.content.ContextWrapper)?.baseContext}
+                        .filterIsInstance<android.app.Activity>().firstOrNull()?.finish()}) {Text(Strings.text(R.string.exit_app))}
+                }
                 BootstrapGate.MAINTENANCE -> { Text(Strings.text(R.string.ui_122),style=MaterialTheme.typography.headlineSmall); boot.config?.maintenance_message?.let { Text(it) } }
                 BootstrapGate.FIRST_CONNECTION -> Text(Strings.text(R.string.ui_123))
                 BootstrapGate.BACKEND_UPDATE -> Text(Strings.text(R.string.backend_update))

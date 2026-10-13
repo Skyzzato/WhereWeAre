@@ -18,7 +18,7 @@ import com.whereweare.app.domain.UserLocation
 import com.whereweare.app.data.*
 import kotlinx.coroutines.launch
 
-@Composable fun FlareProgressDialog(point: MeetingPoint,now: Instant,origins: List<UserLocation>,routing: RoutingRepository,close: ()->Unit) {
+@Composable fun FlareProgressDialog(point: MeetingPoint,now: Instant,origins: List<UserLocation>,routing: RoutingRepository,remove: (()->Unit)?=null,close: ()->Unit) {
     var routePerson by remember {mutableStateOf<String?>(null)}
     if(routePerson!=null) {
         FlareRouteDialog(point,origins.firstOrNull {it.userId==routePerson},routing,now) {routePerson=null}
@@ -26,6 +26,9 @@ import kotlinx.coroutines.launch
     }
     AlertDialog(onDismissRequest=close,title={Text(Strings.text(if(point.completed_at!=null) R.string.flare_reunited else R.string.ui_046))},
         text={Column(Modifier.heightIn(max=420.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            Text(point.creator_name)
+            point.expiresAt()?.let {end -> Text(Strings.text(R.string.meeting_expires,((java.time.Duration.between(now,end).seconds.coerceAtLeast(0)+59)/60).toString()))}
+            if(point.alive(now) && remove!=null) TextButton(onClick=remove) {Text(Strings.text(R.string.meeting_delete))}
             Text(Strings.text(R.string.flare_radius,point.radius_m.toString()))
             if(point.progress.isEmpty()) Text(Strings.text(R.string.flare_unavailable))
             point.progress.forEach {person -> Column {

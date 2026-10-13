@@ -46,6 +46,7 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     val scale by vm.avatarScale.collectAsStateWithLifecycle()
     val language by vm.language.collectAsStateWithLifecycle()
     val flareStyle by vm.flareStyle.collectAsStateWithLifecycle()
+    val music by vm.backgroundMusic.collectAsStateWithLifecycle()
     val flareSound by vm.flareSound.collectAsStateWithLifecycle()
     val context=LocalContext.current
     var name by remember(state.profile?.displayName) {mutableStateOf(state.profile?.displayName.orEmpty())}
@@ -58,6 +59,10 @@ fun durationLabel(seconds: Int)=when { seconds<60 -> Strings.text(R.string.ui_11
     LifecycleResumeEffect(Unit) {precise=vm.location.permission()==LocationPermission.PRECISE;onPauseOrDispose {}}
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Busy(operation)
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {Text(Strings.text(R.string.background_music));Text(Strings.text(R.string.background_music_info),style=MaterialTheme.typography.bodySmall)}
+            Switch(music,vm::backgroundMusic)
+        }
         SettingsSection(Strings.text(R.string.ui_078),initiallyExpanded=true) {
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
             state.profile?.let { Avatar(it.id,it.displayName,it.avatarPath,false,vm.avatars,56.dp) }
