@@ -9,7 +9,7 @@ versionCode 18. [Report di verifica e deploy](VERIFICATION_v0.49.md).
 - Ritrovi/bengala: massimo un'ora dalla creazione server, TTL non prorogabile,
   invalidazione immediata alla scadenza e pulizia ogni minuto. Cancellazione per
   creatore o destinatario attualmente autorizzato, conferma e evento idempotente
-  nella Cronologia; push ordinario predisposto nella coda durevole.
+  nella Cronologia; push ordinario nella coda durevole con dispatcher attivo.
 - Mappa: ricentramento dopo 20 secondi senza utenti/ritrovi visibili né gesti,
   sospeso in background/dialoghi, senza attivare follow.
 - Musica lounge originale sintetica di 68,6 secondi, volume basso, toggle
@@ -22,8 +22,10 @@ Verifiche: build, 161 test JVM, lint (zero errori, 82 warning), 14 suite SQL e
 3 test dispatcher PASS. SQL live con rollback e zero fixture residue; firma
 compatibile e aggiornamento sopra v0.48 nell'emulatore API 30 verificati.
 **NON ESEGUITI: collaudo 60–90 minuti su due telefoni, FLP/Doze/OEM reali,
-chiamate/cuffie e FCM end-to-end.** FCM resta senza credenziali server disponibili;
-avvisi recuperabili nell'app, consegna push non dichiarata funzionante.
+chiamate/cuffie e visualizzazione FCM sul telefono.** Completamento server dopo
+il tag: migrazione 027 applicata, credenziali configurate, cron ogni minuto e
+HTTP 200 verificati. Coda: 22 job completati, 20 accettazioni provider, zero
+pendenti. L'accettazione FCM non dimostra la visualizzazione della notifica.
 
 # v0.48 — prerelease
 

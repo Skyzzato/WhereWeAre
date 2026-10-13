@@ -18,13 +18,13 @@ Applicazione Android per condividere volontariamente l’ultima posizione con pe
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
-Deploy del 13/10/2026: migrazioni 024–026 applicate, cleanup ritrovi ogni minuto e test SQL remoto passato con zero fixture residue. Dopo download e installazione dell'APK pubblico: **latest 0.49/18 e minimo 18**, riletti dal server; v0.48 bloccata e v0.49 ammessa nell'emulatore. [Report](VERIFICATION_v0.49.md). **FCM non configurato e collaudo prolungato su telefoni reali non eseguito.**
+Deploy del 13/10/2026: migrazioni 024–027 applicate, cleanup ritrovi e dispatcher push ogni minuto, test SQL remoto passato con zero fixture residue. Dopo download e installazione dell'APK pubblico: **latest 0.49/18 e minimo 18**, riletti dal server; v0.48 bloccata e v0.49 ammessa nell'emulatore. FCM configurato: 22 job completati, 20 accettazioni provider, zero pendenti. [Report](VERIFICATION_v0.49.md). **Visualizzazione push e collaudo prolungato su telefoni reali non eseguiti.**
 
 ## Avvio
 
 1. Installa Android Studio, JDK 21, SDK API 37 e Build Tools 36.0.0. Minimo Android 8/API 26; serve Google Play Services per Fused Location e FCM.
 2. Copia `local.properties.example` in `local.properties`: configura SDK e credenziali **pubbliche** Supabase. Non inserire service-role o chiavi private nel client.
-3. Confronta schema e migrazioni prima di applicarle. La storia live era manuale; 024–026 applicate e verificate. Il reset locale 023 non appartiene al deploy. [Politica](VERSIONING.md) e [report](VERIFICATION_v0.49.md).
+3. Confronta schema e migrazioni prima di applicarle. La storia live era manuale; 024–027 applicate e verificate. La 027 è un completamento server successivo al tag APK. Il reset locale 023 non appartiene al deploy. [Politica](VERSIONING.md) e [report](VERIFICATION_v0.49.md).
 4. Compila con Android Studio oppure `./gradlew :app:build` (Windows: `.\gradlew.bat :app:build`).
 5. APK: [WhereWeAre-v0.49.apk](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.49/WhereWeAre-v0.49.apk), firma debug precedente verificata. Artefatto `.tools/release-v0.49/WhereWeAre-v0.49.apk`; checksum e provenienza negli allegati della [prerelease](https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.49).
 
@@ -41,7 +41,7 @@ La migrazione 005 aggiunge modifica nome/icona e annullamento inviti; mantiene c
 - Visibilità locale di persone/gruppi indipendente dall’autorizzazione a condividere.
 - Punto di ritrovo di massimo un'ora, destinatari deduplicati, cancellazione condivisa autorizzata, banner, linee animate, bengala Canvas e apertura della mappa da notifica.
 - Musica lounge originale, disattivabile e sospesa al blocco/background; ricentramento automatico dopo 20 secondi di mappa vuota senza gesti.
-- Notifiche push predisposte con Firebase, da configurare; link HTTPS predisposti per il futuro dominio, senza associazione verificata attiva.
+- Notifiche push Firebase configurate e accettazione provider verificata; visualizzazione sul telefono da collaudare. Link HTTPS predisposti per il futuro dominio, senza associazione verificata attiva.
 - Eliminazione account tramite Edge Function esistente, logout, pulizia immagini e cache; la condivisione continua conserva l’ultima posizione; Check-in e SOS sono eventi volontari separati.
 
 ## Funzioni incrementali v0.4
@@ -55,7 +55,7 @@ Le funzioni server vengono mostrate solo quando la relativa migrazione è dispon
 Il routing Valhalla è configurabile e disabilitato senza endpoint; “Sta arrivando”
 resta sperimentale disattivato. Mancato arrivo bloccato dallo scheduler non verificato;
 SOS verso volontari vicini aderenti disponibile dalla v0.42 tramite inbox nell'app;
-push FCM ancora da configurare. Non è una protezione d’emergenza garantita.
+push FCM configurato con la v0.49, da verificare sui telefoni. Non è una protezione d’emergenza garantita.
 
 ## GPS e riservatezza
 
@@ -67,7 +67,7 @@ La migrazione 002 disattiva il vecchio cleanup fisso a due ore: non reintrodurlo
 
 ## Cartografia
 
-Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.48` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
+Motore MapLibre Compose 0.16/Native, cache disco 64 MiB, identificazione `WhereWeAre/0.49` derivata da BuildConfig. OpenFreeMap è il provider standard; OpenTopoMap e CyclOSM non richiedono credenziali. Nessun prefetch offline di regioni. Attribuzioni sempre visibili e link alle licenze nelle impostazioni.
 
 ## Test riproducibili
 

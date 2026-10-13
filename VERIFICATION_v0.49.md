@@ -34,11 +34,21 @@ crash AndroidRuntime. Le scritture di un servizio legacy vengono respinte dal
 test server con contesto authenticated/version17; **non è stato eseguito un
 servizio GPS legacy autenticato reale su telefono**.
 
-Rimane da completare FCM: l'accesso confermato dall'utente è in Chrome/Edge
-esterno, non disponibile agli strumenti della chat. Il browser integrato mostra
-anche un errore di caricamento dello stato dei Termini di servizio sulla home
-Firebase. Richiesta la credenziale server come file locale senza esporne il valore;
-nessuna chiave privata creata, estratta o pubblicata durante queste verifiche.
+**Completamento push, 13/10/2026 alle 15:08 UTC:** l'utente ha scaricato la
+credenziale Firebase nel proprio Download e autorizzato la configurazione del
+server. Configurati `FIREBASE_SERVICE_ACCOUNT`, `PUSH_DISPATCH_SECRET` e il
+segreto Vault `whereweare_push_dispatch`; nessun valore incluso nel repository,
+nell'APK o negli allegati della release. La migrazione server 027, successiva al
+tag, attiva il dispatcher ogni minuto. Cron `succeeded`, HTTP **200**, **22**
+job completati, **20** con nuova accettazione FCM registrata dopo le 15:08,
+**zero** pendenti e **zero** tentativi esauriti. Una chiamata successiva risponde
+200/completed=0; senza autenticazione risponde **401**. La visualizzazione sul
+telefono resta NON ESEGUITA. Completamento della coda e accettazione del provider
+sono esiti distinti: non si dichiarano 22 notifiche consegnate.
+
+L'allegato `PUSH_DEPLOY_REPORT.json` integra il precedente `DEPLOY_REPORT.json`,
+che fotografa il momento in cui la credenziale non era ancora disponibile.
+Gli allegati originari, il tag e l'APK non sono stati sostituiti.
 
 ## Cause e correzioni verificabili
 
@@ -95,6 +105,7 @@ Applicate e verificate in transazioni separate:
 | `024_v0_49_meetings.sql` | TTL, destinatari, rimozione/evento/outbox, cleanup; job `whereweare-meeting-expiry` attivo `* * * * *`. |
 | `025_v0_49_protocol.sql` | Pre-request REST, controllo delle scritture legacy, sessioni Realtime compatibili, ACK, link bootstrap. Controlli preparati, inizialmente minimo sempre 17. |
 | `026_v0_49_meeting_grants.sql` | Revoca dei privilegi diretti di scrittura/TRUNCATE sui ritrovi: le mutazioni passano dalle RPC autorizzate. |
+| `027_v0_49_push_dispatch.sql` | Successiva alla pubblicazione dell'APK: pg_net, funzione privata con segreto letto da Vault e job `whereweare-push-dispatch` ogni minuto. Esecuzione e risposta HTTP 200 verificate. |
 
 `023_reset_meeting_points_and_location_requests.sql` era un file locale non
 tracciato preesistente: non applicato, non modificato e non incluso nella release.
@@ -107,13 +118,15 @@ idempotenza, evento recuperabile, accesso diretto vietato, ACK e ordine dei fix,
 client 17 rifiutato/client 18 ammesso e stop sempre consentito. Il minimo 18 in
 questo test era esclusivamente interno alla transazione annullata.
 
-Funzione `send-meeting-push` aggiornata e deploy confermato nel pannello.
-Al controllo del 13 ottobre risultano assenti `FIREBASE_SERVICE_ACCOUNT` e
-`PUSH_DISPATCH_SECRET`, e assente il job di dispatch: **consegna FCM non verificata**.
-Il progetto Firebase configurato nell'app è `whereweare-c34e0`; l'account browser
-disponibile riceve errore di autorizzazione per quel progetto. Il file pubblico
-`google-services.json` non contiene una credenziale amministrativa utilizzabile.
-La coda durevole e la Cronologia funzionano indipendentemente dal dispatcher.
+Funzione `send-meeting-push` aggiornata e deploy confermato nel pannello; sorgente
+distribuita confrontata con il bundle locale. Progetto Firebase `whereweare-c34e0`,
+corrispondente alla configurazione pubblica dell'app. Il blocco iniziale del
+browser Firebase è stato superato con la credenziale locale fornita dall'utente.
+OAuth e invio al provider verificati dalle risposte del dispatcher e dalle nuove
+accettazioni registrate. La funzione usa il proprio Bearer riservato; chiamate
+anonime respinte con 401. La funzione SQL del cron non è eseguibile da anon o
+authenticated (privilegi verificati live), né da service_role (revoca nella 027).
+Il segreto non compare nel comando cron. Cronologia e coda rimangono durevoli.
 
 ## Compatibilità e limiti legacy
 
@@ -146,7 +159,7 @@ Non è una verifica di conservazione di un account autenticato reale.
 
 **NON ESEGUITE:** due account su due telefoni per 60–90 minuti, entrambi bloccati,
 fermi/in movimento, Wi-Fi/mobile, rinnovo token reale, riavvio/rimozione recenti,
-Doze/OEM, musica OFF, consegna provider e visualizzazione push, focus/chiamate e
+Doze/OEM, musica OFF, visualizzazione push sul telefono, focus/chiamate e
 disconnessione cuffie reali, verifica percettiva del loop audio, gesti multitouch
 e occlusioni sulla mappa reale. Nessun telefono fisico collegato. L'emulatore
 disponibile è API 30 senza Google Play Services: non costituisce prova FLP/FCM.
@@ -186,3 +199,12 @@ Riferimenti tecnici: [FGS location](https://developer.android.com/develop/backgr
 [Doze](https://developer.android.com/training/monitoring-device-state/doze-standby),
 [audio focus](https://developer.android.com/media/optimize/audio-focus),
 [Cron](https://supabase.com/docs/guides/cron).
+
+Per sospendere il solo dispatcher in caso di problema:
+`select cron.unschedule('whereweare-push-dispatch');`.
+La coda e la Cronologia restano conservate. Stato precedente alla 027 registrato
+in `.tools/v049-push-scheduler-before.json`: nessun job, nessuna funzione
+dispatcher, pg_net assente. Vault è stato popolato prima della migrazione;
+nessun segreto è presente nel backup. La copia temporanea locale del segreto di
+dispatch è stata rimossa dopo il collaudo; il JSON originale dell'utente rimane
+nel suo Download.
