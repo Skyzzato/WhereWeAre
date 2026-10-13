@@ -7,6 +7,40 @@ dopo la pubblicazione, senza spostare il tag.
 
 ## Resoconto successivo alla pubblicazione
 
+### Correzione dell'errore «Errore del servizio server»
+
+Il 13/10/2026, dopo la segnalazione dell'utente, è stato riprodotto sul server
+SQLSTATE **25006**, `cannot execute INSERT in a read-only transaction`.
+La 025 registrava la sessione in `private.client_sessions` nel pre-request hook
+anche per le letture. Nell'app, dopo `app_metadata`, la lettura GET di
+`share_requests` attraversa quel hook e fallisce. Il controllo iniziale del
+bootstrap continua invece a rispondere, quindi non rilevava questo difetto.
+
+Applicata la nuova **028_v0_49_read_only_version_guard.sql**: la versione viene
+sempre controllata; la registrazione della sessione avviene soltanto quando la
+transazione consente scritture. Le RPC POST di metadata/pubblicazione continuano
+a rinnovare la sessione Realtime. Nessuna modifica ai privilegi, al minimo 18 o
+all'APK. Non occorre reinstallare: basta aggiornare i dati o riaprire l'app.
+
+La nuova regressione `v049_read_only.sql` fallisce con lo stesso errore prima
+della 028 e passa dopo. **15 suite SQL locali PASS**. Verifica live delle letture
+GET/HEAD e delle transazioni read-only per RPC, rifiuto di versione 17/header
+mancante, bootstrap accessibile e assenza di scritture: **PASS**. Ripetuto live
+anche `v049.sql`, aggiungendo lettura metadata, snapshot posizioni e sessione
+Realtime compatibile: **PASS**, rollback completo, **zero utenti di prova**
+residui. Bootstrap HTTP pubblico: **200**, latest 0.49/18, minimo 18, manutenzione
+OFF. Le verifiche autenticate sono SQL con identità isolate; non costituiscono
+un nuovo collaudo HTTP con l'account o sul telefono dell'utente.
+
+Il precedente test SQL usava transazioni read-write e non copriva il contesto
+delle GET: questo spiega il difetto sfuggito alla verifica iniziale. Backup della
+sola funzione/configurazione in `.tools/v049-readonly-before.json`; evidenze
+prima/dopo nella stessa cartella ignorata. Per il recupero preferire una nuova
+migrazione correttiva: ripristinare la funzione precedente reintrodurrebbe
+l'errore. Riferimento: [transazioni PostgREST](https://postgrest.org/en/stable/references/transactions.html).
+
+### Pubblicazione e attivazione iniziale
+
 Prerelease pubblicata il **13/10/2026 alle 14:52:26 UTC**:
 [v0.49](https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.49),
 [APK](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.49/WhereWeAre-v0.49.apk).
@@ -106,6 +140,7 @@ Applicate e verificate in transazioni separate:
 | `025_v0_49_protocol.sql` | Pre-request REST, controllo delle scritture legacy, sessioni Realtime compatibili, ACK, link bootstrap. Controlli preparati, inizialmente minimo sempre 17. |
 | `026_v0_49_meeting_grants.sql` | Revoca dei privilegi diretti di scrittura/TRUNCATE sui ritrovi: le mutazioni passano dalle RPC autorizzate. |
 | `027_v0_49_push_dispatch.sql` | Successiva alla pubblicazione dell'APK: pg_net, funzione privata con segreto letto da Vault e job `whereweare-push-dispatch` ogni minuto. Esecuzione e risposta HTTP 200 verificate. |
+| `028_v0_49_read_only_version_guard.sql` | Correzione successiva alla segnalazione: nessuna scrittura del pre-request nelle transazioni read-only; controllo versione sempre applicato. Regressione locale e live PASS. |
 
 `023_reset_meeting_points_and_location_requests.sql` era un file locale non
 tracciato preesistente: non applicato, non modificato e non incluso nella release.

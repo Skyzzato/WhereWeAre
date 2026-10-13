@@ -2,6 +2,12 @@
 
 versionCode 18. [Report di verifica e deploy](VERIFICATION_v0.49.md).
 
+Correzione server del 13/10/2026, successiva al tag: applicata la migrazione 028
+per l'errore «Errore del servizio server» durante l'aggiornamento dei dati.
+Il controllo versione non tenta più scritture nelle transazioni di sola lettura.
+Regressione riprodotta prima della correzione; 15 suite SQL locali e verifiche
+live PASS. Nessuna reinstallazione necessaria: aggiornare i dati o riaprire l'app.
+
 - Condivisione: retry limitato a 30 secondi anche senza Activity, rinnovo sessione
   sulle scritture, fix recenti con clock monotono e ACK server esplicito. STOP
   annulla acquisizione e invii; default 5 secondi, nessun rallentamento intenzionale

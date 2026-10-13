@@ -32,9 +32,12 @@ versionati restano storici: non riscrivere provenienza, branch o risultati passa
 
 ## Politica server e aggiornamento obbligatorio
 
-Stato live, migrazioni 024–027, test e limiti in [VERIFICATION_v0.49.md](VERIFICATION_v0.49.md).
+Stato live, migrazioni 024–028, test e limiti in [VERIFICATION_v0.49.md](VERIFICATION_v0.49.md).
 La 027 completa il dispatcher server dopo la pubblicazione: nessuna modifica
 all'APK, al suo commit o al tag v0.49. Il report push integra gli allegati iniziali.
+La 028 corregge il pre-request nelle transazioni di sola lettura e mantiene
+minimo 18, privilegi e controlli di compatibilità. È una correzione server;
+non cambia il versionCode o gli artefatti Android già pubblicati.
 Al deploy funzionale il server aveva già latest 0.48/17 e minimo 17; la presenza
 della 022 non ne dimostra l'applicazione. Il registro storico live è vuoto:
 confrontare anche schema/definizioni. Le migrazioni applicate sono immutabili.
