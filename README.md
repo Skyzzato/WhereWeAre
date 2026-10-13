@@ -18,7 +18,7 @@ Applicazione Android per condividere volontariamente l’ultima posizione con pe
 
 La cronologia recuperata, la distinzione fra snapshot reali e v0.22 retrospettiva e i controlli di pubblicazione sono in [RELEASE_NOTES.md](RELEASE_NOTES.md) e [REPOSITORY_RECOVERY.md](REPOSITORY_RECOVERY.md).
 
-Deploy funzionale del 13/10/2026: migrazioni 024–026 applicate, cleanup ritrovi ogni minuto e test SQL remoto passato con zero fixture residue. Il minimo viene alzato a 18 solo dopo la disponibilità dell'APK: esito effettivo nel [report](VERIFICATION_v0.49.md). **FCM non configurato e collaudo prolungato su telefoni reali non eseguito.**
+Deploy del 13/10/2026: migrazioni 024–026 applicate, cleanup ritrovi ogni minuto e test SQL remoto passato con zero fixture residue. Dopo download e installazione dell'APK pubblico: **latest 0.49/18 e minimo 18**, riletti dal server; v0.48 bloccata e v0.49 ammessa nell'emulatore. [Report](VERIFICATION_v0.49.md). **FCM non configurato e collaudo prolungato su telefoni reali non eseguito.**
 
 ## Avvio
 

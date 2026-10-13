@@ -5,6 +5,41 @@ Il commit della build è identificato dal tag immutabile `v0.49` e dall'allegato
 `BUILD_PROVENANCE.json`. Il resoconto dell'attivazione live viene aggiunto su main
 dopo la pubblicazione, senza spostare il tag.
 
+## Resoconto successivo alla pubblicazione
+
+Prerelease pubblicata il **13/10/2026 alle 14:52:26 UTC**:
+[v0.49](https://github.com/Skyzzato/WhereWeAre/releases/tag/v0.49),
+[APK](https://github.com/Skyzzato/WhereWeAre/releases/download/v0.49/WhereWeAre-v0.49.apk).
+Commit/tag APK: `c2a76bec200ed704cb89b7eb52ba9a9c4377c357` / `v0.49`;
+albero `032ad43d75e1c6fc53b448ac1200f1ae0bb0e5cc`. Artefatto ricompilato da zero
+dopo il commit, 42 task eseguiti, 74.632.632 byte. SHA-256:
+`5e818780fc1ebb1eae3733a7e9da8d2c18a9d8a788dfdc6181dea33782bccbfc`.
+Download pubblico senza autenticazione, confronto hash e installazione del file
+scaricato **PASS**. Release `draft=false`, `prerelease=true`; commit remoto e tag
+coincidenti. La successiva modifica documentale su main non sposta il tag.
+
+Solo dopo questi controlli sono stati attivati e riletti via pannello **e RPC
+HTTP pubblica**: latest **0.49/18**, minimo **18**, URL della prerelease v0.49.
+Manutenzione OFF, api 3, defaults e feature invariati rispetto al deploy
+funzionale. Il default GPS server storico 60 non viene applicato sopra il default
+client 5 o le scelte salvate. Test SQL live ripetuto dopo l'attivazione: **PASS**,
+zero fixture residue, minimo finale ancora 18. Ultima esecuzione cron osservata
+`succeeded` alle 14:49:00 UTC; job ogni minuto attivo.
+
+Sul medesimo emulatore API 30, l'APK storico v0.48/code17 mostra **Update required**
+e mantiene quel gate dopo riavvio dell'app in modalità aereo senza Wi-Fi, avendo
+già letto il minimo. Reinstallando l'APK v0.49 scaricato pubblicamente, il gate
+ammette la schermata di login; onboarding e file sentinella persistono. Nessun
+crash AndroidRuntime. Le scritture di un servizio legacy vengono respinte dal
+test server con contesto authenticated/version17; **non è stato eseguito un
+servizio GPS legacy autenticato reale su telefono**.
+
+Rimane da completare FCM: l'accesso confermato dall'utente è in Chrome/Edge
+esterno, non disponibile agli strumenti della chat. Il browser integrato mostra
+anche un errore di caricamento dello stato dei Termini di servizio sulla home
+Firebase. Richiesta la credenziale server come file locale senza esporne il valore;
+nessuna chiave privata creata, estratta o pubblicata durante queste verifiche.
+
 ## Cause e correzioni verificabili
 
 | Percorso | Evidenza e intervento |
